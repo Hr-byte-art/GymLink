@@ -1,0 +1,64 @@
+package com.ldr.gymlink.model.vo;
+
+import com.baomidou.mybatisplus.annotation.TableField;
+import lombok.Data;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.Date;
+
+/**
+ * @Author 王哈哈
+ * @Date 2025/11/30 21:08:19
+ * @Description 课程信息
+ */
+@Data
+public class CourseVo implements Serializable {
+    /**
+     * 主键ID
+     */
+    private Integer id;
+
+    /**
+     * 课程名称
+     */
+    private String name;
+
+    /**
+     * 关联教练ID
+     */
+    private Integer coachId;
+
+    /**
+     * 课程封面图
+     */
+    private String image;
+
+    /**
+     * 课程详情
+     */
+    private String description;
+
+    /**
+     * 课程价格
+     */
+    private BigDecimal price;
+
+    /**
+     * 课程时长(分钟)
+     */
+    private Integer duration;
+
+    /**
+     * 难度等级
+     */
+    private String difficulty;
+
+    /**
+     * 创建时间
+     */
+    private Date createTime;
+
+    @TableField(exist = false)
+    private static final long serialVersionUID = 1L;
+}

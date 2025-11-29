@@ -3,6 +3,9 @@ package com.ldr.gymlink;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * @author 王哈哈
+ */
 @SpringBootApplication
 public class GymLinkApplication {
 

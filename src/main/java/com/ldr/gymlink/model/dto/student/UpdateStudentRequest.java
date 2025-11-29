@@ -1,30 +1,20 @@
-package com.ldr.gymlink.model.vo;
+package com.ldr.gymlink.model.dto.student;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.Data;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
 /**
  * @Author 王哈哈
- * @Date 2025/11/29 23:43:18
- * @Description 学员视图
+ * @Date 2025/11/30 01:53:11
+ * @Description 修改学员信息
  */
 @Data
-public class StudentVo implements Serializable {
-    /**
-     * 主键ID
-     */
-    private Integer id;
-
-    /**
-     * 账号
-     */
-    private String username;
+public class UpdateStudentRequest implements Serializable {
 
     /**
      * 昵称/姓名
@@ -56,16 +46,7 @@ public class StudentVo implements Serializable {
      */
     private BigDecimal weight;
 
-    /**
-     * 账户余额(用于购买课程)
-     */
-    private BigDecimal balance;
-
-    /**
-     * 注册时间
-     */
-    private Date createTime;
-
+    @Serial
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

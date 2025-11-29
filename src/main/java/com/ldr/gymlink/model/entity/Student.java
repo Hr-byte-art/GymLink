@@ -28,11 +28,6 @@ public class Student implements Serializable {
     @TableField(value = "username")
     private String username;
 
-    /**
-     * 密码
-     */
-    @TableField(value = "password")
-    private String password;
 
     /**
      * 昵称/姓名

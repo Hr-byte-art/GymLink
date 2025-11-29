@@ -1,6 +1,11 @@
 package com.ldr.gymlink.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
+import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
+import com.ldr.gymlink.model.entity.Coach;
+import com.ldr.gymlink.model.entity.Student;
 import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.vo.UserVo;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,4 +52,29 @@ public interface UserService extends IService<User> {
      * @return 注销成功返回0
      */
     void userLogout();
+
+    /**
+     * 密码加密
+     *
+     * @param userPassword 密码
+     * @return 加密后的密码
+     */
+    String encryptPassword(String userPassword);
+
+    /**
+     * 获取查询条件
+     *
+     * @param studentQueryPageRequest 查询条件
+     * @return 查询条件
+     */
+    LambdaQueryWrapper<Student> getQueryWrapper(StudentQueryPageRequest studentQueryPageRequest);
+
+    /**
+     * 获取教练查询条件
+     *
+     * @param coachQueryPageRequest 查询条件
+     * @return 查询条件
+     */
+    LambdaQueryWrapper<Coach> getCoachQueryWrapper(CoachQueryPageRequest coachQueryPageRequest);
+
 }

@@ -7,7 +7,6 @@
     <resultMap id="BaseResultMap" type="com.ldr.gymlink.model.entity.Student">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="username" column="username" jdbcType="VARCHAR"/>
-            <result property="password" column="password" jdbcType="VARCHAR"/>
             <result property="name" column="name" jdbcType="VARCHAR"/>
             <result property="gender" column="gender" jdbcType="TINYINT"/>
             <result property="phone" column="phone" jdbcType="VARCHAR"/>
@@ -19,7 +18,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,username,password,
+        id,username,
         name,gender,phone,
         avatar,height,weight,
         balance,create_time

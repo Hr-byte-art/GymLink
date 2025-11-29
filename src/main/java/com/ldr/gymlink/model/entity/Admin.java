@@ -27,11 +27,6 @@ public class Admin implements Serializable {
     @TableField(value = "username")
     private String username;
 
-    /**
-     * 密码
-     */
-    @TableField(value = "password")
-    private String password;
 
     /**
      * 姓名

@@ -28,12 +28,6 @@ public class Coach implements Serializable {
     private String username;
 
     /**
-     * 密码
-     */
-    @TableField(value = "password")
-    private String password;
-
-    /**
      * 姓名
      */
     @TableField(value = "name")
