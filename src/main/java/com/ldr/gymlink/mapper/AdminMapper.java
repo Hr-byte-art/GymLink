@@ -2,6 +2,7 @@ package com.ldr.gymlink.mapper;
 
 import com.ldr.gymlink.model.entity.Admin;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
 * @author 木子宸
@@ -9,6 +10,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 * @createDate 2025-11-29 20:39:16
 * @Entity com.ldr.gymlink.model.entity.Admin
 */
+@Mapper
 public interface AdminMapper extends BaseMapper<Admin> {
 
 }

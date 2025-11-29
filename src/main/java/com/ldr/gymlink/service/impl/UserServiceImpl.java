@@ -2,11 +2,16 @@ package com.ldr.gymlink.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
+import com.ldr.gymlink.mapper.StudentMapper;
 import com.ldr.gymlink.mapper.UserMapper;
+import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
+import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
+import com.ldr.gymlink.model.entity.Coach;
 import com.ldr.gymlink.model.entity.Student;
 import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.vo.UserVo;
@@ -14,11 +19,12 @@ import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import java.math.BigDecimal;
-import java.util.Date;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 import static com.ldr.gymlink.constant.RoleConstant.DEFAULT_ROLE;
 import static com.ldr.gymlink.constant.RoleConstant.USER_LOGIN_STATE;
@@ -32,9 +38,8 @@ import static com.ldr.gymlink.constant.RoleConstant.USER_LOGIN_STATE;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
 
-
     @Resource
-    private StudentService studentService;
+    private StudentMapper studentMapper;
 
     private final String salt = "wang-haha";
 
@@ -42,8 +47,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public User getLoginUser(HttpServletRequest request) {
         // 判断是否登录
         Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User currentUser = (User) attribute;
-        return null;
+        return (User) attribute;
     }
 
     @Override
@@ -121,16 +125,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         Student student = new Student();
         student.setUsername(userAccount);
         student.setPassword(encryptedPassword);
-        student.setName("用户"+RandomUtil.randomString(6));
+        student.setName("用户" + RandomUtil.randomString(6));
         student.setGender(3);
         student.setCreateTime(new Date());
-        boolean studentSave = studentService.save(student);
+        int insert = studentMapper.insert(student);
         Long studentId = student.getId();
         // 绑定学员
         user.setAssociatedUserId(studentId);
 
         boolean save = this.save(user);
-        if (!save || !studentSave) {
+        if (!save || insert <= 0) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，请检查后重试");
         }
         return user.getId();
@@ -146,10 +150,85 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     // 密码加密
-    private String encryptPassword(String userPassword) {
+    @Override
+    public String encryptPassword(String userPassword) {
         // 加盐-混淆密码
         return DigestUtils.md5DigestAsHex((salt + userPassword).getBytes());
     }
 
+    @Override
+    public LambdaQueryWrapper<Student> getQueryWrapper(StudentQueryPageRequest studentQueryPageRequest) {
+        if (studentQueryPageRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        String name = studentQueryPageRequest.getName();
+        Integer gender = studentQueryPageRequest.getGender();
+        String phone = studentQueryPageRequest.getPhone();
+        BigDecimal minHeight = studentQueryPageRequest.getMinHeight();
+        BigDecimal maxHeight = studentQueryPageRequest.getMaxHeight();
+        BigDecimal minWeight = studentQueryPageRequest.getMinWeight();
+        BigDecimal maxWeight = studentQueryPageRequest.getMaxWeight();
+        Date createTime = studentQueryPageRequest.getCreateTime();
+        String sortField = studentQueryPageRequest.getSortField();
+        String sortOrder = studentQueryPageRequest.getSortOrder();
 
+        LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<Student>()
+                .like(StrUtil.isNotBlank(name), Student::getName, name)
+                .eq(gender != null, Student::getGender, gender)
+                .like(StrUtil.isNotBlank(phone), Student::getPhone, phone)
+                .ge(minHeight != null, Student::getHeight, minHeight)
+                .le(maxHeight != null, Student::getHeight, maxHeight)
+                .ge(minWeight != null, Student::getWeight, minWeight)
+                .le(maxWeight != null, Student::getWeight, maxWeight)
+                .ge(createTime != null, Student::getCreateTime, createTime);
+
+        if (StrUtil.isNotBlank(sortField)) {
+            boolean isAsc = !"descend".equals(sortOrder);
+
+            switch (sortField) {
+                case "createTime" -> queryWrapper.orderBy(true, isAsc, Student::getCreateTime);
+                case "name" -> queryWrapper.orderBy(true, isAsc, Student::getName);
+                case "height" -> queryWrapper.orderBy(true, isAsc, Student::getHeight);
+                case "weight" -> queryWrapper.orderBy(true, isAsc, Student::getWeight);
+            }
+        }
+        return queryWrapper;
+    }
+
+    @Override
+    public LambdaQueryWrapper<Coach> getCoachQueryWrapper(CoachQueryPageRequest coachQueryPageRequest) {
+        if (coachQueryPageRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+        String name = coachQueryPageRequest.getName();
+        Integer gender = coachQueryPageRequest.getGender();
+        String phone = coachQueryPageRequest.getPhone();
+        Integer minAge = coachQueryPageRequest.getMinAge();
+        Integer maxAge = coachQueryPageRequest.getMaxAge();
+        String specialty = coachQueryPageRequest.getSpecialty();
+        Date createTime = coachQueryPageRequest.getCreateTime();
+        String sortField = coachQueryPageRequest.getSortField();
+        String sortOrder = coachQueryPageRequest.getSortOrder();
+
+        LambdaQueryWrapper<Coach> queryWrapper = new LambdaQueryWrapper<Coach>()
+                .like(StrUtil.isNotBlank(name), Coach::getName, name)
+                .eq(gender != null, Coach::getGender, gender)
+                .like(StrUtil.isNotBlank(phone), Coach::getPhone, phone)
+                .ge(minAge != null, Coach::getAge, minAge)
+                .le(maxAge != null, Coach::getAge, maxAge)
+                .like(StrUtil.isNotBlank(specialty), Coach::getSpecialty, specialty)
+                .ge(createTime != null, Coach::getCreateTime, createTime);
+
+        if (StrUtil.isNotBlank(sortField)) {
+            boolean isAsc = !"descend".equals(sortOrder);
+
+            switch (sortField) {
+                case "createTime" -> queryWrapper.orderBy(true, isAsc, Coach::getCreateTime);
+                case "name" -> queryWrapper.orderBy(true, isAsc, Coach::getName);
+                case "age" -> queryWrapper.orderBy(true, isAsc, Coach::getAge);
+                case "specialty" -> queryWrapper.orderBy(true, isAsc, Coach::getSpecialty);
+            }
+        }
+        return queryWrapper;
+    }
 }
