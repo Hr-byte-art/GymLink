@@ -5,17 +5,16 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.Date;
 import lombok.Data;
 
 /**
- * 健身课程表
- * @TableName course
+ * 教练预约表
+ * @TableName coach_appointment
  */
-@TableName(value ="course")
+@TableName(value ="coach_appointment")
 @Data
-public class Course implements Serializable {
+public class CoachAppointment implements Serializable {
     /**
      * 主键ID
      */
@@ -23,49 +22,37 @@ public class Course implements Serializable {
     private Long id;
 
     /**
-     * 课程名称
+     * 学员ID
      */
-    @TableField(value = "name")
-    private String name;
+    @TableField(value = "student_id")
+    private Long studentId;
 
     /**
-     * 关联教练ID
+     * 预约的教练ID
      */
     @TableField(value = "coach_id")
     private Long coachId;
 
     /**
-     * 课程封面图
+     * 预约的日期时间
      */
-    @TableField(value = "image")
-    private String image;
+    @TableField(value = "appoint_time")
+    private Date appointTime;
 
     /**
-     * 课程详情
+     * 备注信息
      */
-    @TableField(value = "description")
-    private String description;
+    @TableField(value = "message")
+    private String message;
 
     /**
-     * 课程价格
+     * 状态 0:待确认 1:已确认 2:已拒绝 3:已取消
      */
-    @TableField(value = "price")
-    private BigDecimal price;
+    @TableField(value = "status")
+    private Integer status;
 
     /**
-     * 课程时长(分钟)
-     */
-    @TableField(value = "duration")
-    private Integer duration;
-
-    /**
-     * 难度等级
-     */
-    @TableField(value = "difficulty")
-    private String difficulty;
-
-    /**
-     * 创建时间
+     * 提交时间
      */
     @TableField(value = "create_time")
     private Date createTime;

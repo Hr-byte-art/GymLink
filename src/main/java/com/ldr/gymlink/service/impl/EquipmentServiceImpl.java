@@ -7,13 +7,13 @@ import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.mapper.EquipmentMapper;
 import com.ldr.gymlink.model.dto.equipment.AddEquipmentRequest;
-import com.ldr.gymlink.model.dto.equipment.AllReservationQueryRequest;
+import com.ldr.gymlink.model.dto.equipment.AllEquipmentReservationQueryRequest;
 import com.ldr.gymlink.model.dto.equipment.BookingEquipmentRequest;
 import com.ldr.gymlink.model.dto.equipment.EquipmentQueryPageRequest;
-import com.ldr.gymlink.model.dto.equipment.EquipmentReservationSearchRequest;
-import com.ldr.gymlink.model.dto.equipment.StudentReservationQueryRequest;
-import com.ldr.gymlink.model.dto.equipment.StudentTimeReservationSearchRequest;
-import com.ldr.gymlink.model.dto.equipment.TimeRangeReservationSearchRequest;
+import com.ldr.gymlink.model.dto.equipment.EquipmentReservationQueryRequest;
+import com.ldr.gymlink.model.dto.equipment.StudentEquipmentReservationQueryRequest;
+import com.ldr.gymlink.model.dto.equipment.StudentEquipmentTimeRangeReservationQueryRequest;
+import com.ldr.gymlink.model.dto.equipment.EquipmentTimeRangeReservationQueryRequest;
 import com.ldr.gymlink.model.dto.equipment.UpdateEquipmentRequest;
 import com.ldr.gymlink.model.entity.Equipment;
 import com.ldr.gymlink.model.entity.EquipmentReservation;
@@ -178,18 +178,18 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
 
     @Override
     public Page<EquipmentReservationVo> listStudentReservationPage(
-            StudentReservationQueryRequest studentReservationQueryRequest) {
-        ThrowUtils.throwIf(studentReservationQueryRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
-        Long studentId = studentReservationQueryRequest.getStudentId();
+            StudentEquipmentReservationQueryRequest studentEquipmentReservationQueryRequest) {
+        ThrowUtils.throwIf(studentEquipmentReservationQueryRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+        Long studentId = studentEquipmentReservationQueryRequest.getStudentId();
         ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
 
-        int pageSize = studentReservationQueryRequest.getPageSize();
-        int pageNum = studentReservationQueryRequest.getPageNum();
+        int pageSize = studentEquipmentReservationQueryRequest.getPageSize();
+        int pageNum = studentEquipmentReservationQueryRequest.getPageNum();
 
         LambdaQueryWrapper<EquipmentReservation> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(EquipmentReservation::getStudentId, studentId);
-        if (studentReservationQueryRequest.getStatus() != null) {
-            queryWrapper.eq(EquipmentReservation::getStatus, studentReservationQueryRequest.getStatus());
+        if (studentEquipmentReservationQueryRequest.getStatus() != null) {
+            queryWrapper.eq(EquipmentReservation::getStatus, studentEquipmentReservationQueryRequest.getStatus());
         }
         queryWrapper.orderByDesc(EquipmentReservation::getCreateTime);
 
@@ -198,21 +198,22 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
     }
 
     @Override
-    public Page<EquipmentReservationVo> listAllReservationPage(AllReservationQueryRequest allReservationQueryRequest) {
-        ThrowUtils.throwIf(allReservationQueryRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+    public Page<EquipmentReservationVo> listAllReservationPage(
+            AllEquipmentReservationQueryRequest allEquipmentReservationQueryRequest) {
+        ThrowUtils.throwIf(allEquipmentReservationQueryRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
 
-        int pageSize = allReservationQueryRequest.getPageSize();
-        int pageNum = allReservationQueryRequest.getPageNum();
+        int pageSize = allEquipmentReservationQueryRequest.getPageSize();
+        int pageNum = allEquipmentReservationQueryRequest.getPageNum();
 
         LambdaQueryWrapper<EquipmentReservation> queryWrapper = new LambdaQueryWrapper<>();
-        if (allReservationQueryRequest.getStudentId() != null) {
-            queryWrapper.eq(EquipmentReservation::getStudentId, allReservationQueryRequest.getStudentId());
+        if (allEquipmentReservationQueryRequest.getStudentId() != null) {
+            queryWrapper.eq(EquipmentReservation::getStudentId, allEquipmentReservationQueryRequest.getStudentId());
         }
-        if (allReservationQueryRequest.getEquipmentId() != null) {
-            queryWrapper.eq(EquipmentReservation::getEquipmentId, allReservationQueryRequest.getEquipmentId());
+        if (allEquipmentReservationQueryRequest.getEquipmentId() != null) {
+            queryWrapper.eq(EquipmentReservation::getEquipmentId, allEquipmentReservationQueryRequest.getEquipmentId());
         }
-        if (allReservationQueryRequest.getStatus() != null) {
-            queryWrapper.eq(EquipmentReservation::getStatus, allReservationQueryRequest.getStatus());
+        if (allEquipmentReservationQueryRequest.getStatus() != null) {
+            queryWrapper.eq(EquipmentReservation::getStatus, allEquipmentReservationQueryRequest.getStatus());
         }
         queryWrapper.orderByDesc(EquipmentReservation::getCreateTime);
 
@@ -221,7 +222,7 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
     }
 
     @Override
-    public Page<EquipmentReservationVo> listReservationsByEquipment(EquipmentReservationSearchRequest request) {
+    public Page<EquipmentReservationVo> listReservationsByEquipment(EquipmentReservationQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long equipmentId = request.getEquipmentId();
         ThrowUtils.throwIf(equipmentId == null, ErrorCode.PARAMS_ERROR, "器材ID不能为空");
@@ -241,7 +242,7 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
     }
 
     @Override
-    public Page<EquipmentReservationVo> listReservationsByTimeRange(TimeRangeReservationSearchRequest request) {
+    public Page<EquipmentReservationVo> listReservationsByTimeRange(EquipmentTimeRangeReservationQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Date startTime = request.getStartTime();
         Date endTime = request.getEndTime();
@@ -267,7 +268,7 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
 
     @Override
     public Page<EquipmentReservationVo> listStudentReservationsByTimeRange(
-            StudentTimeReservationSearchRequest request) {
+            StudentEquipmentTimeRangeReservationQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long studentId = request.getStudentId();
         Date startTime = request.getStartTime();

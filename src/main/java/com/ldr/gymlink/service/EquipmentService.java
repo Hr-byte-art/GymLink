@@ -6,6 +6,7 @@ import com.ldr.gymlink.model.dto.equipment.*;
 import com.ldr.gymlink.model.entity.Equipment;
 import com.ldr.gymlink.model.vo.EquipmentReservationVo;
 import com.ldr.gymlink.model.vo.EquipmentVo;
+
 public interface EquipmentService extends IService<Equipment> {
 
     /**
@@ -72,7 +73,7 @@ public interface EquipmentService extends IService<Equipment> {
      * @return 预约记录列表
      */
     Page<EquipmentReservationVo> listStudentReservationPage(
-            StudentReservationQueryRequest studentReservationQueryRequest);
+            StudentEquipmentReservationQueryRequest studentEquipmentReservationQueryRequest);
 
     /**
      * 获取所有预约记录(分页)
@@ -80,7 +81,8 @@ public interface EquipmentService extends IService<Equipment> {
      * @param allReservationQueryRequest 查询请求
      * @return 预约记录列表
      */
-    Page<EquipmentReservationVo> listAllReservationPage(AllReservationQueryRequest allReservationQueryRequest);
+    Page<EquipmentReservationVo> listAllReservationPage(
+            AllEquipmentReservationQueryRequest allEquipmentReservationQueryRequest);
 
     /**
      * 获取某器材的预约记录(分页)
@@ -88,7 +90,7 @@ public interface EquipmentService extends IService<Equipment> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<EquipmentReservationVo> listReservationsByEquipment(EquipmentReservationSearchRequest request);
+    Page<EquipmentReservationVo> listReservationsByEquipment(EquipmentReservationQueryRequest request);
 
     /**
      * 获取某时间段内的预约记录(分页)
@@ -96,7 +98,7 @@ public interface EquipmentService extends IService<Equipment> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<EquipmentReservationVo> listReservationsByTimeRange(TimeRangeReservationSearchRequest request);
+    Page<EquipmentReservationVo> listReservationsByTimeRange(EquipmentTimeRangeReservationQueryRequest request);
 
     /**
      * 获取某学员在某时间段内的预约记录(分页)
@@ -104,5 +106,6 @@ public interface EquipmentService extends IService<Equipment> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<EquipmentReservationVo> listStudentReservationsByTimeRange(StudentTimeReservationSearchRequest request);
+    Page<EquipmentReservationVo> listStudentReservationsByTimeRange(
+            StudentEquipmentTimeRangeReservationQueryRequest request);
 }

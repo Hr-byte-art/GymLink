@@ -2,16 +2,20 @@ package com.ldr.gymlink.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ldr.gymlink.common.BaseResponse;
+import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.model.dto.student.AddStudentRequest;
 import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
 import com.ldr.gymlink.model.dto.student.UpdateStudentRequest;
 import com.ldr.gymlink.model.vo.StudentVo;
 import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.utils.ResultUtils;
+import com.ldr.gymlink.utils.ThrowUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 /**
  * @Author 王哈哈
@@ -71,4 +75,21 @@ public class StudentController {
         return ResultUtils.success(studentVo);
     }
 
+    @GetMapping("/studentTopUp")
+    @Operation(summary = "学员充值")
+    public BaseResponse<Boolean> studentTopUp(@RequestParam Long id, @RequestParam BigDecimal money) {
+        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(money == null, ErrorCode.PARAMS_ERROR, "充值金额不能为空");
+        boolean topUp = studentService.studentTopUp(id, money);
+        return ResultUtils.success(topUp);
+    }
+
+    @GetMapping("/studentsPurchaseCourses")
+    @Operation(summary = "学员购买课程")
+    public BaseResponse<Boolean> studentsPurchaseCourses(@RequestParam Long studentId, @RequestParam Long courseId) {
+        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
+        boolean purchaseCourses = studentService.studentsPurchaseCourses(studentId, courseId);
+        return ResultUtils.success(purchaseCourses);
+    }
 }

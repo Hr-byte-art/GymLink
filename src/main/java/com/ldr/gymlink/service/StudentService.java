@@ -8,6 +8,8 @@ import com.ldr.gymlink.model.entity.Student;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.ldr.gymlink.model.vo.StudentVo;
 
+import java.math.BigDecimal;
+
 /**
  * @author 木子宸
  * @description 针对表【student(学员/用户信息表)】的数据库操作Service
@@ -61,4 +63,22 @@ public interface StudentService extends IService<Student> {
      * @return 学员信息
      */
     StudentVo getStudentById(Long id);
+
+    /**
+     * 学员充值
+     *
+     * @param id      学员id
+     * @param money   充值金额
+     * @return 是否充值成功
+     */
+    boolean studentTopUp(Long id, BigDecimal money);
+
+    /**
+     * 学员购买课程
+     *
+     * @param studentId 学员id
+     * @param courseId  课程id
+     * @return 是否购买成功
+     */
+    boolean studentsPurchaseCourses(Long studentId, Long courseId);
 }
