@@ -6,26 +6,20 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
-import java.util.Date;
 
 /**
  * @Author 王哈哈
  * @Date 2025/11/30 22:25:00
- * @Description 按时间段查询预约记录请求
+ * @Description 按器材查询预约记录请求
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class TimeRangeReservationSearchRequest extends PageRequest implements Serializable {
+public class EquipmentReservationQueryRequest extends PageRequest implements Serializable {
 
     /**
-     * 开始时间
+     * 器材ID
      */
-    private Date startTime;
-
-    /**
-     * 结束时间
-     */
-    private Date endTime;
+    private Long equipmentId;
 
     /**
      * 状态 1:预约成功 2:已取消 3:已完成

@@ -10,12 +10,12 @@ import java.util.Date;
 import lombok.Data;
 
 /**
- * 健身课程表
- * @TableName course
+ * 课程购买订单表
+ * @TableName course_order
  */
-@TableName(value ="course")
+@TableName(value ="course_order")
 @Data
-public class Course implements Serializable {
+public class CourseOrder implements Serializable {
     /**
      * 主键ID
      */
@@ -23,49 +23,43 @@ public class Course implements Serializable {
     private Long id;
 
     /**
-     * 课程名称
+     * 订单号
      */
-    @TableField(value = "name")
-    private String name;
+    @TableField(value = "order_no")
+    private String orderNo;
 
     /**
-     * 关联教练ID
+     * 学员ID
+     */
+    @TableField(value = "student_id")
+    private Long studentId;
+
+    /**
+     * 课程ID
+     */
+    @TableField(value = "course_id")
+    private Long courseId;
+
+    /**
+     * 冗余教练ID(方便查询)
      */
     @TableField(value = "coach_id")
     private Long coachId;
 
     /**
-     * 课程封面图
-     */
-    @TableField(value = "image")
-    private String image;
-
-    /**
-     * 课程详情
-     */
-    @TableField(value = "description")
-    private String description;
-
-    /**
-     * 课程价格
+     * 成交价格
      */
     @TableField(value = "price")
     private BigDecimal price;
 
     /**
-     * 课程时长(分钟)
+     * 订单状态 1:已支付 2:已退款
      */
-    @TableField(value = "duration")
-    private Integer duration;
+    @TableField(value = "status")
+    private Integer status;
 
     /**
-     * 难度等级
-     */
-    @TableField(value = "difficulty")
-    private String difficulty;
-
-    /**
-     * 创建时间
+     * 购买时间
      */
     @TableField(value = "create_time")
     private Date createTime;

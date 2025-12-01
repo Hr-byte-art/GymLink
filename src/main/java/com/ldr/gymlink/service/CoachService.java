@@ -61,4 +61,81 @@ public interface CoachService extends IService<Coach> {
      * @return 教练信息
      */
     CoachVo getCoachById(Long id);
+
+    /**
+     * 预约教练
+     *
+     * @param bookingCoachRequest 预约教练请求
+     * @return 是否预约成功
+     */
+    boolean bookingCoach(com.ldr.gymlink.model.dto.coach.BookingCoachRequest bookingCoachRequest);
+
+    /**
+     * 取消教练预约
+     *
+     * @param appointmentId 预约id
+     * @return 是否取消成功
+     */
+    boolean cancelCoachAppointment(Long appointmentId);
+
+    /**
+     * 确认教练预约(教练操作)
+     *
+     * @param appointmentId 预约id
+     * @return 是否确认成功
+     */
+    boolean confirmCoachAppointment(Long appointmentId);
+
+    /**
+     * 拒绝教练预约(教练操作)
+     *
+     * @param appointmentId 预约id
+     * @return 是否拒绝成功
+     */
+    boolean rejectCoachAppointment(Long appointmentId);
+
+    /**
+     * 获取学员的教练预约记录(分页)
+     *
+     * @param request 查询请求
+     * @return 预约记录列表
+     */
+    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listStudentCoachAppointmentPage(
+            com.ldr.gymlink.model.dto.coach.StudentCoachAppointmentQueryRequest request);
+
+    /**
+     * 获取所有教练预约记录(分页)
+     *
+     * @param request 查询请求
+     * @return 预约记录列表
+     */
+    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAllCoachAppointmentPage(
+            com.ldr.gymlink.model.dto.coach.AllCoachAppointmentQueryRequest request);
+
+    /**
+     * 获取某教练的预约记录(分页)
+     *
+     * @param request 查询请求
+     * @return 预约记录列表
+     */
+    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAppointmentsByCoach(
+            com.ldr.gymlink.model.dto.coach.CoachAppointmentSearchRequest request);
+
+    /**
+     * 获取某时间段内的教练预约记录(分页)
+     *
+     * @param request 查询请求
+     * @return 预约记录列表
+     */
+    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAppointmentsByTimeRange(
+            com.ldr.gymlink.model.dto.coach.CoachTimeAppointmentSearchRequest request);
+
+    /**
+     * 获取某学员在某时间段内的教练预约记录(分页)
+     *
+     * @param request 查询请求
+     * @return 预约记录列表
+     */
+    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listStudentAppointmentsByTimeRange(
+            com.ldr.gymlink.model.dto.coach.StudentCoachTimeAppointmentSearchRequest request);
 }

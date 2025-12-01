@@ -1,27 +1,31 @@
 package com.ldr.gymlink.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.enums.SqlMethod;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
+import com.ldr.gymlink.mapper.CourseMapper;
+import com.ldr.gymlink.mapper.StudentMapper;
 import com.ldr.gymlink.model.dto.student.AddStudentRequest;
 import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
 import com.ldr.gymlink.model.dto.student.UpdateStudentRequest;
-import com.ldr.gymlink.model.entity.Student;
-import com.ldr.gymlink.model.entity.User;
+import com.ldr.gymlink.model.entity.*;
 import com.ldr.gymlink.model.enums.UserRoleEnum;
 import com.ldr.gymlink.model.vo.StudentVo;
-import com.ldr.gymlink.service.StudentService;
-import com.ldr.gymlink.mapper.StudentMapper;
-import com.ldr.gymlink.service.UserService;
+import com.ldr.gymlink.service.*;
 import com.ldr.gymlink.utils.ThrowUtils;
 import jakarta.annotation.Resource;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.Random;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
 
 /**
  * @author 木子宸
@@ -35,6 +39,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
     @Resource
     private UserService userService;
 
+    @Resource
+    private RechargeRecordService rechargeRecordService;
+
+    @Resource
+    private CourseOrderService courseOrderService;
+
+    @Resource
+    private CourseService courseService;
     @Override
     public StudentVo getStudentByUserId(Long userId) {
         ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
@@ -135,5 +147,66 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         StudentVo studentVo = new StudentVo();
         BeanUtils.copyProperties(student, studentVo);
         return studentVo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean studentTopUp(Long id, BigDecimal money) {
+        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(money == null, ErrorCode.PARAMS_ERROR, "充值金额不能为空");
+        Student student = this.getById(id);
+        ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
+        student.setBalance(student.getBalance().add(money));
+        boolean b = this.updateById(student);
+        if (!b) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "充值失败，请稍后重试");
+        }
+        RechargeRecord rechargeRecord = new RechargeRecord();
+        rechargeRecord.setStudentId(id);
+        rechargeRecord.setAmount(money);
+        rechargeRecord.setCreateTime(new Date());
+        boolean save = rechargeRecordService.save(rechargeRecord);
+        if (!save) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "充值记录保存失败，请稍后重试");
+        }
+        return true;
+    }
+
+    @Override
+    public boolean studentsPurchaseCourses(Long studentId, Long courseId) {
+        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
+        Student student = this.getById(studentId);
+        ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
+        Course course = courseService.getById(courseId);
+        ThrowUtils.throwIf(course == null, ErrorCode.NOT_FOUND_ERROR, "课程不存在");
+        // 检查余额是否组狗
+        BigDecimal balance = student.getBalance();
+        if (balance.compareTo(course.getPrice()) < 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "余额不足");
+        }
+        student.setBalance(balance.subtract(course.getPrice()));
+        boolean b = this.updateById(student);
+        if (!b) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "购买课程失败，请稍后重试");
+        }
+        CourseOrder courseOrder = new CourseOrder();
+        courseOrder.setOrderNo(generateOrderNo(studentId));
+        courseOrder.setStudentId(studentId);
+        courseOrder.setCourseId(courseId);
+        courseOrder.setCoachId(course.getCoachId());
+        courseOrder.setPrice(course.getPrice());
+        courseOrder.setStatus(1);
+        courseOrder.setCreateTime(new Date());
+        boolean save = courseOrderService.save(courseOrder);
+        if (!save) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "课程订单保存失败，请稍后重试");
+        }
+        return true;
+    }
+
+    // 计算订单号bound
+    private String generateOrderNo(Long studentId) {
+        return "ORDER_" + studentId + "_" + System.currentTimeMillis() ;
     }
 }
