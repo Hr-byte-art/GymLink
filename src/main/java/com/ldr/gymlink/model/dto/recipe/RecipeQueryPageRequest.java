@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 
 /**
+ * @author 木子宸
  * @Description 菜谱分页查询请求
  */
 @EqualsAndHashCode(callSuper = false)

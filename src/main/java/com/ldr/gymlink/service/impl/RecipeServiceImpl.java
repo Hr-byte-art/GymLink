@@ -3,8 +3,8 @@ package com.ldr.gymlink.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.ldr.gymlink.common.ErrorCode;
 import com.ldr.gymlink.exception.BusinessException;
+import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.mapper.RecipeMapper;
 import com.ldr.gymlink.model.dto.recipe.AddRecipeRequest;
 import com.ldr.gymlink.model.dto.recipe.RecipeQueryPageRequest;
@@ -78,7 +78,7 @@ public class RecipeServiceImpl extends ServiceImpl<RecipeMapper, Recipe>
 
     @Override
     public Page<RecipeVo> listRecipePage(RecipeQueryPageRequest recipeQueryPageRequest) {
-        long current = recipeQueryPageRequest.getCurrent();
+        long current = recipeQueryPageRequest.getPageNum();
         long pageSize = recipeQueryPageRequest.getPageSize();
         Page<Recipe> page = new Page<>(current, pageSize);
         QueryWrapper<Recipe> queryWrapper = new QueryWrapper<>();
