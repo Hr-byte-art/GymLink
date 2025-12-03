@@ -1,5 +1,11 @@
-GymLink/node_modules/ 
-GymLink/target/ 
-GymLink-Frontend/node_modules/ 
-GymLink-Frontend/dist/ 
-*.log 
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE (可选：如果团队不共享 IDE 配置)
+.idea/
+*.iml
+.vscode/
