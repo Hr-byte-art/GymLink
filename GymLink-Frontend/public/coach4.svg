@@ -1,0 +1,5 @@
+<!-- 这是一个SVG占位图片，用于教练4 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <circle cx="60" cy="60" r="60" fill="#f0ad4e"/>
+  <text x="60" y="65" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">赵教练</text>
+</svg>

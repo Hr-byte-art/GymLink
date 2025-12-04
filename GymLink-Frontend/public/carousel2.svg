@@ -1,0 +1,5 @@
+<!-- 这是一个SVG占位图片，用于轮播图2 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500">
+  <rect width="1200" height="500" fill="#667eea"/>
+  <text x="600" y="250" font-family="Arial, sans-serif" font-size="30" fill="white" text-anchor="middle">先进健身器材</text>
+</svg>

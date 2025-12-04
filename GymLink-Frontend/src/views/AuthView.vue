@@ -27,25 +27,13 @@
 
             <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="auth-form">
               <el-form-item prop="userAccount">
-                <el-input
-                  v-model="loginForm.userAccount"
-                  placeholder="用户名"
-                  :prefix-icon="User"
-                  size="large"
-                />
+                <el-input v-model="loginForm.userAccount" placeholder="用户名" :prefix-icon="User" size="large" />
               </el-form-item>
               <el-form-item prop="password">
-                <el-input
-                  v-model="loginForm.password"
-                  type="password"
-                  placeholder="密码"
-                  :prefix-icon="Lock"
-                  show-password
-                  size="large"
-                  @keyup.enter="handleLogin"
-                />
+                <el-input v-model="loginForm.password" type="password" placeholder="密码" :prefix-icon="Lock"
+                  show-password size="large" @keyup.enter="handleLogin" />
               </el-form-item>
-              
+
               <el-form-item prop="role">
                 <el-radio-group v-model="loginForm.role" class="role-radio-group">
                   <el-radio value="user">用户</el-radio>
@@ -60,13 +48,7 @@
                 </el-checkbox>
               </el-form-item>
               <el-form-item>
-                <el-button
-                  type="primary"
-                  class="auth-btn"
-                  @click="handleLogin"
-                  :loading="loading"
-                  size="large"
-                >
+                <el-button type="primary" class="auth-btn" @click="handleLogin" :loading="loading" size="large">
                   登录
                 </el-button>
               </el-form-item>
@@ -85,42 +67,19 @@
 
             <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" class="auth-form">
               <el-form-item prop="userAccount">
-                <el-input
-                  v-model="registerForm.userAccount"
-                  placeholder="用户名（至少4个字符）"
-                  :prefix-icon="User"
-                  size="large"
-                />
+                <el-input v-model="registerForm.userAccount" placeholder="用户名（至少4个字符）" :prefix-icon="User"
+                  size="large" />
               </el-form-item>
               <el-form-item prop="userPassword">
-                <el-input
-                  v-model="registerForm.userPassword"
-                  type="password"
-                  placeholder="密码（至少8个字符）"
-                  :prefix-icon="Lock"
-                  show-password
-                  size="large"
-                />
+                <el-input v-model="registerForm.userPassword" type="password" placeholder="密码（至少8个字符）"
+                  :prefix-icon="Lock" show-password size="large" />
               </el-form-item>
               <el-form-item prop="checkPassword">
-                <el-input
-                  v-model="registerForm.checkPassword"
-                  type="password"
-                  placeholder="确认密码"
-                  :prefix-icon="Lock"
-                  show-password
-                  size="large"
-                  @keyup.enter="handleRegister"
-                />
+                <el-input v-model="registerForm.checkPassword" type="password" placeholder="确认密码" :prefix-icon="Lock"
+                  show-password size="large" @keyup.enter="handleRegister" />
               </el-form-item>
               <el-form-item>
-                <el-button
-                  type="primary"
-                  class="auth-btn"
-                  @click="handleRegister"
-                  :loading="loading"
-                  size="large"
-                >
+                <el-button type="primary" class="auth-btn" @click="handleRegister" :loading="loading" size="large">
                   注册
                 </el-button>
               </el-form-item>
@@ -143,13 +102,14 @@ import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { userLogin, userRegister } from '@/api/user'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
 const loginFormRef = ref<FormInstance>()
 const registerFormRef = ref<FormInstance>()
 const loading = ref(false)
+const authStore = useAuthStore()
 
 // 根据路由参数判断显示登录还是注册
 const isLogin = ref(route.query.type !== 'register')
@@ -203,13 +163,21 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        const res = await userLogin(loginForm)
-        if (res.code === 0) {
+        // 使用认证状态管理的登录方法
+        const result = await authStore.login({
+          username: loginForm.userAccount,
+          password: loginForm.password
+        })
+
+        if (result.success) {
           ElMessage.success('登录成功')
           router.push('/')
+        } else {
+          ElMessage.error(result.error || '登录失败')
         }
       } catch (error) {
-        console.error(error)
+        console.error('登录失败:', error)
+        ElMessage.error('登录失败，请稍后再试')
       } finally {
         loading.value = false
       }
@@ -224,18 +192,22 @@ const handleRegister = async () => {
     if (valid) {
       loading.value = true
       try {
-        const res = await userRegister(registerForm)
-        if (res.code === 0) {
-          ElMessage.success('注册成功，请登录')
-          // 切换到登录表单
-          isLogin.value = true
-          // 清空注册表单
-          registerForm.userAccount = ''
-          registerForm.userPassword = ''
-          registerForm.checkPassword = ''
+        // 使用认证状态管理的注册方法
+        const result = await authStore.register({
+          username: registerForm.userAccount,
+          email: `${registerForm.userAccount}@example.com`,
+          password: registerForm.userPassword
+        })
+
+        if (result.success) {
+          ElMessage.success('注册成功')
+          router.push('/')
+        } else {
+          ElMessage.error(result.error || '注册失败')
         }
       } catch (error) {
-        console.error(error)
+        console.error('注册失败:', error)
+        ElMessage.error('注册失败，请稍后再试')
       } finally {
         loading.value = false
       }
@@ -331,10 +303,12 @@ const handleRegister = async () => {
 }
 
 @keyframes logoFloat {
+
   0%,
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-15px);
   }
@@ -403,6 +377,7 @@ const handleRegister = async () => {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

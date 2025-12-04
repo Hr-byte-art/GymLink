@@ -1,0 +1,5 @@
+<!-- 这是一个SVG占位图片，用于特色服务2 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <rect width="80" height="80" fill="#667eea"/>
+  <text x="40" y="45" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">教练</text>
+</svg>

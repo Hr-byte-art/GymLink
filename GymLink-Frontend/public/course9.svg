@@ -1,0 +1,11 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f5f7fa"/>
+  <rect x="50" y="50" width="300" height="200" fill="#e9ecef" rx="10"/>
+  <circle cx="200" cy="120" r="40" fill="#fd7e14" opacity="0.8"/>
+  <path d="M180 120 L190 130 L220 100" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="80" y="180" width="80" height="10" fill="#6c757d" rx="5"/>
+  <rect x="240" y="180" width="80" height="10" fill="#6c757d" rx="5"/>
+  <rect x="80" y="200" width="60" height="10" fill="#6c757d" rx="5"/>
+  <rect x="260" y="200" width="60" height="10" fill="#6c757d" rx="5"/>
+  <text x="200" y="250" text-anchor="middle" fill="#495057" font-family="Arial, sans-serif" font-size="16" font-weight="bold">拉丁舞</text>
+</svg>

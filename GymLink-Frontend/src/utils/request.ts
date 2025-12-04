@@ -25,13 +25,14 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const res = response.data
-    // Assuming backend returns standard response structure with code, data, message
-    // Adjust based on actual BaseResponse
-    if (res.code !== 0 && res.code !== 200) { // Assuming 0 or 200 is success
+    // Backend returns BaseResponse<T> with structure: { code, data, message }
+    // Success code is 0
+    if (res.code !== 0) {
       ElMessage.error(res.message || 'Error')
       return Promise.reject(new Error(res.message || 'Error'))
     }
-    return res
+    // Return the unwrapped data field so stores don't need to access res.data
+    return res.data
   },
   (error) => {
     ElMessage.error(error.message || 'Request Error')

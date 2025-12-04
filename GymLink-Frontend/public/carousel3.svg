@@ -1,0 +1,5 @@
+<!-- 这是一个SVG占位图片，用于轮播图3 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500">
+  <rect width="1200" height="500" fill="#5cb85c"/>
+  <text x="600" y="250" font-family="Arial, sans-serif" font-size="30" fill="white" text-anchor="middle">舒适健身环境</text>
+</svg>

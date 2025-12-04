@@ -5,7 +5,53 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/auth'
+      name: 'home',
+      component: () => import('../views/HomeView.vue')
+    },
+    {
+      path: '/courses',
+      name: 'courses',
+      component: () => import('../views/CoursesView.vue')
+    },
+    {
+      path: '/coaches',
+      name: 'coaches',
+      component: () => import('../views/CoachesView.vue')
+    },
+    {
+      path: '/coaches/:id',
+      name: 'coach-detail',
+      component: () => import('../views/CoachDetailView.vue')
+    },
+    {
+      path: '/equipment',
+      name: 'equipment',
+      component: () => import('../views/EquipmentView.vue')
+    },
+    {
+      path: '/equipment/:id',
+      name: 'equipment-detail',
+      component: () => import('../views/EquipmentDetailView.vue')
+    },
+    {
+      path: '/recipes',
+      name: 'recipes',
+      component: () => import('../views/RecipesView.vue')
+    },
+    {
+      path: '/recipes/:id',
+      name: 'recipe-detail',
+      component: () => import('../views/RecipeDetailView.vue')
+    },
+    {
+      path: '/posts',
+      name: 'posts',
+      component: () => import('../views/PostsView.vue')
+    },
+    {
+      path: '/posts/:id',
+      name: 'post-detail',
+      component: () => import('../views/PostDetailView.vue')
     },
     {
       path: '/auth',
