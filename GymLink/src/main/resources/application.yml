@@ -33,6 +33,13 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+  # 前后端分离模式配置
+  # 是否尝试从 cookie 里读取 token（关闭后将只从 header 读取）
+  is-read-cookie: false
+  # 是否尝试从 header 里读取 token
+  is-read-header: true
+  # 是否尝试从 body 里读取 token
+  is-read-body: false
 server:
   port: 8080
   servlet:

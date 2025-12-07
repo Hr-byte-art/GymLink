@@ -65,4 +65,19 @@ public class EquipmentController {
         EquipmentVo equipmentVo = equipmentService.getEquipmentById(id);
         return ResultUtils.success(equipmentVo);
     }
+
+    @PostMapping("/updateEquipmentImage")
+    @Operation(summary = "修改器材图片")
+    public BaseResponse<String> updateEquipmentImage(@RequestParam Long equipmentId, @RequestParam org.springframework.web.multipart.MultipartFile image) {
+        ThrowUtils.throwIf(equipmentId == null, ErrorCode.PARAMS_ERROR, "器材id不能为空");
+        String imageUrl = equipmentService.updateEquipmentImage(equipmentId, image);
+        return ResultUtils.success(imageUrl);
+    }
+
+    @GetMapping("/getStatistics")
+    @Operation(summary = "获取器材使用统计数据")
+    public BaseResponse<com.ldr.gymlink.model.vo.EquipmentStatisticsVo> getStatistics() {
+        com.ldr.gymlink.model.vo.EquipmentStatisticsVo statistics = equipmentService.getEquipmentStatistics();
+        return ResultUtils.success(statistics);
+    }
 }

@@ -70,6 +70,12 @@ public class Course implements Serializable {
     @TableField(value = "create_time")
     private Date createTime;
 
+    /**
+     * 课程类型
+     */
+    @TableField(value = "type")
+    private String type;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

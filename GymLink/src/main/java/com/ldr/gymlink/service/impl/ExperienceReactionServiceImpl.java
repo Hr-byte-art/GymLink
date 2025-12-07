@@ -50,14 +50,26 @@ public class ExperienceReactionServiceImpl extends ServiceImpl<ExperienceReactio
             return false;
         }
 
-        // 3. 构造实体
-        ExperienceReaction experienceReaction = new ExperienceReaction();
-        experienceReaction.setExperienceId(experienceId);
-        experienceReaction.setUserId(userId);
-        experienceReaction.setReactionType(reactionEnum.getValue());
-        experienceReaction.setUpdatedAt(new Date());
+        // 3. 查询是否已存在记录
+        LambdaQueryWrapper<ExperienceReaction> queryWrapper = new LambdaQueryWrapper<ExperienceReaction>()
+                .eq(ExperienceReaction::getExperienceId, experienceId)
+                .eq(ExperienceReaction::getUserId, userId);
+        ExperienceReaction existingReaction = this.getOne(queryWrapper);
 
-        return this.saveOrUpdate(experienceReaction);
+        if (existingReaction != null) {
+            // 已存在，更新反应类型
+            existingReaction.setReactionType(reactionEnum.getValue());
+            existingReaction.setUpdatedAt(new Date());
+            return this.updateById(existingReaction);
+        } else {
+            // 不存在，新增记录
+            ExperienceReaction experienceReaction = new ExperienceReaction();
+            experienceReaction.setExperienceId(experienceId);
+            experienceReaction.setUserId(userId);
+            experienceReaction.setReactionType(reactionEnum.getValue());
+            experienceReaction.setUpdatedAt(new Date());
+            return this.save(experienceReaction);
+        }
     }
 
 
@@ -94,6 +106,21 @@ public class ExperienceReactionServiceImpl extends ServiceImpl<ExperienceReactio
         ThrowUtils.throwIf(loginIdAsLong != userId, ErrorCode.NO_AUTH_ERROR, "无权限操作");
 
         LambdaQueryWrapper<ExperienceReaction> queryWrapper = new LambdaQueryWrapper<ExperienceReaction>().eq(ExperienceReaction::getExperienceId, experienceId)
+                .eq(ExperienceReaction::getUserId, userId);
+        ExperienceReaction experienceReaction = this.getOne(queryWrapper);
+        return experienceReaction == null ? null : experienceReaction.getReactionType();
+    }
+
+    @Override
+    public Integer getUserReactionWithoutAuth(GetUserReactionRequest getUserReactionRequest) {
+        Long experienceId = getUserReactionRequest.getExperienceId();
+        Long userId = getUserReactionRequest.getUserId();
+        if (experienceId == null || userId == null) {
+            return null;
+        }
+
+        LambdaQueryWrapper<ExperienceReaction> queryWrapper = new LambdaQueryWrapper<ExperienceReaction>()
+                .eq(ExperienceReaction::getExperienceId, experienceId)
                 .eq(ExperienceReaction::getUserId, userId);
         ExperienceReaction experienceReaction = this.getOne(queryWrapper);
         return experienceReaction == null ? null : experienceReaction.getReactionType();

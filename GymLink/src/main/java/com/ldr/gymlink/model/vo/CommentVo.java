@@ -40,6 +40,16 @@ public class CommentVo implements Serializable {
     private Integer userRole;
 
     /**
+     * 评论者名称
+     */
+    private String userName;
+
+    /**
+     * 评论者头像
+     */
+    private String userAvatar;
+
+    /**
      * 父评论ID（NULL表示顶级评论）
      */
     private Long parentId;

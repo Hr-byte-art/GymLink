@@ -5,11 +5,18 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.model.dto.comment.AddCommentRequest;
+import com.ldr.gymlink.model.entity.Coach;
 import com.ldr.gymlink.model.entity.Comment;
+import com.ldr.gymlink.model.entity.Student;
+import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.vo.CommentVo;
+import com.ldr.gymlink.service.CoachService;
 import com.ldr.gymlink.service.CommentService;
 import com.ldr.gymlink.mapper.CommentMapper;
+import com.ldr.gymlink.service.StudentService;
+import com.ldr.gymlink.service.UserService;
 import com.ldr.gymlink.utils.ThrowUtils;
+import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +32,15 @@ import java.util.stream.Collectors;
 @Service
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
         implements CommentService {
+
+    @Resource
+    private UserService userService;
+
+    @Resource
+    private StudentService studentService;
+
+    @Resource
+    private CoachService coachService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -53,7 +69,48 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
         BeanUtils.copyProperties(comment, commentVo);
         commentVo.setReplies(new ArrayList<>());
         commentVo.setReplyCount(0);
+        // 填充用户信息
+        fillUserInfo(commentVo);
         return commentVo;
+    }
+
+    /**
+     * 填充用户信息（名称和头像）
+     */
+    private void fillUserInfo(CommentVo commentVo) {
+        if (commentVo == null || commentVo.getUserId() == null) {
+            return;
+        }
+        Long userId = commentVo.getUserId();
+        Integer userRole = commentVo.getUserRole();
+
+        try {
+            User user = userService.getById(userId);
+            if (user != null && user.getAssociatedUserId() != null) {
+                Long associatedUserId = user.getAssociatedUserId();
+                if (userRole != null && userRole == 1) {
+                    Coach coach = coachService.getById(associatedUserId);
+                    if (coach != null) {
+                        commentVo.setUserName(coach.getName());
+                        commentVo.setUserAvatar(coach.getAvatar());
+                    } else {
+                        commentVo.setUserName(user.getUsername());
+                    }
+                } else {
+                    Student student = studentService.getById(associatedUserId);
+                    if (student != null) {
+                        commentVo.setUserName(student.getName());
+                        commentVo.setUserAvatar(student.getAvatar());
+                    } else {
+                        commentVo.setUserName(user.getUsername());
+                    }
+                }
+            } else if (user != null) {
+                commentVo.setUserName(user.getUsername());
+            }
+        } catch (Exception e) {
+            commentVo.setUserName("用户" + userId);
+        }
     }
 
     @Override
@@ -102,6 +159,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
             CommentVo vo = new CommentVo();
             BeanUtils.copyProperties(comment, vo);
             vo.setReplies(new ArrayList<>());
+            // 填充用户信息
+            fillUserInfo(vo);
             commentMap.put(comment.getId(), vo);
         }
 
@@ -145,6 +204,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
             BeanUtils.copyProperties(comment, vo);
             vo.setReplies(new ArrayList<>());
             vo.setReplyCount(0);
+            // 填充用户信息
+            fillUserInfo(vo);
             return vo;
         }).collect(Collectors.toList());
     }
@@ -172,5 +233,15 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment>
         int currentLikeCount = comment.getLikeCount() == null ? 0 : comment.getLikeCount();
         comment.setLikeCount(Math.max(0, currentLikeCount - 1));
         return this.updateById(comment);
+    }
+
+    @Override
+    public Long getCommentCount(Long experienceId) {
+        if (experienceId == null) {
+            return 0L;
+        }
+        LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Comment::getExperienceId, experienceId);
+        return this.count(queryWrapper);
     }
 }

@@ -10,136 +10,167 @@
         <!-- 筛选和搜索区域 -->
         <div class="filter-section">
           <div class="filter-left">
-            <el-select v-model="selectedCategory" placeholder="选择分类" clearable @change="handleCategoryChange"
+            <el-select v-model="selectedUserRole" placeholder="选择发布者" clearable @change="handleCategoryChange"
               class="category-select">
-              <el-option v-for="category in postStore.categories" :key="category" :label="category" :value="category" />
+              <el-option label="教练" :value="1" />
+              <el-option label="学员" :value="2" />
             </el-select>
           </div>
           <div class="filter-right">
-            <el-input v-model="searchQuery" placeholder="搜索帖子..." @input="handleSearch" class="search-input" clearable>
+            <el-input v-model="searchQuery" placeholder="搜索帖子..." class="search-input" clearable @keyup.enter="handleSearch">
               <template #prefix>
                 <el-icon>
                   <Search />
                 </el-icon>
               </template>
             </el-input>
+            <el-button @click="handleSearch">搜索</el-button>
+            <el-button type="primary" @click="handlePublish" class="publish-btn">
+              <el-icon><Edit /></el-icon>
+              发表帖子
+            </el-button>
           </div>
         </div>
 
         <!-- 帖子列表 -->
-        <div v-if="postStore.loading" class="loading-container">
+        <div v-if="loading" class="loading-container">
           <el-skeleton :rows="5" animated />
         </div>
 
-        <div v-else-if="postStore.error" class="error-container">
-          <el-result icon="error" title="加载失败" :sub-title="postStore.error">
+        <div v-else-if="error" class="error-container">
+          <el-result icon="error" title="加载失败" :sub-title="error">
             <template #extra>
-              <el-button type="primary" @click="postStore.fetchPosts">重新加载</el-button>
+              <el-button type="primary" @click="loadPosts">重新加载</el-button>
             </template>
           </el-result>
         </div>
 
         <div v-else-if="filteredPosts.length === 0" class="empty-container">
-          <el-empty description="暂无相关帖子" />
+          <el-empty description="暂无相关帖子">
+            <el-button type="primary" @click="handlePublish">发表第一篇帖子</el-button>
+          </el-empty>
         </div>
 
         <div v-else class="posts-list">
           <div v-for="post in filteredPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
             <div class="post-header">
               <div class="author-info">
-                <el-avatar :src="post.userAvatar" :size="40" />
+                <el-avatar :size="40" :src="post.userAvatar" />
                 <div class="author-details">
-                  <div class="author-name">{{ post.userName }}</div>
-                  <div class="post-time">{{ formatTime(post.createdAt) }}</div>
+                  <div class="author-name">{{ post.userName || '用户' + post.userId }}</div>
+                  <div class="post-time">{{ formatTime(post.createTime) }}</div>
                 </div>
               </div>
-              <div class="post-category">{{ post.category }}</div>
+              <el-tag :type="post.userRole === 1 ? 'success' : 'primary'" size="small">
+                {{ post.userRole === 1 ? '教练' : '学员' }}
+              </el-tag>
             </div>
 
             <h3 class="post-title">{{ post.title }}</h3>
-            <p class="post-content">{{ post.content.substring(0, 150) }}{{ post.content.length > 150 ? '...' : '' }}</p>
-
-            <div v-if="post.images && post.images.length > 0" class="post-images">
-              <div class="images-grid">
-                <img v-for="(image, index) in post.images.slice(0, 3)" :key="index" :src="image" alt="帖子图片"
-                  class="post-image" />
-                <div v-if="post.images.length > 3" class="more-images">
-                  +{{ post.images.length - 3 }}
-                </div>
-              </div>
-            </div>
-
-            <div class="post-tags">
-              <el-tag v-for="tag in post.tags" :key="tag" size="small" class="tag">
-                {{ tag }}
-              </el-tag>
-            </div>
+            <p class="post-content">{{ (post.content || '').substring(0, 150) }}{{ (post.content || '').length > 150 ? '...' : '' }}</p>
 
             <div class="post-stats">
               <div class="stat-item">
                 <el-icon>
                   <View />
                 </el-icon>
-                <span>{{ post.views }}</span>
+                <span>{{ post.viewCount || 0 }}</span>
+              </div>
+              <div class="stat-item like-item" @click.stop="toggleLike(post)">
+                <img src="/like.svg" class="like-icon" :class="{ 'liked': post.isLiked }" alt="点赞" />
+                <span>{{ post.likeCount || 0 }}</span>
               </div>
               <div class="stat-item">
                 <el-icon>
                   <ChatLineSquare />
                 </el-icon>
-                <span>{{ post.comments }}</span>
-              </div>
-              <div class="stat-item like-item" @click.stop="toggleLike(post)">
-                <span class="like-icon" :class="{ 'liked': post.isLiked }">👍</span>
-                <span>{{ post.likes }}</span>
+                <span>{{ post.commentCount || 0 }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 发表帖子对话框 -->
+    <el-dialog v-model="publishDialogVisible" title="发表帖子" width="600px">
+      <el-form :model="publishForm" label-width="80px">
+        <el-form-item label="标题">
+          <el-input v-model="publishForm.title" placeholder="请输入帖子标题" maxlength="100" show-word-limit />
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input v-model="publishForm.content" type="textarea" :rows="8" placeholder="分享你的健身经验..." maxlength="5000" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="publishDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitPost" :loading="publishLoading">发表</el-button>
+      </template>
+    </el-dialog>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePostStore } from '@/stores/post'
-import { Search, View, ChatLineSquare } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { Search, View, ChatLineSquare, Edit } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
+import request from '@/utils/request'
 
 const router = useRouter()
-const postStore = usePostStore()
+const authStore = useAuthStore()
+
+// 帖子列表数据
+const posts = ref<any[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+const pagination = ref({ current: 1, pageSize: 20, total: 0 })
 
 // 筛选和搜索状态
-const selectedCategory = ref('')
 const searchQuery = ref('')
+const selectedUserRole = ref<number | null>(null)
+
+// 发表帖子相关
+const publishDialogVisible = ref(false)
+const publishLoading = ref(false)
+const publishForm = ref({ title: '', content: '' })
+
+// 加载帖子列表
+const loadPosts = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await request.post('/experience/listExperience', {
+      pageNum: pagination.value.current,
+      pageSize: pagination.value.pageSize,
+      title: searchQuery.value || undefined,
+      userRole: selectedUserRole.value || undefined
+    })
+    posts.value = res.records || []
+    pagination.value.total = res.total || 0
+  } catch (e) {
+    error.value = '加载失败'
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+}
 
 // 计算筛选后的帖子列表
-const filteredPosts = computed(() => {
-  let result = postStore.posts
-
-  // 按分类筛选
-  if (selectedCategory.value) {
-    result = postStore.getPostsByCategory(selectedCategory.value)
-  }
-
-  // 按搜索关键词筛选
-  if (searchQuery.value) {
-    result = postStore.searchPosts(searchQuery.value)
-  }
-
-  return result
-})
-
-// 处理分类变化
-const handleCategoryChange = () => {
-  // 分类变化时不需要额外操作，因为使用了computed属性
-}
+const filteredPosts = computed(() => posts.value)
 
 // 处理搜索
 const handleSearch = () => {
-  // 搜索时不需要额外操作，因为使用了computed属性
+  pagination.value.current = 1
+  loadPosts()
+}
+
+// 处理分类变化
+const handleCategoryChange = () => {
+  pagination.value.current = 1
+  loadPosts()
 }
 
 // 跳转到帖子详情
@@ -149,50 +180,112 @@ const goToPostDetail = (id: number) => {
 
 // 切换点赞状态
 const toggleLike = async (post: any) => {
+  if (!authStore.isAuthenticated) {
+    ElMessage.warning('请先登录')
+    return
+  }
   try {
-    await postStore.likePost(post.id)
+    // 使用 User 表的 id，与后端 StpUtil.getLoginIdAsLong() 一致
+    const userId = authStore.user?.id
+    // 确保 likeCount 是数字类型
+    const currentLikeCount = Number(post.likeCount) || 0
     if (post.isLiked) {
-      ElMessage.success('点赞成功')
-    } else {
+      await request.post('/experience/cancel', { experienceId: post.id, userId })
+      post.isLiked = false
+      post.likeCount = Math.max(0, currentLikeCount - 1)
       ElMessage.info('已取消点赞')
+    } else {
+      await request.post('/experience/userReaction', { experienceId: post.id, reaction: 1, userId })
+      post.isLiked = true
+      post.likeCount = currentLikeCount + 1
+      ElMessage.success('点赞成功')
     }
-  } catch (error) {
-    ElMessage.error('操作失败，请重试')
+  } catch (e) {
+    ElMessage.error('操作失败')
   }
 }
 
 // 格式化时间
 const formatTime = (timeString: string) => {
+  if (!timeString) return ''
   const date = new Date(timeString)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
-
-  // 计算天数差
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
   if (days === 0) {
-    // 计算小时差
     const hours = Math.floor(diff / (1000 * 60 * 60))
     if (hours === 0) {
-      // 计算分钟差
       const minutes = Math.floor(diff / (1000 * 60))
       return minutes <= 0 ? '刚刚' : `${minutes}分钟前`
-    } else {
-      return `${hours}小时前`
     }
+    return `${hours}小时前`
   } else if (days === 1) {
     return '昨天'
   } else if (days < 7) {
     return `${days}天前`
-  } else {
-    // 返回具体日期
-    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+  }
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+}
+
+// 发表帖子
+const handlePublish = () => {
+  if (!authStore.isAuthenticated) {
+    ElMessage.warning('请先登录后再发表帖子')
+    router.push('/auth')
+    return
+  }
+  publishForm.value = { title: '', content: '' }
+  publishDialogVisible.value = true
+}
+
+// 提交帖子
+const submitPost = async () => {
+  if (!publishForm.value.title.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  if (!publishForm.value.content.trim()) {
+    ElMessage.warning('请输入内容')
+    return
+  }
+
+  publishLoading.value = true
+  try {
+    // 获取用户角色：1-教练 2-学员
+    const userRole = authStore.user?.role === 'coach' ? 1 : 2
+    // 使用 User 表的 id，全局唯一，避免教练/学员 ID 冲突
+    const userId = authStore.user?.id
+    
+    console.log('发表帖子 - userId:', userId, 'typeof userId:', typeof userId, 'userRole:', userRole)
+    console.log('完整用户信息:', JSON.stringify(authStore.user))
+    
+    if (!userId) {
+      ElMessage.error('用户信息异常，请重新登录')
+      return
+    }
+    
+    // 直接传递 userId，后端会自动转换类型
+    await request.post('/experience/addExperience', {
+      title: publishForm.value.title,
+      content: publishForm.value.content,
+      userId: userId,
+      userRole: userRole
+    })
+    ElMessage.success('发表成功')
+    publishDialogVisible.value = false
+    loadPosts() // 刷新列表
+  } catch (e) {
+    console.error('发表失败:', e)
+    ElMessage.error('发表失败，请重试')
+  } finally {
+    publishLoading.value = false
   }
 }
 
 // 页面加载时获取帖子列表
 onMounted(() => {
-  postStore.fetchPosts()
+  loadPosts()
 })
 </script>
 
@@ -239,11 +332,21 @@ onMounted(() => {
 }
 
 .category-select {
-  width: 150px;
+  width: 200px;
 }
 
 .search-input {
   width: 300px;
+}
+
+.filter-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.publish-btn {
+  white-space: nowrap;
 }
 
 .loading-container,
@@ -370,12 +473,16 @@ onMounted(() => {
 }
 
 .like-icon {
-  font-size: 16px;
+  width: 16px;
+  height: 16px;
   margin-right: 4px;
+  vertical-align: middle;
+  transition: filter 0.3s;
 }
 
 .like-icon.liked {
-  color: #409EFF;
+  /* 红色 */
+  filter: invert(27%) sepia(95%) saturate(5000%) hue-rotate(355deg) brightness(95%) contrast(95%);
 }
 
 .post-stats {

@@ -1,5 +1,6 @@
 package com.ldr.gymlink.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -7,12 +8,22 @@ import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.model.dto.experience.AddExperienceRequest;
 import com.ldr.gymlink.model.dto.experience.ExperienceQueryPageRequest;
+import com.ldr.gymlink.model.dto.experience.GetUserReactionRequest;
 import com.ldr.gymlink.model.dto.experience.UpdateExperienceRequest;
+import com.ldr.gymlink.model.entity.Coach;
 import com.ldr.gymlink.model.entity.Experience;
+import com.ldr.gymlink.model.entity.Student;
+import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.vo.ExperienceVo;
+import com.ldr.gymlink.service.CoachService;
+import com.ldr.gymlink.service.CommentService;
+import com.ldr.gymlink.service.ExperienceReactionService;
 import com.ldr.gymlink.service.ExperienceService;
 import com.ldr.gymlink.mapper.ExperienceMapper;
+import com.ldr.gymlink.service.StudentService;
+import com.ldr.gymlink.service.UserService;
 import com.ldr.gymlink.utils.ThrowUtils;
+import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -28,6 +39,21 @@ import java.util.Date;
 @Service
 public class ExperienceServiceImpl extends ServiceImpl<ExperienceMapper, Experience>
         implements ExperienceService {
+
+    @Resource
+    private UserService userService;
+
+    @Resource
+    private StudentService studentService;
+
+    @Resource
+    private CoachService coachService;
+
+    @Resource
+    private ExperienceReactionService experienceReactionService;
+
+    @Resource
+    private CommentService commentService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -59,11 +85,29 @@ public class ExperienceServiceImpl extends ServiceImpl<ExperienceMapper, Experie
         LambdaQueryWrapper<Experience> queryWrapper = getExperienceQueryWrapper(experienceQueryPageRequest);
         Page<Experience> page = this.page(Page.of(pageNum, pageSize), queryWrapper);
 
+        // 获取当前登录用户ID（如果已登录）
+        Long currentUserId = null;
+        try {
+            if (StpUtil.isLogin()) {
+                currentUserId = StpUtil.getLoginIdAsLong();
+            }
+        } catch (Exception ignored) {
+        }
+        final Long loginUserId = currentUserId;
+
         Page<ExperienceVo> experienceVoPage = new Page<>(pageNum, pageSize);
         experienceVoPage.setTotal(page.getTotal());
         experienceVoPage.setRecords(page.getRecords().stream().map(experience -> {
             ExperienceVo experienceVo = new ExperienceVo();
             BeanUtils.copyProperties(experience, experienceVo);
+            // 填充用户信息
+            fillUserInfo(experienceVo);
+            // 填充点赞数
+            experienceVo.setLikeCount(experienceReactionService.getLikesCount(experience.getId()));
+            // 填充评论数
+            experienceVo.setCommentCount(commentService.getCommentCount(experience.getId()));
+            // 填充当前用户的点赞状态
+            fillUserReaction(experienceVo, loginUserId);
             return experienceVo;
         }).toList());
         return experienceVoPage;
@@ -104,7 +148,87 @@ public class ExperienceServiceImpl extends ServiceImpl<ExperienceMapper, Experie
 
         ExperienceVo experienceVo = new ExperienceVo();
         BeanUtils.copyProperties(experience, experienceVo);
+        // 填充用户信息
+        fillUserInfo(experienceVo);
+        // 填充点赞数
+        experienceVo.setLikeCount(experienceReactionService.getLikesCount(id));
+        // 填充当前用户的点赞状态
+        Long currentUserId = null;
+        try {
+            if (StpUtil.isLogin()) {
+                currentUserId = StpUtil.getLoginIdAsLong();
+            }
+        } catch (Exception ignored) {
+        }
+        fillUserReaction(experienceVo, currentUserId);
         return experienceVo;
+    }
+
+    /**
+     * 填充当前用户对帖子的反应状态
+     */
+    private void fillUserReaction(ExperienceVo experienceVo, Long loginUserId) {
+        if (experienceVo == null || loginUserId == null) {
+            experienceVo.setIsLiked(false);
+            return;
+        }
+        try {
+            GetUserReactionRequest request = new GetUserReactionRequest();
+            request.setExperienceId(experienceVo.getId());
+            request.setUserId(loginUserId);
+            Integer reactionType = experienceReactionService.getUserReactionWithoutAuth(request);
+            experienceVo.setUserReactionType(reactionType);
+            experienceVo.setIsLiked(reactionType != null && reactionType == 1);
+        } catch (Exception e) {
+            experienceVo.setIsLiked(false);
+        }
+    }
+
+    /**
+     * 填充用户信息（名称和头像）
+     * userId 存储的是 User 表的 id，通过 User.associatedUserId 关联到 Coach/Student 表
+     *
+     * @param experienceVo 经验VO
+     */
+    private void fillUserInfo(ExperienceVo experienceVo) {
+        if (experienceVo == null || experienceVo.getUserId() == null) {
+            return;
+        }
+        Long userId = experienceVo.getUserId();
+        Integer userRole = experienceVo.getUserRole();
+
+        try {
+            // 从 User 表获取用户信息，包含 associatedUserId
+            User user = userService.getById(userId);
+            if (user != null && user.getAssociatedUserId() != null) {
+                Long associatedUserId = user.getAssociatedUserId();
+                // 根据角色获取详细信息（名称和头像）
+                if (userRole != null && userRole == 1) {
+                    // 教练：通过 associatedUserId 查询教练信息
+                    Coach coach = coachService.getById(associatedUserId);
+                    if (coach != null) {
+                        experienceVo.setUserName(coach.getName());
+                        experienceVo.setUserAvatar(coach.getAvatar());
+                    } else {
+                        experienceVo.setUserName(user.getUsername());
+                    }
+                } else {
+                    // 学员：通过 associatedUserId 查询学员信息
+                    Student student = studentService.getById(associatedUserId);
+                    if (student != null) {
+                        experienceVo.setUserName(student.getName());
+                        experienceVo.setUserAvatar(student.getAvatar());
+                    } else {
+                        experienceVo.setUserName(user.getUsername());
+                    }
+                }
+            } else if (user != null) {
+                experienceVo.setUserName(user.getUsername());
+            }
+        } catch (Exception e) {
+            // 获取用户信息失败，使用默认值
+            experienceVo.setUserName("用户" + userId);
+        }
     }
 
     /**

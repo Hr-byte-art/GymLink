@@ -11,8 +11,14 @@
         <div class="filter-row">
           <div class="category-filter">
             <el-select v-model="selectedCategory" placeholder="选择分类" clearable>
-              <el-option v-for="category in recipeStore.categories" :key="category" :label="category"
-                :value="category" />
+              <el-option v-for="category in recipeStore.categories" :key="category" :label="category" :value="category">
+                <el-tooltip v-if="category !== '全部'" :content="getCategoryDescription(category)" placement="right">
+                  <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <span>{{ category }}</span>
+                  </div>
+                </el-tooltip>
+                <span v-else>{{ category }}</span>
+              </el-option>
             </el-select>
           </div>
           <div class="search-filter">
@@ -94,9 +100,20 @@ import { useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipe'
 import { Clock, User } from '@element-plus/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
+import { recipeTagOptions, getRecipeTagName } from '@/constants/categories'
 
 const router = useRouter()
 const recipeStore = useRecipeStore()
+
+// 从统一常量获取分类描述
+const categoryDescriptions: Record<string, string> = Object.fromEntries(
+  recipeTagOptions.map(item => [item.value, item.description])
+)
+
+// 获取分类描述
+const getCategoryDescription = (category: string) => {
+  return categoryDescriptions[category] || ''
+}
 
 // 筛选条件
 const selectedCategory = ref('全部')
@@ -188,7 +205,7 @@ onMounted(() => {
 }
 
 .category-filter {
-  flex: 0 0 200px;
+  flex: 0 0 250px;
 }
 
 .search-filter {

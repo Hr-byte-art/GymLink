@@ -10,32 +10,44 @@
 
     <!-- 主要内容区域 -->
     <main class="main-content">
-      <!-- 器材筛选区域 -->
+      <!-- 器筛选区域 -->
       <section class="filter-section">
         <div class="filter-container">
           <div class="filter-tabs">
             <div class="filter-tab" :class="{ active: activeCategory === 'all' }" @click="setActiveCategory('all')">
               全部器材
             </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'cardio' }"
-              @click="setActiveCategory('cardio')">
-              有氧器材
+            <div class="filter-tab" :class="{ active: activeCategory === '1' }" @click="setActiveCategory('1')">
+              有氧健身器材
             </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'strength' }"
-              @click="setActiveCategory('strength')">
-              力量器材
+            <div class="filter-tab" :class="{ active: activeCategory === '2' }" @click="setActiveCategory('2')">
+              力量训练器材
             </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'free_weights' }"
-              @click="setActiveCategory('free_weights')">
-              自由重量
+            <div class="filter-tab" :class="{ active: activeCategory === '3' }" @click="setActiveCategory('3')">
+              功能性训练器材
             </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'functional' }"
-              @click="setActiveCategory('functional')">
-              功能训练
+            <div class="filter-tab" :class="{ active: activeCategory === '4' }" @click="setActiveCategory('4')">
+              小型健身器械
             </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'accessories' }"
-              @click="setActiveCategory('accessories')">
-              配件器材
+            <div class="filter-tab" :class="{ active: activeCategory === '5' }" @click="setActiveCategory('5')">
+              康复与辅助器材
+            </div>
+            <div class="filter-tab" :class="{ active: activeCategory === '6' }" @click="setActiveCategory('6')">
+              其他辅助设备
+            </div>
+            <div class="filter-tab" :class="{ active: activeCategory === '7' }" @click="setActiveCategory('7')">
+              商用专用器材
+            </div>
+            <div class="filter-tab" :class="{ active: activeCategory === '8' }" @click="setActiveCategory('8')">
+              家用专用器材
+            </div>
+          </div>
+
+          <!-- 子分类筛选 -->
+          <div v-if="activeCategory !== 'all' && subCategories[activeCategory]" class="sub-filter-tabs">
+            <div class="filter-tab" :class="{ active: activeSubCategory === sub.value }"
+              v-for="sub in subCategories[activeCategory]" :key="sub.value" @click="setActiveSubCategory(sub.value)">
+              {{ sub.label }}
             </div>
           </div>
 
@@ -51,24 +63,10 @@
 
             <div class="location-filter">
               <span class="filter-label">位置：</span>
-              <el-select v-model="selectedLocation" placeholder="选择位置" clearable>
-                <el-option label="一楼有氧区" value="一楼有氧区"></el-option>
-                <el-option label="二楼力量区" value="二楼力量区"></el-option>
-                <el-option label="三楼功能训练区" value="三楼功能训练区"></el-option>
-                <el-option label="四楼瑜伽区" value="四楼瑜伽区"></el-option>
-              </el-select>
+              <el-input v-model="selectedLocation" placeholder="请输入位置" clearable style="width: 200px;" />
             </div>
 
-            <div class="brand-filter">
-              <span class="filter-label">品牌：</span>
-              <el-select v-model="selectedBrand" placeholder="选择品牌" clearable>
-                <el-option label="Life Fitness" value="Life Fitness"></el-option>
-                <el-option label="Technogym" value="Technogym"></el-option>
-                <el-option label="Hammer Strength" value="Hammer Strength"></el-option>
-                <el-option label="Rogue" value="Rogue"></el-option>
-                <el-option label="Concept2" value="Concept2"></el-option>
-              </el-select>
-            </div>
+
 
             <div class="search-box">
               <el-input v-model="searchKeyword" placeholder="搜索器材名称或型号" prefix-icon="Search" clearable></el-input>
@@ -111,11 +109,7 @@
               </div>
               <div class="equipment-content">
                 <h3 class="equipment-title">{{ equipment.name }}</h3>
-                <div class="equipment-brand">
-                  <span class="brand-label">品牌：</span>
-                  <span class="brand-name">{{ equipment.brand }}</span>
-                  <span class="model-name">{{ equipment.model }}</span>
-                </div>
+
                 <p class="equipment-description">{{ equipment.description }}</p>
                 <div class="equipment-info">
                   <div class="info-item">
@@ -175,18 +169,49 @@ const router = useRouter()
 
 // 筛选状态
 const activeCategory = ref('all')
+const activeSubCategory = ref('')
 const selectedStatus = ref('')
 const selectedLocation = ref('')
-const selectedBrand = ref('')
 const searchKeyword = ref('')
 
 // 分页状态
 const currentPage = ref(1)
 const pageSize = ref(12)
 
+// 子分类数据
+const subCategories = {
+  '1': [
+    { value: '1-1', label: '跑步机' },
+    { value: '1-2', label: '椭圆机' },
+    { value: '1-3', label: '动感单车' },
+    { value: '1-4', label: '划船机' },
+    { value: '1-5', label: '健身车' },
+    { value: '1-6', label: '楼梯机' },
+    { value: '1-7', label: '体适能运动机' }
+  ],
+  '2': [
+    { value: '2-1', label: '固定器械' },
+    { value: '2-2', label: '自由重量器材' },
+    { value: '2-3', label: '综合训练器材' }
+  ],
+  '3': [],
+  '4': [],
+  '5': [],
+  '6': [],
+  '7': [],
+  '8': []
+}
+
 // 设置活动类别
 const setActiveCategory = (category: string) => {
   activeCategory.value = category
+  activeSubCategory.value = '' // 重置子分类
+  currentPage.value = 1
+}
+
+// 设置活动子类别
+const setActiveSubCategory = (subCategory: string) => {
+  activeSubCategory.value = subCategory
   currentPage.value = 1
 }
 
@@ -228,14 +253,51 @@ const loadEquipment = () => {
 
   // 添加类别筛选
   if (activeCategory.value !== 'all') {
-    const categoryMap: { [key: string]: string } = {
-      'cardio': '有氧器材',
-      'strength': '力量器材',
-      'free_weights': '自由重量',
-      'functional': '功能训练',
-      'accessories': '配件器材'
+    // 如果有子分类选中，使用子分类；否则使用主分类
+    if (activeSubCategory.value) {
+      const categoryLabelMap: { [key: string]: string } = {
+        '1-1': '跑步机',
+        '1-2': '椭圆机',
+        '1-3': '动感单车',
+        '1-4': '划船机',
+        '1-5': '健身车',
+        '1-6': '楼梯机',
+        '1-7': '体适能运动机',
+        '2-1': '固定器械',
+        '2-2': '自由重量器材',
+        '2-3': '综合训练器材'
+      }
+
+      // 对于没有子分类的主分类，直接使用主分类标签
+      if (!categoryLabelMap[activeSubCategory.value]) {
+        const mainCategoryLabels: { [key: string]: string } = {
+          '1': '有氧健身器材',
+          '2': '力量训练器材',
+          '3': '功能性训练器材',
+          '4': '小型健身器械',
+          '5': '康复与辅助器材',
+          '6': '其他辅助设备',
+          '7': '商用专用器材',
+          '8': '家用专用器材'
+        }
+        params.category = mainCategoryLabels[activeCategory.value]
+      } else {
+        params.category = categoryLabelMap[activeSubCategory.value]
+      }
+    } else {
+      // 只选择了主分类，没有选择子分类
+      const mainCategoryLabels: { [key: string]: string } = {
+        '1': '有氧健身器材',
+        '2': '力量训练器材',
+        '3': '功能性训练器材',
+        '4': '小型健身器械',
+        '5': '康复与辅助器材',
+        '6': '其他辅助设备',
+        '7': '商用专用器材',
+        '8': '家用专用器材'
+      }
+      params.category = mainCategoryLabels[activeCategory.value]
     }
-    params.category = categoryMap[activeCategory.value]
   }
 
   // 添加状态筛选
@@ -248,10 +310,7 @@ const loadEquipment = () => {
     params.location = selectedLocation.value
   }
 
-  // 添加品牌筛选
-  if (selectedBrand.value) {
-    params.brand = selectedBrand.value
-  }
+
 
   // 添加关键词搜索
   if (searchKeyword.value) {
@@ -263,7 +322,7 @@ const loadEquipment = () => {
 }
 
 // 监听筛选条件变化，重新加载数据
-watch([activeCategory, selectedStatus, selectedLocation, selectedBrand, searchKeyword], () => {
+watch([activeCategory, activeSubCategory, selectedStatus, selectedLocation, searchKeyword], () => {
   currentPage.value = 1
   loadEquipment()
 })
@@ -334,22 +393,46 @@ onMounted(() => {
 
 .filter-tabs {
   display: flex;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.sub-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.sub-filter-tabs .filter-tab {
+  background: #e9ecef;
+  font-size: 12px;
+  padding: 6px 12px;
 }
 
 .filter-tab {
-  padding: 10px 20px;
-  margin-right: 10px;
-  border-radius: 30px;
+  padding: 8px 16px;
+  border-radius: 20px;
   background: white;
   color: #333;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e0e0e0;
+}
+
+.filter-tab:hover {
+  background: #f5f5f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-tab.active {
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  color: white;
+  border-color: transparent;
 }
 
 .filter-tab:hover {
@@ -369,8 +452,7 @@ onMounted(() => {
 }
 
 .status-filter,
-.location-filter,
-.brand-filter {
+.location-filter {
   display: flex;
   align-items: center;
 }
@@ -379,6 +461,11 @@ onMounted(() => {
   margin-right: 8px;
   font-weight: 500;
   color: #555;
+}
+
+/* 增加下拉框宽度以改善可读性 */
+.status-filter :deep(.el-select) {
+  width: 200px;
 }
 
 .search-box {
@@ -492,33 +579,7 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
-.equipment-brand {
-  display: flex;
-  align-items: center;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-}
 
-.brand-label {
-  font-size: 14px;
-  color: #666;
-  margin-right: 5px;
-}
-
-.brand-name {
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-  margin-right: 10px;
-}
-
-.model-name {
-  font-size: 14px;
-  color: #666;
-  background: #f0f2f5;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
 
 .equipment-description {
   color: #666;
@@ -621,9 +682,18 @@ onMounted(() => {
   }
 
   .filter-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    flex-wrap: wrap;
+    overflow-x: hidden;
+  }
+
+  .filter-tab {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .sub-filter-tabs .filter-tab {
+    padding: 4px 10px;
+    font-size: 12px;
   }
 
   .filter-options {

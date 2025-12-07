@@ -108,4 +108,20 @@ public interface EquipmentService extends IService<Equipment> {
      */
     Page<EquipmentReservationVo> listStudentReservationsByTimeRange(
             StudentEquipmentTimeRangeReservationQueryRequest request);
+
+    /**
+     * 修改器材图片
+     *
+     * @param equipmentId 器材id
+     * @param image       图片文件
+     * @return 图片URL
+     */
+    String updateEquipmentImage(Long equipmentId, org.springframework.web.multipart.MultipartFile image);
+
+    /**
+     * 获取器材使用统计数据
+     *
+     * @return 统计数据
+     */
+    com.ldr.gymlink.model.vo.EquipmentStatisticsVo getEquipmentStatistics();
 }

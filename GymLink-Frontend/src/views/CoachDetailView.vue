@@ -29,7 +29,7 @@
           </div>
           <div class="coach-basic-info">
             <h1 class="coach-name">{{ coachStore.coachDetail.name }}</h1>
-            <div class="coach-specialty">{{ coachStore.coachDetail.specialty }}</div>
+            <div class="coach-specialty">{{ getCoachSpecialtyName(coachStore.coachDetail.specialty) }}</div>
             <div class="coach-rating">
               <el-rate v-model="coachStore.coachDetail.rating" disabled show-score text-color="#ff9900"></el-rate>
               <span class="review-count">({{ coachStore.coachDetail.reviewCount }}条评价)</span>
@@ -186,21 +186,56 @@
         </div>
       </section>
     </div>
+
+    <!-- 预约教练对话框 -->
+    <el-dialog v-model="bookingDialogVisible" title="预约教练" width="500px" :close-on-click-modal="false">
+      <el-form :model="bookingForm" :rules="bookingRules" ref="bookingFormRef" label-width="100px">
+        <el-form-item label="教练" prop="coachName">
+          <el-input v-model="bookingForm.coachName" disabled />
+        </el-form-item>
+        <el-form-item label="预约时间" prop="appointTime">
+          <el-date-picker
+            v-model="bookingForm.appointTime"
+            type="datetime"
+            placeholder="选择预约时间"
+            :disabled-date="disabledDate"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注信息" prop="message">
+          <el-input
+            v-model="bookingForm.message"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入预约备注（可选）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="bookingDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitBooking" :loading="bookingLoading">确认预约</el-button>
+      </template>
+    </el-dialog>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
+import { useAuthStore } from '@/stores/auth'
+import { bookCoach as bookCoachApi } from '@/api/coach'
 import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import NavBar from '@/components/NavBar.vue'
 import AppLayout from '@/components/AppLayout.vue'
+import { getCoachSpecialtyName } from '@/constants/categories'
 
 // 使用路由和教练状态管理
 const route = useRoute()
 const router = useRouter()
 const coachStore = useCoachStore()
+const authStore = useAuthStore()
 
 // 当前活动标签页
 const activeTab = ref('profile')
@@ -208,9 +243,28 @@ const activeTab = ref('profile')
 // 选中的周
 const selectedWeek = ref('current')
 
-// 获取教练ID
+// 预约相关状态
+const bookingDialogVisible = ref(false)
+const bookingLoading = ref(false)
+const bookingFormRef = ref<FormInstance>()
+const bookingForm = reactive({
+  coachName: '',
+  appointTime: null as Date | null,
+  message: ''
+})
+
+const bookingRules = reactive<FormRules>({
+  appointTime: [{ required: true, message: '请选择预约时间', trigger: 'change' }]
+})
+
+// 禁用过去的日期
+const disabledDate = (time: Date) => {
+  return time.getTime() < Date.now() - 8.64e7 // 禁用今天之前的日期
+}
+
+// 获取教练ID（保持字符串类型，避免大数精度丢失）
 const coachId = computed(() => {
-  return Number(route.params.id)
+  return route.params.id as string
 })
 
 // 过滤后的课程安排
@@ -231,14 +285,71 @@ const goBack = () => {
   router.push('/coaches')
 }
 
-// 预约教练
+// 打开预约对话框
+const openBookingDialog = () => {
+  if (!authStore.isAuthenticated) {
+    ElMessage.warning('请先登录后再预约教练')
+    router.push({ name: 'auth', query: { redirect: route.fullPath } })
+    return
+  }
+  
+  if (authStore.user?.role === 'coach') {
+    ElMessage.warning('教练不能预约其他教练')
+    return
+  }
+  
+  // 重置表单
+  bookingForm.coachName = coachStore.coachDetail?.name || ''
+  bookingForm.appointTime = null
+  bookingForm.message = ''
+  bookingDialogVisible.value = true
+}
+
+// 提交预约
+const submitBooking = async () => {
+  if (!bookingFormRef.value) return
+  
+  await bookingFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    bookingLoading.value = true
+    try {
+      // 获取学员ID（使用 associatedUserId）
+      const studentId = authStore.user?.associatedUserId
+      if (!studentId) {
+        ElMessage.error('无法获取学员信息，请重新登录')
+        return
+      }
+      
+      await bookCoachApi({
+        coachId: coachId.value,
+        studentId: studentId,
+        appointTime: bookingForm.appointTime!.toISOString(),
+        message: bookingForm.message || undefined
+      })
+      
+      ElMessage.success('预约成功！请等待教练确认')
+      bookingDialogVisible.value = false
+    } catch (error: any) {
+      ElMessage.error(error.message || '预约失败，请稍后重试')
+    } finally {
+      bookingLoading.value = false
+    }
+  })
+}
+
+// 预约教练（打开对话框）
 const bookCoach = () => {
-  ElMessage.success('预约教练功能开发中...')
+  openBookingDialog()
 }
 
 // 联系教练
 const contactCoach = () => {
-  ElMessage.success('联系教练功能开发中...')
+  if (!coachStore.coachDetail?.phone) {
+    ElMessage.info('暂无教练联系方式')
+    return
+  }
+  ElMessage.success({ message: `教练电话：${coachStore.coachDetail.phone}`, duration: 3000 })
 }
 
 // 过滤课程安排
@@ -521,6 +632,29 @@ onMounted(() => {
 /* 课程安排样式 */
 .schedule-filters {
   margin-bottom: 20px;
+}
+
+.schedule-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.week-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.week-selector :deep(.el-select) {
+  width: 200px;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .schedule-grid {

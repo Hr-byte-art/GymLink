@@ -61,4 +61,12 @@ public interface CommentService extends IService<Comment> {
      * @return 是否成功
      */
     boolean unlikeComment(Long id);
+
+    /**
+     * 获取某个经验的评论总数
+     *
+     * @param experienceId 经验id
+     * @return 评论总数
+     */
+    Long getCommentCount(Long experienceId);
 }

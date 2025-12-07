@@ -44,7 +44,7 @@
             <img :src="user?.avatar || '/avatar-placeholder.svg'" alt="用户头像" />
           </div>
           <div class="user-dropdown">
-            <span class="username">{{ user?.username }}</span>
+            <span class="username">{{ displayName }}</span>
             <div class="dropdown-menu">
               <router-link to="/profile" class="dropdown-item">个人中心</router-link>
               <router-link to="/settings" class="dropdown-item">设置</router-link>
@@ -69,6 +69,7 @@ const authStore = useAuthStore()
 // 计算属性
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const user = computed(() => authStore.user)
+const displayName = computed(() => authStore.displayName)
 
 // 方法
 const handleLogout = () => {

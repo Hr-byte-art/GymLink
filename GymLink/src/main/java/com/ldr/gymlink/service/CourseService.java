@@ -6,6 +6,7 @@ import com.ldr.gymlink.model.dto.course.AddCourseRequest;
 import com.ldr.gymlink.model.dto.course.CourseQueryPageRequest;
 import com.ldr.gymlink.model.dto.course.UpdateCourseRequest;
 import com.ldr.gymlink.model.entity.Course;
+import com.ldr.gymlink.model.vo.CourseStatisticsVo;
 import com.ldr.gymlink.model.vo.CourseVo;
 
 /**
@@ -37,7 +38,7 @@ public interface CourseService extends IService<Course> {
      * @param id 课程id
      * @return 是否删除成功
      */
-    boolean deleteCourse(Integer id);
+    boolean deleteCourse(Long id);
 
     /**
      * 修改课程信息
@@ -46,7 +47,7 @@ public interface CourseService extends IService<Course> {
      * @param updateCourseRequest 修改课程信息请求
      * @return 是否修改成功
      */
-    boolean updateCourse(Integer id, UpdateCourseRequest updateCourseRequest);
+    boolean updateCourse(Long id, UpdateCourseRequest updateCourseRequest);
 
     /**
      * 根据id获取课程信息
@@ -54,5 +55,21 @@ public interface CourseService extends IService<Course> {
      * @param id 课程id
      * @return 课程信息
      */
-    CourseVo getCourseById(Integer id);
+    CourseVo getCourseById(Long id);
+
+    /**
+     * 获取课程统计数据
+     *
+     * @return 课程统计数据
+     */
+    CourseStatisticsVo getCourseStatistics();
+
+    /**
+     * 更新课程封面图片
+     *
+     * @param courseId 课程id
+     * @param image    图片文件
+     * @return 图片URL
+     */
+    String updateCourseImage(Long courseId, org.springframework.web.multipart.MultipartFile image);
 }

@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -116,9 +116,9 @@ const isLogin = ref(route.query.type !== 'register')
 
 // Login form
 const loginForm = reactive({
-  userAccount: '',
-  password: '',
-  role: 'user',
+  userAccount: '', // 用户名
+  password: '', // 密码
+  role: 'user', // 默认角色为普通用户
   rememberMe: false  // 默认不记住我
 })
 
@@ -163,15 +163,29 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
+        // 调试日志：打印表单数据
+        console.log('AuthView - 表单数据:', loginForm)
+
         // 使用认证状态管理的登录方法
         const result = await authStore.login({
           username: loginForm.userAccount,
-          password: loginForm.password
+          password: loginForm.password,
+          role: loginForm.role,
+          rememberMe: loginForm.rememberMe // 添加记住我参数
         })
 
         if (result.success) {
-          ElMessage.success('登录成功')
-          router.push('/')
+          ElMessage.success({ message: '登录成功', duration: 1500 })
+          // 登录成功后获取用户详细信息（根据角色）
+          await authStore.fetchUserDetailInfo()
+          // 根据角色跳转到不同页面
+          if (loginForm.role === 'admin') {
+            router.push('/admin/students')
+          } else {
+            // 如果有重定向地址，跳转回原来想访问的页面
+            const redirectPath = route.query.redirect as string
+            router.push(redirectPath || '/')
+          }
         } else {
           ElMessage.error(result.error || '登录失败')
         }
@@ -200,7 +214,7 @@ const handleRegister = async () => {
         })
 
         if (result.success) {
-          ElMessage.success('注册成功')
+          ElMessage.success({ message: '注册成功', duration: 1500 })
           router.push('/')
         } else {
           ElMessage.error(result.error || '注册失败')
@@ -214,6 +228,33 @@ const handleRegister = async () => {
     }
   })
 }
+
+// 清空表单方法
+const resetForms = () => {
+  // 清空登录表单
+  loginForm.userAccount = ''
+  loginForm.password = ''
+  loginForm.role = 'user'
+  loginForm.rememberMe = false
+
+  // 清空注册表单
+  registerForm.userAccount = ''
+  registerForm.userPassword = ''
+  registerForm.checkPassword = ''
+
+  // 清空表单验证状态
+  if (loginFormRef.value) {
+    loginFormRef.value.clearValidate()
+  }
+  if (registerFormRef.value) {
+    registerFormRef.value.clearValidate()
+  }
+}
+
+// 组件挂载时清空表单
+onMounted(() => {
+  resetForms()
+})
 </script>
 
 <style scoped>

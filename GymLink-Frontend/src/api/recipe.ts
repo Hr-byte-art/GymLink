@@ -28,8 +28,8 @@ export function getRecipeList(params: RecipeQueryParams = {}): Promise<Page<Reci
 }
 
 // 获取菜谱详情 - GET /recipe/getRecipeById
-export function getRecipeDetail(id: number): Promise<Recipe> {
+export function getRecipeDetail(id: string | number): Promise<Recipe> {
     return request.get('/recipe/getRecipeById', {
-        params: { id }
+        params: { id: String(id) }
     }) as Promise<Recipe>
 }

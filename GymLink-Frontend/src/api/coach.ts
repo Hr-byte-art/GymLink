@@ -32,22 +32,26 @@ export function getCoachList(params: CoachQueryParams = {}): Promise<Page<Coach>
 }
 
 // 获取教练详情 - GET /coach/getCoachById
-export function getCoachDetail(id: number): Promise<Coach> {
+export function getCoachDetail(id: string | number): Promise<Coach> {
   return request.get('/coach/getCoachById', {
-    params: { id }
+    params: { id: String(id) }
   }) as Promise<Coach>
 }
 
 // 预约教练 - POST /appointment/bookingCoach
 export interface BookCoachRequest {
-  coachId: number
-  studentId: number
-  appointmentTime: string
-  purpose: string
+  coachId: string | number
+  studentId: string | number
+  appointTime: string  // 预约日期时间
+  message?: string     // 备注信息
 }
 
 export function bookCoach(data: BookCoachRequest): Promise<boolean> {
-  return request.post('/appointment/bookingCoach', data) as Promise<boolean>
+  return request.post('/appointment/bookingCoach', {
+    ...data,
+    coachId: String(data.coachId),
+    studentId: String(data.studentId)
+  }) as Promise<boolean>
 }
 
 // 取消预约教练 - GET /appointment/cancelCoachAppointment
@@ -55,4 +59,39 @@ export function cancelCoachBooking(appointmentId: number): Promise<boolean> {
   return request.get('/appointment/cancelCoachAppointment', {
     params: { appointmentId }
   }) as Promise<boolean>
+}
+
+// 根据用户ID获取教练信息
+export function getCoachByUserId(userId: string | number): Promise<Coach> {
+  return request.get('/coach/getCoachByUserId', {
+    params: { userId: String(userId) }
+  }) as Promise<Coach>
+}
+
+// 更新教练信息请求参数
+export interface UpdateCoachRequest {
+  name?: string
+  gender?: number
+  phone?: string
+  avatar?: string
+  age?: number
+  specialty?: string
+  intro?: string
+}
+
+// 更新教练信息
+export function updateCoach(id: string | number, data: UpdateCoachRequest): Promise<boolean> {
+  console.log('updateCoach - id:', id, 'data:', data)
+  return request.post(`/coach/updateCoach?id=${id}`, data) as Promise<boolean>
+}
+
+
+// 上传教练头像
+export function uploadCoachAvatar(coachId: string | number, file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  formData.append('coachId', String(coachId))
+  return request.post('/coach/updateCoachAvatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }) as Promise<string>
 }

@@ -17,7 +17,7 @@ public class CourseVo implements Serializable {
     /**
      * 主键ID
      */
-    private Integer id;
+    private Long id;
 
     /**
      * 课程名称
@@ -27,7 +27,17 @@ public class CourseVo implements Serializable {
     /**
      * 关联教练ID
      */
-    private Integer coachId;
+    private Long coachId;
+
+    /**
+     * 教练姓名
+     */
+    private String coachName;
+
+    /**
+     * 课程类型/分类
+     */
+    private String type;
 
     /**
      * 课程封面图

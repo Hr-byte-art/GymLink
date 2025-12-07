@@ -1,10 +1,12 @@
 package com.ldr.gymlink.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
+import com.ldr.gymlink.manager.CosManager;
 import com.ldr.gymlink.mapper.EquipmentMapper;
 import com.ldr.gymlink.model.dto.equipment.AddEquipmentRequest;
 import com.ldr.gymlink.model.dto.equipment.AllEquipmentReservationQueryRequest;
@@ -24,14 +26,30 @@ import com.ldr.gymlink.service.EquipmentReservationService;
 import com.ldr.gymlink.service.EquipmentService;
 import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.utils.ThrowUtils;
+import com.luciad.imageio.webp.WebPWriteParam;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import com.ldr.gymlink.model.vo.EquipmentStatisticsVo;
+
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -40,11 +58,26 @@ import java.util.stream.Collectors;
  * @createDate 2025-11-30 21:36:00
  */
 @Service
+@Slf4j
 public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment>
         implements EquipmentService {
 
     @Resource
     private EquipmentReservationService equipmentReservationService;
+
+    @Resource
+    private CosManager cosManager;
+
+    /**
+     * 最大文件大小（5MB）
+     */
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+    /**
+     * 允许的图片格式
+     */
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -330,14 +363,239 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
         String name = equipmentQueryPageRequest.getName();
         String location = equipmentQueryPageRequest.getLocation();
         Integer status = equipmentQueryPageRequest.getStatus();
-
+        String type = equipmentQueryPageRequest.getType();
         // 模糊查询器材名称
         queryWrapper.like(StringUtils.isNotBlank(name), Equipment::getName, name);
         // 模糊查询放置位置
         queryWrapper.like(StringUtils.isNotBlank(location), Equipment::getLocation, location);
         // 精确查询状态
         queryWrapper.eq(status != null, Equipment::getStatus, status);
-
+        // 精确查询类型（只有当 type 不为空时才添加条件）
+        queryWrapper.eq(StringUtils.isNotBlank(type), Equipment::getType, type);
         return queryWrapper;
+    }
+
+    @Override
+    public String updateEquipmentImage(Long equipmentId, MultipartFile file) {
+        validateImageFile(file);
+        File compressedImage = null;
+        try {
+            String uploadFilePath = "equipment/" + StrUtil.format("{}/{}.{}", 
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")), 
+                    equipmentId, "webp");
+
+            compressedImage = compressImage(file);
+            String result = cosManager.uploadFile(uploadFilePath, compressedImage);
+
+            // 更新数据库中的图片URL
+            Equipment equipment = this.getById(equipmentId);
+            if (equipment == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "器材不存在");
+            }
+            equipment.setImage(result);
+            boolean update = this.updateById(equipment);
+            if (!update) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新器材图片失败");
+            }
+            return result;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (compressedImage != null && compressedImage.exists()) {
+                compressedImage.delete();
+            }
+        }
+    }
+
+    /**
+     * 校验图片文件
+     */
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过5MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "只支持 JPG、PNG、WEBP、GIF 格式的图片");
+        }
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return ".jpg";
+        }
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
+    /**
+     * 压缩图片
+     */
+    private File compressImage(MultipartFile multipartFile) throws IOException {
+        float quality = 0.5f;
+        File oldFile = null;
+        File newFile = null;
+
+        try {
+            oldFile = File.createTempFile("old-", getFileExtension(multipartFile.getOriginalFilename()));
+            multipartFile.transferTo(oldFile);
+            newFile = File.createTempFile("compressed-", ".webp");
+            convertImage2Webp(oldFile, newFile, quality);
+            return newFile;
+        } catch (Exception e) {
+            if (newFile != null && newFile.exists()) {
+                newFile.delete();
+            }
+            throw new IOException("图片压缩失败", e);
+        } finally {
+            if (oldFile != null && oldFile.exists()) {
+                oldFile.delete();
+            }
+        }
+    }
+
+    /**
+     * 将图片转换为 WebP 格式
+     */
+    private void convertImage2Webp(File oldFile, File newFile, float quality) throws IOException {
+        ImageWriter writer = null;
+        FileImageOutputStream output = null;
+
+        try {
+            BufferedImage image = ImageIO.read(oldFile);
+            if (image == null) {
+                throw new IOException("无法读取图片文件，可能格式不支持");
+            }
+            writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+            WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
+            writeParam.setCompressionMode(WebPWriteParam.MODE_EXPLICIT);
+            writeParam.setCompressionType(writeParam.getCompressionTypes()[0]);
+            writeParam.setCompressionQuality(quality);
+            output = new FileImageOutputStream(newFile);
+            writer.setOutput(output);
+            writer.write(null, new IIOImage(image, null, null), writeParam);
+            log.info("图片压缩成功，原始大小: {} KB, 压缩后大小: {} KB",
+                    oldFile.length() / 1024, newFile.length() / 1024);
+        } catch (IOException e) {
+            log.error("图片转换为 WebP 失败", e);
+            throw e;
+        } finally {
+            if (output != null) {
+                try { output.close(); } catch (IOException e) { log.error("关闭输出流失败", e); }
+            }
+            if (writer != null) {
+                writer.dispose();
+            }
+        }
+    }
+
+    @Override
+    public EquipmentStatisticsVo getEquipmentStatistics() {
+        EquipmentStatisticsVo vo = new EquipmentStatisticsVo();
+
+        // 1. 器材总数
+        vo.setTotalEquipment(this.count());
+
+        // 2. 正常状态器材数
+        vo.setNormalCount(this.count(new LambdaQueryWrapper<Equipment>().eq(Equipment::getStatus, 1)));
+
+        // 3. 维护中器材数
+        vo.setMaintenanceCount(this.count(new LambdaQueryWrapper<Equipment>().eq(Equipment::getStatus, 2)));
+
+        // 4. 今日预约数
+        vo.setTodayReservationCount(equipmentReservationService.count(
+                new LambdaQueryWrapper<EquipmentReservation>().apply("DATE(create_time) = CURDATE()")));
+
+        // 5. 本周预约数
+        vo.setWeekReservationCount(equipmentReservationService.count(
+                new LambdaQueryWrapper<EquipmentReservation>().apply("YEARWEEK(create_time, 1) = YEARWEEK(CURDATE(), 1)")));
+
+        // 6. 本月预约数
+        vo.setMonthReservationCount(equipmentReservationService.count(
+                new LambdaQueryWrapper<EquipmentReservation>().apply("DATE_FORMAT(create_time, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')")));
+
+        // 7. 各类型器材数量统计
+        List<Equipment> allEquipment = this.list();
+        Map<String, Long> typeCountMap = allEquipment.stream()
+                .filter(e -> StringUtils.isNotBlank(e.getType()))
+                .collect(Collectors.groupingBy(Equipment::getType, Collectors.counting()));
+        List<EquipmentStatisticsVo.TypeCountVo> typeStatistics = typeCountMap.entrySet().stream()
+                .map(entry -> {
+                    EquipmentStatisticsVo.TypeCountVo typeVo = new EquipmentStatisticsVo.TypeCountVo();
+                    typeVo.setType(entry.getKey());
+                    typeVo.setTypeName(getTypeName(entry.getKey()));
+                    typeVo.setCount(entry.getValue());
+                    return typeVo;
+                }).collect(Collectors.toList());
+        vo.setTypeStatistics(typeStatistics);
+
+        // 8. 最近7天每日预约趋势
+        List<EquipmentStatisticsVo.DailyCountVo> dailyTrend = new java.util.ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            String date = LocalDateTime.now().minusDays(i).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            long count = equipmentReservationService.count(
+                    new LambdaQueryWrapper<EquipmentReservation>().apply("DATE(create_time) = '" + date + "'"));
+            EquipmentStatisticsVo.DailyCountVo dailyVo = new EquipmentStatisticsVo.DailyCountVo();
+            dailyVo.setDate(date);
+            dailyVo.setCount(count);
+            dailyTrend.add(dailyVo);
+        }
+        vo.setDailyReservationTrend(dailyTrend);
+
+        // 9. 热门器材TOP10
+        List<EquipmentReservation> allReservations = equipmentReservationService.list();
+        Map<Long, Long> equipmentReservationCount = allReservations.stream()
+                .collect(Collectors.groupingBy(EquipmentReservation::getEquipmentId, Collectors.counting()));
+        List<EquipmentStatisticsVo.EquipmentRankVo> hotRank = equipmentReservationCount.entrySet().stream()
+                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .limit(10)
+                .map(entry -> {
+                    EquipmentStatisticsVo.EquipmentRankVo rankVo = new EquipmentStatisticsVo.EquipmentRankVo();
+                    rankVo.setEquipmentId(entry.getKey());
+                    Equipment equipment = this.getById(entry.getKey());
+                    rankVo.setEquipmentName(equipment != null ? equipment.getName() : "未知器材");
+                    rankVo.setReservationCount(entry.getValue());
+                    return rankVo;
+                }).collect(Collectors.toList());
+        vo.setHotEquipmentRank(hotRank);
+
+        // 10. 每种器材的实际数量统计（按器材名称分组，统计totalCount之和）
+        Map<String, Long> equipmentCountMap = allEquipment.stream()
+                .filter(e -> StringUtils.isNotBlank(e.getName()) && e.getTotalCount() != null)
+                .collect(Collectors.groupingBy(Equipment::getName, 
+                        Collectors.summingLong(e -> e.getTotalCount().longValue())));
+        List<EquipmentStatisticsVo.EquipmentCountVo> equipmentCountStats = equipmentCountMap.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(15)  // 取前15个
+                .map(entry -> {
+                    EquipmentStatisticsVo.EquipmentCountVo countVo = new EquipmentStatisticsVo.EquipmentCountVo();
+                    countVo.setEquipmentName(entry.getKey());
+                    countVo.setTotalCount(entry.getValue());
+                    return countVo;
+                }).collect(Collectors.toList());
+        vo.setEquipmentCountStatistics(equipmentCountStats);
+
+        return vo;
+    }
+
+    /**
+     * 获取器材类型名称
+     */
+    private String getTypeName(String type) {
+        Map<String, String> typeNameMap = Map.ofEntries(
+                Map.entry("1", "有氧健身器材"), Map.entry("1-1", "跑步机"), Map.entry("1-2", "椭圆机"),
+                Map.entry("1-3", "动感单车"), Map.entry("1-4", "划船机"), Map.entry("1-5", "健身车"),
+                Map.entry("1-6", "楼梯机"), Map.entry("1-7", "体适能运动机"),
+                Map.entry("2", "力量训练器材"), Map.entry("2-1", "固定器械"), Map.entry("2-2", "自由重量器材"),
+                Map.entry("2-3", "综合训练器材"), Map.entry("3", "功能性训练器材"), Map.entry("4", "小型健身器械"),
+                Map.entry("5", "康复与辅助器材"), Map.entry("6", "其他辅助设备"),
+                Map.entry("7", "商用专用器材"), Map.entry("8", "家用专用器材")
+        );
+        return typeNameMap.getOrDefault(type, type);
     }
 }

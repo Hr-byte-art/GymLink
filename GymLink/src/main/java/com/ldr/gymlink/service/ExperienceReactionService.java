@@ -44,4 +44,12 @@ public interface ExperienceReactionService extends IService<ExperienceReaction> 
      * @return 用户对帖子的反应
      */
     Integer getUserReaction(GetUserReactionRequest getUserReactionRequest);
+
+    /**
+     * 获取用户对帖子的反应（不校验权限，内部调用）
+     *
+     * @param getUserReactionRequest 用户对帖子的反应请求参数
+     * @return 用户对帖子的反应类型
+     */
+    Integer getUserReactionWithoutAuth(GetUserReactionRequest getUserReactionRequest);
 }

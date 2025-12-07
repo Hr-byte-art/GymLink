@@ -33,12 +33,33 @@ public class UserVo {
      */
     private String role;
 
+    /**
+     * 关联用户id
+     */
+    private Long associatedUserId;
 
     /**
      * 创建时间
      */
     private Date createTime;
 
+    /**
+     * 用户真实姓名（从 Student 或 Coach 表获取）
+     */
+    @TableField(exist = false)
+    private String name;
+
+    /**
+     * 用户头像（从 Student 或 Coach 表获取）
+     */
+    @TableField(exist = false)
+    private String avatar;
+
+    /**
+     * token（仅登录时返回）
+     */
+    @TableField(exist = false)
+    private String token;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

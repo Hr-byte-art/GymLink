@@ -30,8 +30,9 @@ public class CorsConfig {
         // 允许携带凭证
         config.setAllowCredentials(true);
 
-        // 暴露的响应头
+        // 暴露的响应头（让前端能读取这些 header）
         config.addExposedHeader("Authorization");
+        config.addExposedHeader("GymLink");
 
         // 创建CorsFilter
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

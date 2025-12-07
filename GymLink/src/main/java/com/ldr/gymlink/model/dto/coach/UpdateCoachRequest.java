@@ -30,11 +30,6 @@ public class UpdateCoachRequest implements Serializable {
     private String phone;
 
     /**
-     * 头像
-     */
-    private String avatar;
-
-    /**
      * 年龄
      */
     private Integer age;

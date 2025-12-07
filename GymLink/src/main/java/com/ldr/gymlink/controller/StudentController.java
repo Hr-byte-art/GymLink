@@ -14,7 +14,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.math.BigDecimal;
 
 /**
@@ -91,5 +93,29 @@ public class StudentController {
         ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
         boolean purchaseCourses = studentService.studentsPurchaseCourses(studentId, courseId);
         return ResultUtils.success(purchaseCourses);
+    }
+
+    @PostMapping("/updateStudentAvatar")
+    @Operation(summary = "修改学员头像")
+    public BaseResponse<String> updateStudentAvatar(@RequestParam Long studentId, @RequestParam MultipartFile avatar) {
+        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
+        String updatePath = studentService.updateStudentAvatar(studentId, avatar);
+        return ResultUtils.success(updatePath);
+    }
+
+    @PostMapping("/getPurchasedCourses")
+    @Operation(summary = "获取学员已购课程列表")
+    public BaseResponse<Page<com.ldr.gymlink.model.vo.PurchasedCourseVo>> getPurchasedCourses(
+            @RequestBody com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest request) {
+        Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> page = studentService.getPurchasedCourses(request);
+        return ResultUtils.success(page);
+    }
+
+    @GetMapping("/getPurchasedCourseIds")
+    @Operation(summary = "获取学员已购课程ID列表")
+    public BaseResponse<java.util.List<Long>> getPurchasedCourseIds(@RequestParam Long studentId) {
+        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        java.util.List<Long> courseIds = studentService.getPurchasedCourseIds(studentId);
+        return ResultUtils.success(courseIds);
     }
 }

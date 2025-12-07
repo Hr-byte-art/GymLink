@@ -35,5 +35,10 @@ public class AddRecipeRequest implements Serializable {
      */
     private Long adminId;
 
+    /**
+     * 菜谱类型
+     */
+    private String type;
+
     private static final long serialVersionUID = 1L;
 }

@@ -5,6 +5,7 @@ import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.enums.UserRoleEnum;
+import com.ldr.gymlink.model.vo.UserVo;
 import com.ldr.gymlink.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +43,7 @@ public class AuthInterceptor {
         HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
 
         // 获取当前用户
-        User currentUserRole = userService.getLoginUser(request);
+        UserVo currentUserRole = userService.getLoginUser();
         // 获取当前用户的角色
         String role = currentUserRole.getRole();
         // 检查是否有权限

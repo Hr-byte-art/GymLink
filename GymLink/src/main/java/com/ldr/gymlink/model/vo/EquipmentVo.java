@@ -52,6 +52,21 @@ public class EquipmentVo implements Serializable {
      * 录入时间
      */
     private Date createTime;
+    /**
+     * 器材类型 1-有氧健身器材 2-力量训练器材 3-功能性训练器材 4-小型健身器械 5-康复与辅助器材 6-其他辅助设备 7-商用专用器材 8-家用专用器材
+     * 1-1:跑步机
+     * 1-2:椭圆机
+     * 1-3:动感单车
+     * 1-4:划船机
+     * 1-5:健身车
+     * 1-6:楼梯机
+     * 1-7:体适能运动机
+     * 2-1:固定器械
+     * 2-2:自由重量器材
+     * 2-3:综合训练器材
+     */
+    private String type;
+
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
