@@ -55,4 +55,13 @@ public interface RecipeService extends IService<Recipe> {
      * @return
      */
     Page<RecipeVo> listRecipePage(RecipeQueryPageRequest recipeQueryPageRequest);
+
+    /**
+     * 修改菜谱封面图片
+     *
+     * @param recipeId 菜谱id
+     * @param image    图片文件
+     * @return 图片URL
+     */
+    String updateRecipeImage(Long recipeId, org.springframework.web.multipart.MultipartFile image);
 }

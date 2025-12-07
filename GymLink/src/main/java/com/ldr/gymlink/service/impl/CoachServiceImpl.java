@@ -1,28 +1,55 @@
 package com.ldr.gymlink.service.impl;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
+import com.ldr.gymlink.manager.CosManager;
 import com.ldr.gymlink.mapper.CoachMapper;
 import com.ldr.gymlink.model.dto.coach.AddCoachRequest;
 import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
 import com.ldr.gymlink.model.dto.coach.UpdateCoachRequest;
 import com.ldr.gymlink.model.entity.Coach;
+import com.ldr.gymlink.model.entity.Student;
 import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.enums.UserRoleEnum;
+import com.ldr.gymlink.model.vo.CoachAppointmentVo;
 import com.ldr.gymlink.model.vo.CoachVo;
+import com.ldr.gymlink.model.vo.StudentVo;
+import com.ldr.gymlink.service.CoachAppointmentService;
 import com.ldr.gymlink.service.CoachService;
+import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.service.UserService;
 import com.ldr.gymlink.utils.ThrowUtils;
+import com.luciad.imageio.webp.WebPWriteParam;
 import jakarta.annotation.Resource;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
 
 /**
  * @author 木子宸
@@ -30,6 +57,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @createDate 2025-11-29 14:40:18
  */
 @Service
+@Slf4j
 public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         implements CoachService {
 
@@ -37,10 +65,24 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
     private UserService userService;
 
     @Resource
-    private com.ldr.gymlink.service.CoachAppointmentService coachAppointmentService;
+    private CoachAppointmentService coachAppointmentService;
 
     @Resource
-    private com.ldr.gymlink.service.StudentService studentService;
+    private StudentService studentService;
+
+    @Resource
+    private CosManager cosManager;
+
+    /**
+     * 允许的图片格式
+     */
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
+
+    /**
+     * 最大文件大小（5MB）
+     */
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
 
     @Override
     public CoachVo getCoachByUserId(Long userId) {
@@ -162,7 +204,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> wrapper = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
                 .eq(com.ldr.gymlink.model.entity.CoachAppointment::getStudentId, studentId)
                 .eq(com.ldr.gymlink.model.entity.CoachAppointment::getAppointTime, appointTime)
-                .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1); // 待确认或已确认
+                .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1);
         long count = coachAppointmentService.count(wrapper);
         if (count > 0) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "该时间段已有预约");
@@ -234,7 +276,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listStudentCoachAppointmentPage(
+    public Page<CoachAppointmentVo> listStudentCoachAppointmentPage(
             com.ldr.gymlink.model.dto.coach.StudentCoachAppointmentQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long studentId = request.getStudentId();
@@ -256,7 +298,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAllCoachAppointmentPage(
+    public Page<CoachAppointmentVo> listAllCoachAppointmentPage(
             com.ldr.gymlink.model.dto.coach.AllCoachAppointmentQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
 
@@ -281,7 +323,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAppointmentsByCoach(
+    public Page<CoachAppointmentVo> listAppointmentsByCoach(
             com.ldr.gymlink.model.dto.coach.CoachAppointmentSearchRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long coachId = request.getCoachId();
@@ -303,7 +345,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAppointmentsByTimeRange(
+    public Page<CoachAppointmentVo> listAppointmentsByTimeRange(
             com.ldr.gymlink.model.dto.coach.CoachTimeAppointmentSearchRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Date startTime = request.getStartTime();
@@ -326,7 +368,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listStudentAppointmentsByTimeRange(
+    public Page<CoachAppointmentVo> listStudentAppointmentsByTimeRange(
             com.ldr.gymlink.model.dto.coach.StudentCoachTimeAppointmentSearchRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long studentId = request.getStudentId();
@@ -351,16 +393,47 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         return getCoachAppointmentVoPage(page);
     }
 
+    @Override
+    public String updateCoachAvatar(Long coachId, MultipartFile file) {
+        validateImageFile(file);
+        File compressedImage = null;
+        try {
+            String key = "avatar/coach/" + StrUtil.format("{}/{}.{}", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")), coachId , "webp");
+
+            compressedImage = compressImage(file);
+
+            String result = cosManager.uploadFile(key, compressedImage);
+
+            // 9. 更新数据库中的头像URL
+            Coach coach = this.getById(coachId);
+            if (coach == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+            }
+            coach.setAvatar(result);
+            boolean update = this.updateById(coach);
+            if (!update) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新用户头像失败");
+            }
+            return result;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // 10. 清理临时文件，确保即使上传失败也能删除
+            compressedImage.delete();
+        }
+    }
+
+
     /**
      * 转换教练预约为VO对象并填充教练和学员姓名
      */
-    private Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> getCoachAppointmentVoPage(
+    private Page<CoachAppointmentVo> getCoachAppointmentVoPage(
             Page<com.ldr.gymlink.model.entity.CoachAppointment> page) {
-        Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> voPage = new Page<>(page.getCurrent(), page.getSize(),
+        Page<CoachAppointmentVo> voPage = new Page<>(page.getCurrent(), page.getSize(),
                 page.getTotal());
-        java.util.List<com.ldr.gymlink.model.vo.CoachAppointmentVo> voList = page.getRecords().stream()
+        java.util.List<CoachAppointmentVo> voList = page.getRecords().stream()
                 .map(appointment -> {
-                    com.ldr.gymlink.model.vo.CoachAppointmentVo vo = new com.ldr.gymlink.model.vo.CoachAppointmentVo();
+                    CoachAppointmentVo vo = new CoachAppointmentVo();
                     BeanUtils.copyProperties(appointment, vo);
                     // 填充教练姓名
                     Coach coach = this.getById(appointment.getCoachId());
@@ -368,7 +441,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
                         vo.setCoachName(coach.getName());
                     }
                     // 填充学员姓名
-                    com.ldr.gymlink.model.vo.StudentVo student = studentService
+                    StudentVo student = studentService
                             .getStudentById(appointment.getStudentId());
                     if (student != null) {
                         vo.setStudentName(student.getName());
@@ -377,5 +450,257 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
                 }).collect(java.util.stream.Collectors.toList());
         voPage.setRecords(voList);
         return voPage;
+    }
+
+    /**
+     * 校验图片文件
+     */
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
+        }
+
+        // 检查文件大小
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过5MB");
+        }
+
+        // 检查文件类型
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "只支持 JPG、PNG、WEBP、GIF 格式的图片");
+        }
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return ".jpg";
+        }
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
+    /**
+     * 压缩图片
+     */
+    private File compressImage(MultipartFile multipartFile) throws IOException {
+        float quality = 0.5f;
+        File oldFile = null;
+        File newFile = null;
+
+        try {
+            // 1. 创建临时文件并写入上传的内容
+            oldFile = File.createTempFile("old-", getFileExtension(multipartFile.getOriginalFilename()));
+            multipartFile.transferTo(oldFile);
+
+            // 2. 创建压缩后的文件（WebP 格式）
+            newFile = File.createTempFile("compressed-", ".webp");
+
+            // 3. 转换为 WebP 格式并压缩
+            convertImage2Webp(oldFile, newFile, quality);
+
+            return newFile;
+
+        } catch (Exception e) {
+            // 清理失败的临时文件
+            if (newFile != null && newFile.exists()) {
+                newFile.delete();
+            }
+            throw new IOException("图片压缩失败", e);
+        } finally {
+            // 4. 清理原始临时文件
+            if (oldFile != null && oldFile.exists()) {
+                oldFile.delete();
+            }
+        }
+    }
+
+    /**
+     * 将图片转换为 WebP 格式
+     */
+    private void convertImage2Webp(File oldFile, File newFile, float quality) throws IOException {
+        ImageWriter writer = null;
+        FileImageOutputStream output = null;
+
+        try {
+            // 1. 读取原始图片
+            BufferedImage image = ImageIO.read(oldFile);
+            if (image == null) {
+                throw new IOException("无法读取图片文件，可能格式不支持");
+            }
+
+            // 2. 创建 WebP ImageWriter 实例
+            writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+
+            // 3. 配置编码参数
+            WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
+            writeParam.setCompressionMode(WebPWriteParam.MODE_EXPLICIT);
+            // "Lossy"-有损,"Lossless"-无损
+            writeParam.setCompressionType(writeParam.getCompressionTypes()[0]);
+            writeParam.setCompressionQuality(quality);
+
+            // 4. 配置 ImageWriter 输出
+            output = new FileImageOutputStream(newFile);
+            writer.setOutput(output);
+
+            // 5. 进行编码，生成 WebP 图片
+            writer.write(null, new IIOImage(image, null, null), writeParam);
+
+            log.info("图片压缩成功，原始大小: {} KB, 压缩后大小: {} KB",
+                    oldFile.length() / 1024, newFile.length() / 1024);
+
+        } catch (IOException e) {
+            log.error("图片转换为 WebP 失败", e);
+            throw e;  // 抛出异常，让调用方知道失败了
+        } finally {
+            // 6. 释放资源
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (IOException e) {
+                    log.error("关闭输出流失败", e);
+                }
+            }
+            if (writer != null) {
+                writer.dispose();
+            }
+        }
+    }
+
+    @Override
+    public com.ldr.gymlink.model.vo.CoachStatisticsVo getCoachStatistics() {
+        com.ldr.gymlink.model.vo.CoachStatisticsVo vo = new com.ldr.gymlink.model.vo.CoachStatisticsVo();
+
+        // 1. 教练总数
+        List<Coach> allCoaches = this.list();
+        vo.setTotalCoach((long) allCoaches.size());
+
+        // 2. 性别统计
+        long maleCount = allCoaches.stream().filter(c -> c.getGender() != null && c.getGender() == 1).count();
+        long femaleCount = allCoaches.stream().filter(c -> c.getGender() != null && c.getGender() == 2).count();
+        vo.setMaleCount(maleCount);
+        vo.setFemaleCount(femaleCount);
+
+        // 3. 获取时间范围
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        calendar.set(java.util.Calendar.MINUTE, 0);
+        calendar.set(java.util.Calendar.SECOND, 0);
+        calendar.set(java.util.Calendar.MILLISECOND, 0);
+        Date todayStart = calendar.getTime();
+
+        calendar.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.MONDAY);
+        Date weekStart = calendar.getTime();
+
+        calendar = java.util.Calendar.getInstance();
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1);
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        calendar.set(java.util.Calendar.MINUTE, 0);
+        calendar.set(java.util.Calendar.SECOND, 0);
+        calendar.set(java.util.Calendar.MILLISECOND, 0);
+        Date monthStart = calendar.getTime();
+
+        // 4. 预约统计
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> todayQuery = new LambdaQueryWrapper<>();
+        todayQuery.ge(com.ldr.gymlink.model.entity.CoachAppointment::getCreateTime, todayStart);
+        vo.setTodayAppointmentCount(coachAppointmentService.count(todayQuery));
+
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> weekQuery = new LambdaQueryWrapper<>();
+        weekQuery.ge(com.ldr.gymlink.model.entity.CoachAppointment::getCreateTime, weekStart);
+        vo.setWeekAppointmentCount(coachAppointmentService.count(weekQuery));
+
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> monthQuery = new LambdaQueryWrapper<>();
+        monthQuery.ge(com.ldr.gymlink.model.entity.CoachAppointment::getCreateTime, monthStart);
+        vo.setMonthAppointmentCount(coachAppointmentService.count(monthQuery));
+
+        // 5. 预约状态统计
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> pendingQuery = new LambdaQueryWrapper<>();
+        pendingQuery.eq(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0);
+        vo.setPendingAppointmentCount(coachAppointmentService.count(pendingQuery));
+
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> confirmedQuery = new LambdaQueryWrapper<>();
+        confirmedQuery.eq(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 1);
+        vo.setConfirmedAppointmentCount(coachAppointmentService.count(confirmedQuery));
+
+        // 6. 专长分布统计
+        java.util.Map<String, Long> specialtyMap = allCoaches.stream()
+                .filter(c -> c.getSpecialty() != null && !c.getSpecialty().isEmpty())
+                .collect(java.util.stream.Collectors.groupingBy(Coach::getSpecialty, java.util.stream.Collectors.counting()));
+        List<com.ldr.gymlink.model.vo.CoachStatisticsVo.SpecialtyCountVo> specialtyStats = specialtyMap.entrySet().stream()
+                .map(entry -> {
+                    com.ldr.gymlink.model.vo.CoachStatisticsVo.SpecialtyCountVo sv = new com.ldr.gymlink.model.vo.CoachStatisticsVo.SpecialtyCountVo();
+                    sv.setSpecialty(entry.getKey());
+                    sv.setCount(entry.getValue());
+                    return sv;
+                }).collect(java.util.stream.Collectors.toList());
+        vo.setSpecialtyStatistics(specialtyStats);
+
+        // 7. 近7天预约趋势
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+        List<com.ldr.gymlink.model.vo.CoachStatisticsVo.DailyCountVo> dailyTrend = new java.util.ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.add(java.util.Calendar.DAY_OF_MONTH, -i);
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+            cal.set(java.util.Calendar.MINUTE, 0);
+            cal.set(java.util.Calendar.SECOND, 0);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            Date dayStart = cal.getTime();
+            cal.add(java.util.Calendar.DAY_OF_MONTH, 1);
+            Date dayEnd = cal.getTime();
+
+            LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> dayQuery = new LambdaQueryWrapper<>();
+            dayQuery.ge(com.ldr.gymlink.model.entity.CoachAppointment::getCreateTime, dayStart)
+                    .lt(com.ldr.gymlink.model.entity.CoachAppointment::getCreateTime, dayEnd);
+
+            com.ldr.gymlink.model.vo.CoachStatisticsVo.DailyCountVo dcv = new com.ldr.gymlink.model.vo.CoachStatisticsVo.DailyCountVo();
+            dcv.setDate(sdf.format(dayStart));
+            dcv.setCount(coachAppointmentService.count(dayQuery));
+            dailyTrend.add(dcv);
+        }
+        vo.setDailyAppointmentTrend(dailyTrend);
+
+        // 8. 热门教练TOP10
+        List<com.ldr.gymlink.model.entity.CoachAppointment> allAppointments = coachAppointmentService.list();
+        java.util.Map<Long, Long> coachAppointmentMap = allAppointments.stream()
+                .filter(a -> a.getCoachId() != null)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        com.ldr.gymlink.model.entity.CoachAppointment::getCoachId,
+                        java.util.stream.Collectors.counting()));
+        java.util.Map<Long, Coach> coachMap = allCoaches.stream()
+                .collect(java.util.stream.Collectors.toMap(Coach::getId, c -> c, (a, b) -> a));
+        List<com.ldr.gymlink.model.vo.CoachStatisticsVo.CoachRankVo> hotCoaches = coachAppointmentMap.entrySet().stream()
+                .map(entry -> {
+                    com.ldr.gymlink.model.vo.CoachStatisticsVo.CoachRankVo crv = new com.ldr.gymlink.model.vo.CoachStatisticsVo.CoachRankVo();
+                    crv.setCoachId(entry.getKey());
+                    Coach coach = coachMap.get(entry.getKey());
+                    crv.setCoachName(coach != null ? coach.getName() : "未知教练");
+                    crv.setSpecialty(coach != null ? coach.getSpecialty() : "");
+                    crv.setAppointmentCount(entry.getValue());
+                    return crv;
+                })
+                .sorted((a, b) -> Long.compare(b.getAppointmentCount(), a.getAppointmentCount()))
+                .limit(10)
+                .collect(java.util.stream.Collectors.toList());
+        vo.setHotCoachRank(hotCoaches);
+
+        // 9. 年龄分布
+        List<com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo> ageDistribution = new java.util.ArrayList<>();
+        long age20_25 = allCoaches.stream().filter(c -> c.getAge() != null && c.getAge() >= 20 && c.getAge() < 25).count();
+        long age25_30 = allCoaches.stream().filter(c -> c.getAge() != null && c.getAge() >= 25 && c.getAge() < 30).count();
+        long age30_35 = allCoaches.stream().filter(c -> c.getAge() != null && c.getAge() >= 30 && c.getAge() < 35).count();
+        long age35_40 = allCoaches.stream().filter(c -> c.getAge() != null && c.getAge() >= 35 && c.getAge() < 40).count();
+        long age40Plus = allCoaches.stream().filter(c -> c.getAge() != null && c.getAge() >= 40).count();
+
+        if (age20_25 > 0) { com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo av = new com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo(); av.setAgeRange("20-25岁"); av.setCount(age20_25); ageDistribution.add(av); }
+        if (age25_30 > 0) { com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo av = new com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo(); av.setAgeRange("25-30岁"); av.setCount(age25_30); ageDistribution.add(av); }
+        if (age30_35 > 0) { com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo av = new com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo(); av.setAgeRange("30-35岁"); av.setCount(age30_35); ageDistribution.add(av); }
+        if (age35_40 > 0) { com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo av = new com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo(); av.setAgeRange("35-40岁"); av.setCount(age35_40); ageDistribution.add(av); }
+        if (age40Plus > 0) { com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo av = new com.ldr.gymlink.model.vo.CoachStatisticsVo.AgeDistributionVo(); av.setAgeRange("40岁以上"); av.setCount(age40Plus); ageDistribution.add(av); }
+        vo.setAgeDistribution(ageDistribution);
+
+        return vo;
     }
 }

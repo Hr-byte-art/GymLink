@@ -239,7 +239,7 @@ onMounted(() => {
 }
 
 .category-select {
-  width: 150px;
+  width: 200px;
 }
 
 .search-input {

@@ -5,20 +5,22 @@
 <mapper namespace="com.ldr.gymlink.mapper.CourseMapper">
 
     <resultMap id="BaseResultMap" type="com.ldr.gymlink.model.entity.Course">
-            <id property="id" column="id" jdbcType="INTEGER"/>
-            <result property="name" column="name" jdbcType="VARCHAR"/>
-            <result property="coachId" column="coach_id" jdbcType="INTEGER"/>
-            <result property="image" column="image" jdbcType="VARCHAR"/>
-            <result property="description" column="description" jdbcType="VARCHAR"/>
-            <result property="price" column="price" jdbcType="DECIMAL"/>
-            <result property="duration" column="duration" jdbcType="INTEGER"/>
-            <result property="difficulty" column="difficulty" jdbcType="VARCHAR"/>
-            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <id property="id" column="id" jdbcType="INTEGER"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="coachId" column="coach_id" jdbcType="INTEGER"/>
+        <result property="image" column="image" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="price" column="price" jdbcType="DECIMAL"/>
+        <result property="duration" column="duration" jdbcType="INTEGER"/>
+        <result property="difficulty" column="difficulty" jdbcType="VARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="type" column="type" jdbcType="CHAR"/>
+
     </resultMap>
 
     <sql id="Base_Column_List">
         id,name,coach_id,
         image,description,price,
-        duration,difficulty,create_time
+        duration,difficulty,create_time,type
     </sql>
 </mapper>

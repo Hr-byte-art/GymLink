@@ -15,17 +15,20 @@
         <!-- 教练筛选区域 -->
         <section class="filter-section">
           <div class="filter-container">
-            <div class="filter-tabs">
-              <div class="filter-tab" :class="{ active: activeSpecialty === 'all' }" @click="setActiveSpecialty('all')">
-                全部教练
-              </div>
-              <div v-for="specialty in coachStore.specialties" :key="specialty" class="filter-tab"
-                :class="{ active: activeSpecialty === specialty }" @click="setActiveSpecialty(specialty)">
-                {{ specialty }}
-              </div>
-            </div>
-
             <div class="filter-options">
+              <!-- 教练类型下拉框 -->
+              <div class="filter-dropdown">
+                <el-select v-model="activeSpecialty" placeholder="请选择教练类型" @change="setActiveSpecialty">
+                  <el-option label="全部教练" value="all"></el-option>
+                  <el-option v-for="coachType in coachTypes" :key="coachType.value" :label="coachType.label"
+                    :value="coachType.value">
+                    <el-tooltip :content="coachType.description" placement="right">
+                      <span>{{ coachType.label }}</span>
+                    </el-tooltip>
+                  </el-option>
+                </el-select>
+              </div>
+
               <div class="rating-filter">
                 <span class="filter-label">评分：</span>
                 <el-select v-model="selectedRating" placeholder="选择评分" clearable>
@@ -127,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
 import { ElMessage } from 'element-plus'
@@ -136,6 +139,47 @@ import AppLayout from '@/components/AppLayout.vue'
 // 使用路由和教练状态管理
 const router = useRouter()
 const coachStore = useCoachStore()
+
+// 教练类型数据
+const coachTypes = [
+  {
+    label: '私人健身教练',
+    value: 'personal',
+    description: '提供一对一训练指导，涵盖体能评估、计划制定、动作纠正与基础营养建议。'
+  },
+  {
+    label: '团体课教练',
+    value: 'group',
+    description: '带领多人课程，如动感单车、有氧操、搏击操、Zumba、HIIT、瑜伽、普拉提等。'
+  },
+  {
+    label: '力量与体能教练',
+    value: 'strength',
+    description: '面向运动员或进阶用户，提升爆发力、速度、耐力等运动表现，常持CSCS等认证。'
+  },
+  {
+    label: '康复/矫正训练教练',
+    value: 'rehabilitation',
+    description: '针对体态问题、术后恢复或慢性疼痛，进行功能性筛查与矫正性训练。'
+  },
+  {
+    label: '营养与生活方式教练',
+    value: 'nutrition',
+    description: '提供体重管理、饮食建议与生活习惯指导（非医疗性质）。'
+  },
+  {
+    label: '专项运动教练',
+    value: 'specialty',
+    description: '专注细分领域，如瑜伽、普拉提（含Reformer）、CrossFit、老年/孕产/青少年体适能等。'
+  },
+  {
+    label: '线上健身教练',
+    value: 'online',
+    description: '通过APP、视频或社群远程提供训练计划、饮食模板与打卡监督服务。'
+  }
+]
+
+
 
 // 筛选状态
 const activeSpecialty = ref('all')
@@ -151,7 +195,11 @@ const pageSize = ref(9)
 const setActiveSpecialty = (specialty: string) => {
   activeSpecialty.value = specialty
   currentPage.value = 1
+  // 重新加载数据
+  loadCoaches()
 }
+
+
 
 // 处理分页变化
 const handlePageChange = (page: number) => {
@@ -167,7 +215,7 @@ const viewCoachDetail = (id: number) => {
 
 // 预约教练
 const bookCoach = (coach: any) => {
-  ElMessage.success(`预约教练 ${coach.name} 功能开发中...`)
+  ElMessage.success({ message: `预约教练 ${coach.name} 功能开发中...`, duration: 1500 })
 }
 
 // 加载教练数据
@@ -289,33 +337,9 @@ onMounted(() => {
   padding: 0 20px;
 }
 
-.filter-tabs {
-  display: flex;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-}
-
-.filter-tab {
-  padding: 10px 20px;
-  margin-right: 10px;
-  border-radius: 30px;
-  background: white;
-  color: #333;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.filter-tab:hover {
-  background: #f0f2f5;
-}
-
-.filter-tab.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.filter-dropdown {
+  position: relative;
+  width: 300px;
 }
 
 .filter-options {
@@ -329,6 +353,12 @@ onMounted(() => {
 .price-filter {
   display: flex;
   align-items: center;
+}
+
+/* 增加下拉框宽度以改善可读性 */
+.rating-filter :deep(.el-select),
+.price-filter :deep(.el-select) {
+  width: 200px;
 }
 
 .filter-label {
@@ -510,12 +540,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .page-title {
     font-size: 32px;
-  }
-
-  .filter-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   .filter-options {

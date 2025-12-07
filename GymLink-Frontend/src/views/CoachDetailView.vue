@@ -233,12 +233,12 @@ const goBack = () => {
 
 // 预约教练
 const bookCoach = () => {
-  ElMessage.success('预约教练功能开发中...')
+  ElMessage.success({ message: '预约教练功能开发中...', duration: 1500 })
 }
 
 // 联系教练
 const contactCoach = () => {
-  ElMessage.success('联系教练功能开发中...')
+  ElMessage.success({ message: '联系教练功能开发中...', duration: 1500 })
 }
 
 // 过滤课程安排
@@ -521,6 +521,29 @@ onMounted(() => {
 /* 课程安排样式 */
 .schedule-filters {
   margin-bottom: 20px;
+}
+
+.schedule-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.week-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.week-selector :deep(.el-select) {
+  width: 200px;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .schedule-grid {

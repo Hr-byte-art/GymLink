@@ -2,16 +2,22 @@ package com.ldr.gymlink.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ldr.gymlink.common.BaseResponse;
+import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.model.dto.coach.AddCoachRequest;
 import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
 import com.ldr.gymlink.model.dto.coach.UpdateCoachRequest;
+import com.ldr.gymlink.model.vo.CoachStatisticsVo;
 import com.ldr.gymlink.model.vo.CoachVo;
 import com.ldr.gymlink.service.CoachService;
 import com.ldr.gymlink.utils.ResultUtils;
+import com.ldr.gymlink.utils.ThrowUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
 
 /**
  * @Author 王哈哈
@@ -70,4 +76,18 @@ public class CoachController {
         return ResultUtils.success(coachVo);
     }
 
+    @PostMapping("/updateCoachAvatar")
+    @Operation(summary = "修改教练头像")
+    public BaseResponse<String> updateStudentAvatar(@RequestParam Long coachId, @RequestParam MultipartFile avatar) {
+        ThrowUtils.throwIf(coachId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
+        String update = coachService.updateCoachAvatar(coachId, avatar);
+        return ResultUtils.success(update);
+    }
+
+    @GetMapping("/getStatistics")
+    @Operation(summary = "获取教练统计数据")
+    public BaseResponse<CoachStatisticsVo> getStatistics() {
+        CoachStatisticsVo statistics = coachService.getCoachStatistics();
+        return ResultUtils.success(statistics);
+    }
 }

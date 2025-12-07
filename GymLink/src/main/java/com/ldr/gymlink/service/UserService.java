@@ -2,6 +2,7 @@ package com.ldr.gymlink.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.ldr.gymlink.model.dto.auth.ChangePasswordRequest;
 import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
 import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
 import com.ldr.gymlink.model.entity.Coach;
@@ -20,10 +21,9 @@ public interface UserService extends IService<User> {
     /**
      * 获取当前登录用户
      * 
-     * @param request 请求
      * @return 当前登录用户
      */
-    User getLoginUser(HttpServletRequest request);
+    UserVo getLoginUser();
 
     /**
      * 用户登录
@@ -77,4 +77,11 @@ public interface UserService extends IService<User> {
      */
     LambdaQueryWrapper<Coach> getCoachQueryWrapper(CoachQueryPageRequest coachQueryPageRequest);
 
+    /**
+     * 修改密码
+     *
+     * @param changePasswordRequest 修改密码请求
+     * @return 修改成功返回true
+     */
+    Boolean changePassword(ChangePasswordRequest changePasswordRequest);
 }

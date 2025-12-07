@@ -61,4 +61,14 @@ public class RecipeController {
         Page<RecipeVo> recipeVoPage = recipeService.listRecipePage(recipeQueryPageRequest);
         return ResultUtils.success(recipeVoPage);
     }
+
+    @PostMapping("/updateRecipeImage")
+    @Operation(summary = "修改菜谱封面图片")
+    public BaseResponse<String> updateRecipeImage(@RequestParam Long recipeId, @RequestParam org.springframework.web.multipart.MultipartFile image) {
+        if (recipeId == null) {
+            throw new com.ldr.gymlink.exception.BusinessException(com.ldr.gymlink.exception.ErrorCode.PARAMS_ERROR, "菜谱id不能为空");
+        }
+        String imageUrl = recipeService.updateRecipeImage(recipeId, image);
+        return ResultUtils.success(imageUrl);
+    }
 }

@@ -7,8 +7,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
+import com.ldr.gymlink.mapper.CoachMapper;
 import com.ldr.gymlink.mapper.StudentMapper;
 import com.ldr.gymlink.mapper.UserMapper;
+import com.ldr.gymlink.model.dto.auth.ChangePasswordRequest;
 import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
 import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
 import com.ldr.gymlink.model.entity.Coach;
@@ -17,6 +19,7 @@ import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.vo.UserVo;
 import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.service.UserService;
+import com.ldr.gymlink.utils.ThrowUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.BeanUtils;
@@ -41,17 +44,54 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Resource
     private StudentMapper studentMapper;
 
+    @Resource
+    private CoachMapper coachMapper;
+
     private final String salt = "wang-haha";
 
     @Override
-    public User getLoginUser(HttpServletRequest request) {
+    public UserVo getLoginUser() {
         // 判断是否登录
         if (!StpUtil.isLogin()) {
             return null;
         }
         // 使用 Sa-Token 的 Session 获取登录用户信息
         Object attribute = StpUtil.getSession().get(USER_LOGIN_STATE);
-        return (User) attribute;
+        if (attribute == null) {
+            return null;
+        }
+        User user = (User) attribute;
+        UserVo userVo = new UserVo();
+        BeanUtils.copyProperties(user, userVo);
+        
+        // 根据角色查询并填充详细信息（name、avatar 等）
+        try {
+            String role = user.getRole();
+            if ("coach".equals(role)) {
+                // 查询教练详细信息
+                LambdaQueryWrapper<Coach> queryWrapper = new LambdaQueryWrapper<Coach>()
+                        .eq(Coach::getId, user.getAssociatedUserId());
+                Coach coach = coachMapper.selectOne(queryWrapper);
+                if (coach != null) {
+                    userVo.setName(coach.getName());
+                    userVo.setAvatar(coach.getAvatar());
+                }
+            } else if ("student".equals(role)) {
+                // 查询学员详细信息
+                LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<Student>()
+                        .eq(Student::getId, user.getAssociatedUserId());
+                Student student = studentMapper.selectOne(queryWrapper);
+                if (student != null) {
+                    userVo.setName(student.getName());
+                    userVo.setAvatar(student.getAvatar());
+                }
+            }
+        } catch (Exception e) {
+            // 如果查询详细信息失败，仍然返回基本用户信息
+            // 不影响登录状态
+        }
+        
+        return userVo;
     }
 
     @Override
@@ -90,8 +130,40 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
 
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
+        
+        // 获取 token 并返回给前端
+        String tokenValue = StpUtil.getTokenValue();
+        
         UserVo userVo = new UserVo();
         BeanUtils.copyProperties(user, userVo);
+        userVo.setToken(tokenValue);
+        
+        // 根据角色查询并填充详细信息（name、avatar 等）
+        try {
+            if ("coach".equals(role)) {
+                // 查询教练详细信息
+                LambdaQueryWrapper<Coach> coachQueryWrapper = new LambdaQueryWrapper<Coach>()
+                        .eq(Coach::getId, user.getAssociatedUserId());
+                Coach coach = coachMapper.selectOne(coachQueryWrapper);
+                if (coach != null) {
+                    userVo.setName(coach.getName());
+                    userVo.setAvatar(coach.getAvatar());
+                }
+            } else if ("student".equals(role)) {
+                // 查询学员详细信息
+                LambdaQueryWrapper<Student> studentQueryWrapper = new LambdaQueryWrapper<Student>()
+                        .eq(Student::getId, user.getAssociatedUserId());
+                Student student = studentMapper.selectOne(studentQueryWrapper);
+                if (student != null) {
+                    userVo.setName(student.getName());
+                    userVo.setAvatar(student.getAvatar());
+                }
+            }
+        } catch (Exception e) {
+            // 如果查询详细信息失败，仍然返回基本用户信息
+            // 不影响登录
+        }
+        
         return userVo;
     }
 
@@ -233,5 +305,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             }
         }
         return queryWrapper;
+    }
+
+    @Override
+    public Boolean changePassword(ChangePasswordRequest changePasswordRequest) {
+        StpUtil.checkLogin();
+        Object object = StpUtil.getSession().get(USER_LOGIN_STATE);
+        User loginUser = (User) object;
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>().eq(User::getId, loginUser.getId());
+        User user = this.getOne(queryWrapper);
+        if (user ==  null){
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        }
+        // 获取用户的密码
+        String oldPassword = user.getPassword();
+        String oldPasswordEncrypted = encryptPassword(changePasswordRequest.getOldPassword());
+        String newPassword = changePasswordRequest.getNewPassword();
+        ThrowUtils.throwIf(!oldPasswordEncrypted.equals(oldPassword), ErrorCode.OPERATION_ERROR, "原密码错误");
+        String newPasswordEncrypted = encryptPassword(newPassword);
+        ThrowUtils.throwIf(newPasswordEncrypted.equals(oldPassword), ErrorCode.OPERATION_ERROR, "新密码不能与原密码相同");
+        user.setPassword(newPasswordEncrypted);
+        return this.update(user, queryWrapper);
     }
 }

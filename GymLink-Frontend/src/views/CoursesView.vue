@@ -13,30 +13,15 @@
       <!-- 课程筛选区域 -->
       <section class="filter-section">
         <div class="filter-container">
-          <div class="filter-tabs">
-            <div class="filter-tab" :class="{ active: activeCategory === 'all' }" @click="setActiveCategory('all')">
-              全部课程
-            </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'yoga' }" @click="setActiveCategory('yoga')">
-              瑜伽
-            </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'strength' }"
-              @click="setActiveCategory('strength')">
-              力量训练
-            </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'cardio' }"
-              @click="setActiveCategory('cardio')">
-              有氧运动
-            </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'hiit' }" @click="setActiveCategory('hiit')">
-              HIIT
-            </div>
-            <div class="filter-tab" :class="{ active: activeCategory === 'dance' }" @click="setActiveCategory('dance')">
-              舞蹈
-            </div>
-          </div>
-
           <div class="filter-options">
+            <div class="category-filter">
+              <el-select v-model="activeCategory" placeholder="请选择分类" clearable filterable>
+                <el-option v-for="category in courseCategories" :key="category.value" :label="category.label"
+                  :value="category.value">
+                </el-option>
+              </el-select>
+            </div>
+
             <div class="difficulty-filter">
               <span class="filter-label">难度：</span>
               <el-select v-model="selectedDifficulty" placeholder="选择难度" clearable>
@@ -132,8 +117,8 @@
 
           <!-- 分页 -->
           <div v-if="courseStore.hasCourses" class="pagination-container">
-            <el-pagination background layout="prev, pager, next" :total="courseStore.total" :page-size="pageSize"
-              :current-page="currentPage" @current-change="handlePageChange">
+            <el-pagination background layout="prev, pager, next" :total="courseStore.total" :page-size="pageSize.value"
+              :current-page="currentPage.value" @current-change="handlePageChange">
             </el-pagination>
           </div>
         </div>
@@ -148,6 +133,22 @@ import { useCourseStore } from '@/stores/course'
 import NavBar from '@/components/NavBar.vue'
 import AppLayout from '@/components/AppLayout.vue'
 
+// 课程分类数据数组
+const courseCategories = [
+  { value: 'all', label: '全部课程' },
+  { value: '私教课程', label: '私教课程' },
+  { value: '团体训练课程', label: '团体训练课程' },
+  { value: '功能性训练课程', label: '功能性训练课程' },
+  { value: '力量训练课程', label: '力量训练课程' },
+  { value: '瑜伽课程', label: '瑜伽课程' },
+  { value: '普拉提课程', label: '普拉提课程' },
+  { value: '康复/矫正训练课程', label: '康复/矫正训练课程' },
+  { value: '专项运动表现课程', label: '专项运动表现课程' },
+  { value: '孕产/产后修复课程', label: '孕产/产后修复课程' },
+  { value: '老年/青少年体适能课程', label: '老年/青少年体适能课程' },
+  { value: '线上直播/录播课程', label: '线上直播/录播课程' }
+]
+
 // 使用课程状态管理
 const courseStore = useCourseStore()
 
@@ -160,12 +161,6 @@ const searchKeyword = ref('')
 // 分页状态
 const currentPage = ref(1)
 const pageSize = ref(9)
-
-// 设置活动类别
-const setActiveCategory = (category: string) => {
-  activeCategory.value = category
-  currentPage.value = 1
-}
 
 // 处理分页变化
 const handlePageChange = (page: number) => {
@@ -184,14 +179,7 @@ const loadCourses = () => {
 
   // 添加类别筛选
   if (activeCategory.value !== 'all') {
-    const categoryMap: { [key: string]: string } = {
-      'yoga': '瑜伽',
-      'strength': '力量训练',
-      'cardio': '有氧运动',
-      'hiit': 'HIIT',
-      'dance': '舞蹈'
-    }
-    params.category = categoryMap[activeCategory.value]
+    params.category = activeCategory.value
   }
 
   // 添加难度筛选
@@ -283,40 +271,19 @@ onMounted(() => {
   padding: 0 20px;
 }
 
-.filter-tabs {
-  display: flex;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-}
-
-.filter-tab {
-  padding: 10px 20px;
-  margin-right: 10px;
-  border-radius: 30px;
-  background: white;
-  color: #333;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.filter-tab:hover {
-  background: #f0f2f5;
-}
-
-.filter-tab.active {
-  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-  color: white;
-}
-
 .filter-options {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   align-items: center;
+}
+
+.category-filter {
+  width: 250px;
+}
+
+.category-filter :deep(.el-select) {
+  width: 100%;
 }
 
 .difficulty-filter,
@@ -329,6 +296,16 @@ onMounted(() => {
   margin-right: 8px;
   font-weight: 500;
   color: #555;
+}
+
+/* 增加下拉框宽度以改善可读性 */
+.difficulty-filter :deep(.el-select) {
+  width: 200px;
+}
+
+/* 进一步增加时间下拉框宽度以显示完整信息 */
+.time-filter :deep(.el-select) {
+  width: 250px;
 }
 
 .search-box {

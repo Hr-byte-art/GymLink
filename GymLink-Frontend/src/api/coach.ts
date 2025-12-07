@@ -56,3 +56,38 @@ export function cancelCoachBooking(appointmentId: number): Promise<boolean> {
     params: { appointmentId }
   }) as Promise<boolean>
 }
+
+// 根据用户ID获取教练信息
+export function getCoachByUserId(userId: string | number): Promise<Coach> {
+  return request.get('/coach/getCoachByUserId', {
+    params: { userId: String(userId) }
+  }) as Promise<Coach>
+}
+
+// 更新教练信息请求参数
+export interface UpdateCoachRequest {
+  name?: string
+  gender?: number
+  phone?: string
+  avatar?: string
+  age?: number
+  specialty?: string
+  intro?: string
+}
+
+// 更新教练信息
+export function updateCoach(id: string | number, data: UpdateCoachRequest): Promise<boolean> {
+  console.log('updateCoach - id:', id, 'data:', data)
+  return request.post(`/coach/updateCoach?id=${id}`, data) as Promise<boolean>
+}
+
+
+// 上传教练头像
+export function uploadCoachAvatar(coachId: string | number, file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  formData.append('coachId', String(coachId))
+  return request.post('/coach/updateCoachAvatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }) as Promise<string>
+}

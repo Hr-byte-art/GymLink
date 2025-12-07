@@ -5,6 +5,7 @@ import com.ldr.gymlink.common.BaseResponse;
 import com.ldr.gymlink.model.dto.course.AddCourseRequest;
 import com.ldr.gymlink.model.dto.course.CourseQueryPageRequest;
 import com.ldr.gymlink.model.dto.course.UpdateCourseRequest;
+import com.ldr.gymlink.model.vo.CourseStatisticsVo;
 import com.ldr.gymlink.model.vo.CourseVo;
 import com.ldr.gymlink.service.CourseService;
 import com.ldr.gymlink.utils.ResultUtils;
@@ -62,5 +63,12 @@ public class CourseController {
     public BaseResponse<CourseVo> getCourseById(@RequestParam Integer id) {
         CourseVo courseVo = courseService.getCourseById(id);
         return ResultUtils.success(courseVo);
+    }
+
+    @GetMapping("/getStatistics")
+    @Operation(summary = "获取课程统计数据")
+    public BaseResponse<CourseStatisticsVo> getStatistics() {
+        CourseStatisticsVo statistics = courseService.getCourseStatistics();
+        return ResultUtils.success(statistics);
     }
 }

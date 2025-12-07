@@ -124,121 +124,133 @@ onMounted(() => {
 </script>
 
 <style scoped>
-    /* 加载和错误状态样式 */
-    .loading-container,
-    .error-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 300px;
-    }
+/* 加载和错误状态样式 */
+.loading-container,
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+}
 
-    .home {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
+.home {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
 
-    /* 主要内容样式 */
-    .main-content {
-        flex: 1;
-    }
+/* 主要内容样式 */
+.main-content {
+    flex: 1;
+}
 
-    /* 轮播图样式 */
-    .hero-section {
-        margin-bottom: 50px;
-    }
+/* 轮播图样式 */
+.hero-section {
+    margin-bottom: 50px;
+}
 
-    .carousel-item {
-        height: 100%;
-        background-size: cover;
-        background-position: center;
-        position: relative;
-    }
+.carousel-item {
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
 
+.carousel-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    padding: 0 20px;
+    text-align: center;
+}
+
+.carousel-content h2 {
+    font-size: 48px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    width: 600px;
+    max-width: 100%;
+    text-align: center;
+}
+
+.carousel-content p {
+    font-size: 20px;
+    width: 600px;
+    max-width: 100%;
+    margin-bottom: 30px;
+    line-height: 1.6;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.carousel-btn {
+    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
+    border: none;
+    padding: 12px 30px;
+    font-size: 18px;
+    font-weight: 600;
+    width: auto;
+    max-width: 100%;
+    text-align: center;
+}
+
+/* 移动端样式 */
+@media (max-width: 768px) {
     .carousel-content {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
         align-items: center;
-        background: rgba(0, 0, 0, 0.4);
-        color: white;
+        text-align: center;
         padding: 0 20px;
     }
 
     .carousel-content h2 {
-        font-size: 48px;
-        margin-bottom: 20px;
-        font-weight: 700;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        width: 600px;
-        max-width: 100%;
-        text-align: left;
+        font-size: 36px;
+        text-align: center;
     }
 
     .carousel-content p {
-        font-size: 20px;
-        width: 600px;
-        max-width: 100%;
-        margin-bottom: 30px;
-        line-height: 1.6;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        text-align: left;
-    }
-
-    .carousel-btn {
-        background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-        border: none;
-        padding: 12px 30px;
         font-size: 18px;
-        font-weight: 600;
-        width: 600px;
-        max-width: 100%;
         text-align: center;
     }
+}
 
-    /* 移动端样式 */
-    @media (max-width: 768px) {
-        .carousel-content {
-            align-items: center;
-            text-align: center;
-            padding: 0 20px;
-        }
-    }
+/* Element Plus轮播图样式覆盖 */
+:deep(.el-carousel) {
+    overflow: hidden;
+}
 
-    /* Element Plus轮播图样式覆盖 */
-    :deep(.el-carousel) {
-        overflow: hidden;
-    }
+:deep(.el-carousel__container) {
+    height: 100%;
+}
 
-    :deep(.el-carousel__container) {
-        height: 100%;
-    }
+:deep(.el-carousel__item) {
+    overflow: hidden;
+}
 
-    :deep(.el-carousel__item) {
-        overflow: hidden;
-    }
+/* 通用区域样式 */
+.section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
 
-    /* 通用区域样式 */
-    .section-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 20px;
-    }
+.section-title {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 50px;
+    position: relative;
+}
 
-    .section-title {
-        text-align: center;
-        font-size: 36px;
-        font-weight: 700;
-        color: #2c3e50;
-        margin-bottom: 50px;
-        position: relative;
-    }
 /* 通用区域样式 */
 .section-container {
     max-width: 1200px;

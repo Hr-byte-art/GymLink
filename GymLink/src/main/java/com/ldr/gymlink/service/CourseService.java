@@ -6,6 +6,7 @@ import com.ldr.gymlink.model.dto.course.AddCourseRequest;
 import com.ldr.gymlink.model.dto.course.CourseQueryPageRequest;
 import com.ldr.gymlink.model.dto.course.UpdateCourseRequest;
 import com.ldr.gymlink.model.entity.Course;
+import com.ldr.gymlink.model.vo.CourseStatisticsVo;
 import com.ldr.gymlink.model.vo.CourseVo;
 
 /**
@@ -55,4 +56,11 @@ public interface CourseService extends IService<Course> {
      * @return 课程信息
      */
     CourseVo getCourseById(Integer id);
+
+    /**
+     * 获取课程统计数据
+     *
+     * @return 课程统计数据
+     */
+    CourseStatisticsVo getCourseStatistics();
 }

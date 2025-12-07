@@ -7,6 +7,7 @@ import com.ldr.gymlink.model.dto.student.UpdateStudentRequest;
 import com.ldr.gymlink.model.entity.Student;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.ldr.gymlink.model.vo.StudentVo;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
@@ -81,4 +82,13 @@ public interface StudentService extends IService<Student> {
      * @return 是否购买成功
      */
     boolean studentsPurchaseCourses(Long studentId, Long courseId);
+
+    /**
+     * 修改用户头像
+     *
+     * @param studentId 学员id
+     * @param avatar    头像文件
+     * @return 是否修改成功
+     */
+    String updateStudentAvatar(Long studentId, MultipartFile avatar);
 }

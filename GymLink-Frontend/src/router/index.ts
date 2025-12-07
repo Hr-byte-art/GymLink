@@ -8,6 +8,66 @@ const router = createRouter({
       name: 'home',
       component: () => import('../views/HomeView.vue')
     },
+    // 管理员路由
+    {
+      path: '/admin',
+      redirect: '/admin/students'
+    },
+
+    {
+      path: '/admin/students',
+      name: 'admin-students',
+      component: () => import('../views/admin/StudentManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/coaches',
+      name: 'admin-coaches',
+      component: () => import('../views/admin/CoachManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/courses',
+      name: 'admin-courses',
+      component: () => import('../views/admin/CourseManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/equipment',
+      name: 'admin-equipment',
+      component: () => import('../views/admin/EquipmentManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/recipes',
+      name: 'admin-recipes',
+      component: () => import('../views/admin/RecipeManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/posts',
+      name: 'admin-posts',
+      component: () => import('../views/admin/PostManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/equipment-stats',
+      name: 'admin-equipment-stats',
+      component: () => import('../views/admin/EquipmentStatistics.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/course-stats',
+      name: 'admin-course-stats',
+      component: () => import('../views/admin/CourseStatistics.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
+      path: '/admin/coach-stats',
+      name: 'admin-coach-stats',
+      component: () => import('../views/admin/CoachStatistics.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
     {
       path: '/courses',
       name: 'courses',
@@ -57,6 +117,16 @@ const router = createRouter({
       path: '/auth',
       name: 'auth',
       component: () => import('../views/AuthView.vue')
+    },
+    {
+      path: '/about',
+      name: 'about',
+      component: () => import('../views/AboutView.vue')
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue')
     },
     // 保留旧路由以兼容
     {

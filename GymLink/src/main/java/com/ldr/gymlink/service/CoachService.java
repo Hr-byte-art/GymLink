@@ -6,7 +6,12 @@ import com.ldr.gymlink.model.dto.coach.AddCoachRequest;
 import com.ldr.gymlink.model.dto.coach.CoachQueryPageRequest;
 import com.ldr.gymlink.model.dto.coach.UpdateCoachRequest;
 import com.ldr.gymlink.model.entity.Coach;
+import com.ldr.gymlink.model.vo.CoachAppointmentVo;
+import com.ldr.gymlink.model.vo.CoachStatisticsVo;
 import com.ldr.gymlink.model.vo.CoachVo;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
 
 /**
  * @author 木子宸
@@ -100,7 +105,7 @@ public interface CoachService extends IService<Coach> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listStudentCoachAppointmentPage(
+    Page<CoachAppointmentVo> listStudentCoachAppointmentPage(
             com.ldr.gymlink.model.dto.coach.StudentCoachAppointmentQueryRequest request);
 
     /**
@@ -109,7 +114,7 @@ public interface CoachService extends IService<Coach> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAllCoachAppointmentPage(
+    Page<CoachAppointmentVo> listAllCoachAppointmentPage(
             com.ldr.gymlink.model.dto.coach.AllCoachAppointmentQueryRequest request);
 
     /**
@@ -118,7 +123,7 @@ public interface CoachService extends IService<Coach> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAppointmentsByCoach(
+    Page<CoachAppointmentVo> listAppointmentsByCoach(
             com.ldr.gymlink.model.dto.coach.CoachAppointmentSearchRequest request);
 
     /**
@@ -127,7 +132,7 @@ public interface CoachService extends IService<Coach> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listAppointmentsByTimeRange(
+    Page<CoachAppointmentVo> listAppointmentsByTimeRange(
             com.ldr.gymlink.model.dto.coach.CoachTimeAppointmentSearchRequest request);
 
     /**
@@ -136,6 +141,22 @@ public interface CoachService extends IService<Coach> {
      * @param request 查询请求
      * @return 预约记录列表
      */
-    Page<com.ldr.gymlink.model.vo.CoachAppointmentVo> listStudentAppointmentsByTimeRange(
+    Page<CoachAppointmentVo> listStudentAppointmentsByTimeRange(
             com.ldr.gymlink.model.dto.coach.StudentCoachTimeAppointmentSearchRequest request);
+
+    /**
+     * 修改教练头像
+     *
+     * @param coachId 教练id
+     * @param avatar  头像文件
+     * @return 是否修改成功
+     */
+    String updateCoachAvatar(Long coachId, MultipartFile avatar);
+
+    /**
+     * 获取教练统计数据
+     *
+     * @return 教练统计数据
+     */
+    CoachStatisticsVo getCoachStatistics();
 }

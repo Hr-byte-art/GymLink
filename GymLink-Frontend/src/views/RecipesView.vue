@@ -11,8 +11,14 @@
         <div class="filter-row">
           <div class="category-filter">
             <el-select v-model="selectedCategory" placeholder="选择分类" clearable>
-              <el-option v-for="category in recipeStore.categories" :key="category" :label="category"
-                :value="category" />
+              <el-option v-for="category in recipeStore.categories" :key="category" :label="category" :value="category">
+                <el-tooltip v-if="category !== '全部'" :content="getCategoryDescription(category)" placement="right">
+                  <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <span>{{ category }}</span>
+                  </div>
+                </el-tooltip>
+                <span v-else>{{ category }}</span>
+              </el-option>
             </el-select>
           </div>
           <div class="search-filter">
@@ -97,6 +103,25 @@ import AppLayout from '@/components/AppLayout.vue'
 
 const router = useRouter()
 const recipeStore = useRecipeStore()
+
+// 分类描述映射
+const categoryDescriptions = {
+  '增肌食谱': '高热量、高蛋白、适量碳水，支持肌肉合成与训练恢复',
+  '减脂食谱': '热量赤字、高蛋白、中低碳水，保留肌肉同时减少体脂',
+  '维持期食谱': '热量平衡，营养均衡，用于体重/体脂稳定阶段',
+  '高蛋白食谱': '蛋白质占比显著提高（≥30%总热量），适用于各类训练者',
+  '低碳食谱': '极低碳水（<50g/天）、高脂肪、中高蛋白，用于特定减脂或代谢需求',
+  '力量训练专用': '强调训练前后营养时机（如练前碳水+练后蛋白），提升表现与恢复',
+  '耐力训练专用': '高碳水储备（如赛前糖原填充），支持长时间有氧运动',
+  '素食健身食谱': '通过植物蛋白（豆类、藜麦、豆腐等）满足蛋白需求，注重氨基酸互补',
+  '清单饮食': '以天然、少加工食材为主，控制添加糖与反式脂肪，强调食物质量',
+  '周期化食谱': '根据训练周期（如休赛期、备赛期）动态调整热量与宏量营养素比例'
+}
+
+// 获取分类描述
+const getCategoryDescription = (category: string) => {
+  return categoryDescriptions[category] || ''
+}
 
 // 筛选条件
 const selectedCategory = ref('全部')
@@ -188,7 +213,7 @@ onMounted(() => {
 }
 
 .category-filter {
-  flex: 0 0 200px;
+  flex: 0 0 250px;
 }
 
 .search-filter {

@@ -1,12 +1,14 @@
 package com.ldr.gymlink.service.impl;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.enums.SqlMethod;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
-import com.ldr.gymlink.mapper.CourseMapper;
+import com.ldr.gymlink.manager.CosManager;
 import com.ldr.gymlink.mapper.StudentMapper;
 import com.ldr.gymlink.model.dto.student.AddStudentRequest;
 import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
@@ -16,15 +18,30 @@ import com.ldr.gymlink.model.enums.UserRoleEnum;
 import com.ldr.gymlink.model.vo.StudentVo;
 import com.ldr.gymlink.service.*;
 import com.ldr.gymlink.utils.ThrowUtils;
+import com.luciad.imageio.webp.WebPWriteParam;
 import jakarta.annotation.Resource;
-
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Random;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -33,8 +50,8 @@ import org.springframework.transaction.annotation.Transactional;
  * @createDate 2025-11-29 20:39:16
  */
 @Service
-public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
-        implements StudentService {
+@Slf4j
+public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
 
     @Resource
     private UserService userService;
@@ -47,6 +64,22 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
 
     @Resource
     private CourseService courseService;
+
+    @Resource
+    private CosManager cosManager;
+
+    /**
+     * 最大文件大小（5MB）
+     */
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+    /**
+     * 允许的图片格式
+     */
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
+
+
     @Override
     public StudentVo getStudentByUserId(Long userId) {
         ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
@@ -55,8 +88,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         String role = user.getRole();
         StudentVo studentVo = new StudentVo();
         if (UserRoleEnum.STUDENT.getValue().equals(role)) {
-            LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<Student>()
-                    .eq(Student::getId, user.getAssociatedUserId());
+            LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<Student>().eq(Student::getId, user.getAssociatedUserId());
             Student student = this.getOne(queryWrapper);
             ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员信息不存在");
             BeanUtils.copyProperties(student, studentVo);
@@ -95,7 +127,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
 
     @Override
     public Page<StudentVo> listStudentPage(StudentQueryPageRequest studentQueryPageRequest) {
-        ThrowUtils.throwIf(studentQueryPageRequest == null, ErrorCode.PARAMS_ERROR , "请求参数为空");
+        ThrowUtils.throwIf(studentQueryPageRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
         int pageSize = studentQueryPageRequest.getPageSize();
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 个应用");
         int pageNum = studentQueryPageRequest.getPageNum();
@@ -120,9 +152,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
 
         // 级联删除：删除关联的 User 记录
-        LambdaQueryWrapper<User> userQueryWrapper = new LambdaQueryWrapper<User>()
-                .eq(User::getAssociatedUserId, id)
-                .eq(User::getRole, UserRoleEnum.STUDENT.getValue());
+        LambdaQueryWrapper<User> userQueryWrapper = new LambdaQueryWrapper<User>().eq(User::getAssociatedUserId, id).eq(User::getRole, UserRoleEnum.STUDENT.getValue());
         userService.remove(userQueryWrapper);
 
         // 删除学员记录
@@ -130,7 +160,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
     }
 
     @Override
-    public boolean updateStudent(Long id,UpdateStudentRequest updateStudentRequest) {
+    public boolean updateStudent(Long id, UpdateStudentRequest updateStudentRequest) {
         Student student = this.getById(id);
         if (student == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
@@ -205,8 +235,156 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student>
         return true;
     }
 
-    // 计算订单号bound
+    @Override
+    public String updateStudentAvatar(Long studentId, MultipartFile file) {
+
+        validateImageFile(file);
+        File compressedImage = null;
+        try {
+            String uploadFilePath = "avatar/student/" + StrUtil.format("{}/{}.{}", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")), studentId, "webp");
+
+            compressedImage = compressImage(file);
+
+            String result = cosManager.uploadFile(uploadFilePath, compressedImage);
+
+            // 9. 更新数据库中的头像URL
+            Student student = this.getById(studentId);
+            if (student == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+            }
+            student.setAvatar(result);
+            boolean update = this.updateById(student);
+            if (!update) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新用户头像失败");
+            }
+            return result;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // 10. 清理临时文件，确保即使上传失败也能删除
+            compressedImage.delete();
+        }
+    }
+
+    // 计算订单号 bound
     private String generateOrderNo(Long studentId) {
-        return "ORDER_" + studentId + "_" + System.currentTimeMillis() ;
+        return "ORDER_" + studentId + "_" + System.currentTimeMillis();
+    }
+
+    /**
+     * 校验图片文件
+     */
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
+        }
+
+        // 检查文件大小
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过5MB");
+        }
+
+        // 检查文件类型
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "只支持 JPG、PNG、WEBP、GIF 格式的图片");
+        }
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return ".jpg";
+        }
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
+    /**
+     * 压缩图片
+     */
+    private File compressImage(MultipartFile multipartFile) throws IOException {
+        float quality = 0.5f;
+        File oldFile = null;
+        File newFile = null;
+
+        try {
+            // 1. 创建临时文件并写入上传的内容
+            oldFile = File.createTempFile("old-", getFileExtension(multipartFile.getOriginalFilename()));
+            multipartFile.transferTo(oldFile);
+
+            // 2. 创建压缩后的文件（WebP 格式）
+            newFile = File.createTempFile("compressed-", ".webp");
+
+            // 3. 转换为 WebP 格式并压缩
+            convertImage2Webp(oldFile, newFile, quality);
+
+            return newFile;
+
+        } catch (Exception e) {
+            // 清理失败的临时文件
+            if (newFile != null && newFile.exists()) {
+                newFile.delete();
+            }
+            throw new IOException("图片压缩失败", e);
+        } finally {
+            // 4. 清理原始临时文件
+            if (oldFile != null && oldFile.exists()) {
+                oldFile.delete();
+            }
+        }
+    }
+
+    /**
+     * 将图片转换为 WebP 格式
+     */
+    private void convertImage2Webp(File oldFile, File newFile, float quality) throws IOException {
+        ImageWriter writer = null;
+        FileImageOutputStream output = null;
+
+        try {
+            // 1. 读取原始图片
+            BufferedImage image = ImageIO.read(oldFile);
+            if (image == null) {
+                throw new IOException("无法读取图片文件，可能格式不支持");
+            }
+
+            // 2. 创建 WebP ImageWriter 实例
+            writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+
+            // 3. 配置编码参数
+            WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
+            writeParam.setCompressionMode(WebPWriteParam.MODE_EXPLICIT);
+            // "Lossy"-有损,"Lossless"-无损
+            writeParam.setCompressionType(writeParam.getCompressionTypes()[0]);
+            writeParam.setCompressionQuality(quality);
+
+            // 4. 配置 ImageWriter 输出
+            output = new FileImageOutputStream(newFile);
+            writer.setOutput(output);
+
+            // 5. 进行编码，生成 WebP 图片
+            writer.write(null, new IIOImage(image, null, null), writeParam);
+
+            log.info("图片压缩成功，原始大小: {} KB, 压缩后大小: {} KB",
+                    oldFile.length() / 1024, newFile.length() / 1024);
+
+        } catch (IOException e) {
+            log.error("图片转换为 WebP 失败", e);
+            throw e;  // 抛出异常，让调用方知道失败了
+        } finally {
+            // 6. 释放资源
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (IOException e) {
+                    log.error("关闭输出流失败", e);
+                }
+            }
+            if (writer != null) {
+                writer.dispose();
+            }
+        }
     }
 }

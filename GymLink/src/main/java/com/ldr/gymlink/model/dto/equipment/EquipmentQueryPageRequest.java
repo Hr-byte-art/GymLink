@@ -27,6 +27,11 @@ public class EquipmentQueryPageRequest extends PageRequest implements Serializab
     private String location;
 
     /**
+     * 设备类型
+     */
+    private String type;
+
+    /**
      * 状态 1:正常 2:损坏/维护中
      */
     private Integer status;

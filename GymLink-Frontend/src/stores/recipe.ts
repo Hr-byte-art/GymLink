@@ -11,7 +11,19 @@ import type { Page } from '@/api/types'
 export const useRecipeStore = defineStore('recipe', () => {
   // 状态
   const recipes = ref<Recipe[]>([])
-  const categories = ref<string[]>(['全部', '增肌', '减脂', '低碳水', '素食', '早餐', '正餐', '加餐'])
+  const categories = ref<string[]>([
+    '全部',
+    '增肌食谱',
+    '减脂食谱',
+    '维持期食谱',
+    '高蛋白食谱',
+    '低碳食谱',
+    '力量训练专用',
+    '耐力训练专用',
+    '素食健身食谱',
+    '清单饮食',
+    '周期化食谱'
+  ])
   const recipeDetail = ref<Recipe | null>(null)
   const total = ref(0)
   const loading = ref(false)
@@ -29,15 +41,15 @@ export const useRecipeStore = defineStore('recipe', () => {
     // 过滤分类
     if (category && category !== '全部') {
       // 假设 tags 字段包含分类信息，或者我们需要扩展 Recipe 类型
-      // 这里做模糊匹配，因为 tags 可能是 "增肌,早餐" 这样的字符串
+      // 这里做模糊匹配，因为 tags 可能是 "增肌食谱,早餐" 这样的字符串
       result = result.filter(r => r.tags && r.tags.includes(category))
     }
 
     // 过滤关键词
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      result = result.filter(r => 
-        (r.title && r.title.toLowerCase().includes(term)) || 
+      result = result.filter(r =>
+        (r.title && r.title.toLowerCase().includes(term)) ||
         (r.content && r.content.toLowerCase().includes(term))
       )
     }
@@ -60,7 +72,7 @@ export const useRecipeStore = defineStore('recipe', () => {
         image: item.coverImage || 'https://via.placeholder.com/300x200?text=No+Image', // 映射 image
         description: item.content ? item.content.substring(0, 100) + '...' : '', // 简略描述
         category: item.tags ? item.tags.split(',')[0] : '未分类', // 提取第一个标签作为分类
-        
+
         // 填充 Mock 数据（因为后端没返回这些字段）
         calories: Math.floor(Math.random() * 500 + 200),
         protein: Math.floor(Math.random() * 30 + 10),
@@ -71,7 +83,7 @@ export const useRecipeStore = defineStore('recipe', () => {
         servings: 1,
         difficulty: ['easy', 'medium', 'hard'][Math.floor(Math.random() * 3)]
       })) as unknown as Recipe[] // 强制类型转换，实际应用中应该更新类型定义
-      
+
       total.value = response.total || 0
     } catch (err) {
       error.value = err instanceof Error ? err.message : '获取菜谱列表失败'

@@ -14,7 +14,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.math.BigDecimal;
 
 /**
@@ -91,5 +93,13 @@ public class StudentController {
         ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
         boolean purchaseCourses = studentService.studentsPurchaseCourses(studentId, courseId);
         return ResultUtils.success(purchaseCourses);
+    }
+
+    @PostMapping("/updateStudentAvatar")
+    @Operation(summary = "修改学员头像")
+    public BaseResponse<String> updateStudentAvatar(@RequestParam Long studentId, @RequestParam MultipartFile avatar) {
+        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
+        String updatePath = studentService.updateStudentAvatar(studentId, avatar);
+        return ResultUtils.success(updatePath);
     }
 }

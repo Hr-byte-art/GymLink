@@ -32,11 +32,6 @@ public class UpdateStudentRequest implements Serializable {
     private String phone;
 
     /**
-     * 头像
-     */
-    private String avatar;
-
-    /**
      * 身高(cm)
      */
     private BigDecimal height;
