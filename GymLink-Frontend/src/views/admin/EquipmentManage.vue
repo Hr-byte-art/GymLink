@@ -15,6 +15,17 @@
               <el-option label="维护中" :value="2" />
             </el-select>
           </el-form-item>
+          <el-form-item label="类型">
+            <el-cascader
+              v-model="searchForm.typeArray"
+              :options="categoryOptions"
+              :props="{ expandTrigger: 'hover' }"
+              clearable
+              placeholder="请选择类型"
+              style="width: 200px"
+              @change="handleTypeFilterChange"
+            />
+          </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
@@ -134,7 +145,7 @@ const formRef = ref()
 const imageInputRef = ref<HTMLInputElement>()
 const imageTimestamp = ref(Date.now())
 
-const searchForm = reactive({ name: '', location: '', status: null as number | null })
+const searchForm = reactive({ name: '', location: '', status: null as number | null, type: '', typeArray: [] as string[] })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const form = reactive({ id: 0, name: '', image: '', location: '', totalCount: 1, status: 1, description: '', type: '' as string, typeArray: [] as string[] })
 
@@ -196,8 +207,12 @@ const loadData = async () => {
   loading.value = true
   try {
     const res = await request.post('/equipment/listEquipment', {
-      pageNum: pagination.current, pageSize: pagination.pageSize,
-      name: searchForm.name || undefined, location: searchForm.location || undefined, status: searchForm.status || undefined
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      name: searchForm.name || undefined,
+      location: searchForm.location || undefined,
+      status: searchForm.status || undefined,
+      type: searchForm.type || undefined
     })
     tableData.value = res.records || []
     pagination.total = res.total || 0
@@ -205,8 +220,20 @@ const loadData = async () => {
   finally { loading.value = false }
 }
 
+// 类型筛选变化
+const handleTypeFilterChange = (value: string[]) => {
+  if (value && value.length > 0) {
+    searchForm.type = value[value.length - 1]
+  } else {
+    searchForm.type = ''
+  }
+}
+
 const handleSearch = () => { pagination.current = 1; loadData() }
-const resetSearch = () => { Object.assign(searchForm, { name: '', location: '', status: null }); handleSearch() }
+const resetSearch = () => {
+  Object.assign(searchForm, { name: '', location: '', status: null, type: '', typeArray: [] })
+  handleSearch()
+}
 
 const handleAdd = () => {
   isEdit.value = false

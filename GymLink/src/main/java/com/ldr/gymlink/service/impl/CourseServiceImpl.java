@@ -1,10 +1,12 @@
 package com.ldr.gymlink.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
+import com.ldr.gymlink.manager.CosManager;
 import com.ldr.gymlink.model.dto.course.AddCourseRequest;
 import com.ldr.gymlink.model.dto.course.CourseQueryPageRequest;
 import com.ldr.gymlink.model.dto.course.UpdateCourseRequest;
@@ -18,12 +20,25 @@ import com.ldr.gymlink.mapper.CoachMapper;
 import com.ldr.gymlink.mapper.CourseMapper;
 import com.ldr.gymlink.mapper.CourseOrderMapper;
 import com.ldr.gymlink.utils.ThrowUtils;
+import com.luciad.imageio.webp.WebPWriteParam;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Set;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,15 +48,24 @@ import java.util.stream.Collectors;
  * @description 针对表【course(健身课程表)】的数据库操作Service实现
  * @createDate 2025-11-30 20:57:06
  */
+@Slf4j
 @Service
 public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
         implements CourseService {
+
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/gif"
+    );
 
     @jakarta.annotation.Resource
     private CourseOrderMapper courseOrderMapper;
 
     @jakarta.annotation.Resource
     private CoachMapper coachMapper;
+
+    @jakarta.annotation.Resource
+    private CosManager cosManager;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -72,11 +96,29 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
         LambdaQueryWrapper<Course> queryWrapper = getCourseQueryWrapper(courseQueryPageRequest);
         Page<Course> page = this.page(Page.of(pageNum, pageSize), queryWrapper);
 
+        // 获取所有教练ID并批量查询教练信息
+        List<Long> coachIds = page.getRecords().stream()
+                .map(Course::getCoachId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> coachNameMap = new HashMap<>();
+        if (!coachIds.isEmpty()) {
+            List<Coach> coaches = coachMapper.selectBatchIds(coachIds);
+            coachNameMap = coaches.stream()
+                    .collect(Collectors.toMap(Coach::getId, Coach::getName, (a, b) -> a));
+        }
+
+        Map<Long, String> finalCoachNameMap = coachNameMap;
         Page<CourseVo> courseVoPage = new Page<>(pageNum, pageSize);
         courseVoPage.setTotal(page.getTotal());
         courseVoPage.setRecords(page.getRecords().stream().map(course -> {
             CourseVo courseVo = new CourseVo();
             BeanUtils.copyProperties(course, courseVo);
+            // 填充教练姓名
+            if (course.getCoachId() != null) {
+                courseVo.setCoachName(finalCoachNameMap.get(course.getCoachId()));
+            }
             return courseVo;
         }).toList());
         return courseVoPage;
@@ -84,7 +126,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteCourse(Integer id) {
+    public boolean deleteCourse(Long id) {
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
         Course course = this.getById(id);
         ThrowUtils.throwIf(course == null, ErrorCode.NOT_FOUND_ERROR, "课程不存在");
@@ -93,7 +135,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
     }
 
     @Override
-    public boolean updateCourse(Integer id, UpdateCourseRequest updateCourseRequest) {
+    public boolean updateCourse(Long id, UpdateCourseRequest updateCourseRequest) {
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
         Course course = this.getById(id);
         if (course == null) {
@@ -104,7 +146,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
     }
 
     @Override
-    public CourseVo getCourseById(Integer id) {
+    public CourseVo getCourseById(Long id) {
         ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
         Course course = this.getById(id);
         ThrowUtils.throwIf(course == null, ErrorCode.NOT_FOUND_ERROR, "课程不存在");
@@ -321,5 +363,124 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
 
         queryWrapper.eq(courseQueryPageRequest.getType() != null, Course::getType, type );
         return queryWrapper;
+    }
+
+    @Override
+    public String updateCourseImage(Long courseId, MultipartFile file) {
+        validateImageFile(file);
+        File compressedImage = null;
+        try {
+            String uploadFilePath = "course/" + StrUtil.format("{}/{}.{}",
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")),
+                    courseId, "webp");
+
+            compressedImage = compressImage(file);
+            String result = cosManager.uploadFile(uploadFilePath, compressedImage);
+
+            // 更新数据库中的图片URL
+            Course course = this.getById(courseId);
+            if (course == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "课程不存在");
+            }
+            course.setImage(result);
+            boolean update = this.updateById(course);
+            if (!update) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新课程图片失败");
+            }
+            return result;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (compressedImage != null && compressedImage.exists()) {
+                compressedImage.delete();
+            }
+        }
+    }
+
+    /**
+     * 校验图片文件
+     */
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过5MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "只支持 JPG、PNG、WEBP、GIF 格式的图片");
+        }
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return ".jpg";
+        }
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
+    /**
+     * 压缩图片
+     */
+    private File compressImage(MultipartFile multipartFile) throws IOException {
+        float quality = 0.5f;
+        File oldFile = null;
+        File newFile = null;
+
+        try {
+            oldFile = File.createTempFile("old-", getFileExtension(multipartFile.getOriginalFilename()));
+            multipartFile.transferTo(oldFile);
+            newFile = File.createTempFile("compressed-", ".webp");
+            convertImage2Webp(oldFile, newFile, quality);
+            return newFile;
+        } catch (Exception e) {
+            if (newFile != null && newFile.exists()) {
+                newFile.delete();
+            }
+            throw new IOException("图片压缩失败", e);
+        } finally {
+            if (oldFile != null && oldFile.exists()) {
+                oldFile.delete();
+            }
+        }
+    }
+
+    /**
+     * 将图片转换为 WebP 格式
+     */
+    private void convertImage2Webp(File oldFile, File newFile, float quality) throws IOException {
+        ImageWriter writer = null;
+        FileImageOutputStream output = null;
+
+        try {
+            BufferedImage image = ImageIO.read(oldFile);
+            if (image == null) {
+                throw new IOException("无法读取图片文件，可能格式不支持");
+            }
+            writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+            WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
+            writeParam.setCompressionMode(WebPWriteParam.MODE_EXPLICIT);
+            writeParam.setCompressionType(writeParam.getCompressionTypes()[0]);
+            writeParam.setCompressionQuality(quality);
+            output = new FileImageOutputStream(newFile);
+            writer.setOutput(output);
+            writer.write(null, new IIOImage(image, null, null), writeParam);
+            log.info("图片压缩成功，原始大小: {} KB, 压缩后大小: {} KB",
+                    oldFile.length() / 1024, newFile.length() / 1024);
+        } catch (IOException e) {
+            log.error("图片转换为 WebP 失败", e);
+            throw e;
+        } finally {
+            if (output != null) {
+                try { output.close(); } catch (IOException e) { log.error("关闭输出流失败", e); }
+            }
+            if (writer != null) {
+                writer.dispose();
+            }
+        }
     }
 }

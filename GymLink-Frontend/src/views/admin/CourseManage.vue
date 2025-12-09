@@ -15,7 +15,11 @@
           </el-form-item>
           <el-form-item label="分类">
             <el-select v-model="searchForm.type" placeholder="请选择分类" clearable>
-              <el-option v-for="item in courseTypes" :key="item.value" :label="item.label" :value="item.value" />
+              <el-option v-for="item in courseTypes" :key="item.value" :label="item.label" :value="item.value">
+                <el-tooltip :content="item.description" placement="right" :show-after="300">
+                  <span>{{ item.label }}</span>
+                </el-tooltip>
+              </el-option>
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -36,11 +40,19 @@
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column label="封面" width="100">
             <template #default="{ row }">
-              <el-image :src="row.image" style="width: 60px; height: 40px" fit="cover" />
+              <el-image :src="row.image" style="width: 60px; height: 40px" fit="cover">
+                <template #error>
+                  <div class="image-placeholder">暂无</div>
+                </template>
+              </el-image>
             </template>
           </el-table-column>
           <el-table-column prop="name" label="课程名称" width="150" />
-          <el-table-column prop="coachId" label="教练ID" width="100" />
+          <el-table-column label="教练" width="120">
+            <template #default="{ row }">
+              {{ row.coachName || `ID: ${row.coachId}` }}
+            </template>
+          </el-table-column>
           <el-table-column prop="price" label="价格" width="100">
             <template #default="{ row }">¥{{ row.price }}</template>
           </el-table-column>
@@ -64,33 +76,72 @@
       </el-card>
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="550px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="课程名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入课程名称" />
         </el-form-item>
-        <el-form-item label="教练ID" prop="coachId">
-          <el-input-number v-model="form.coachId" :min="1" />
+        <el-form-item label="授课教练" prop="coachId">
+          <el-select
+            v-model="form.coachId"
+            filterable
+            remote
+            reserve-keyword
+            placeholder="输入教练姓名搜索"
+            :remote-method="searchCoaches"
+            :loading="coachSearchLoading"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="coach in coachOptions"
+              :key="coach.id"
+              :label="`${coach.name} - ${coach.specialty || '综合'}`"
+              :value="coach.id"
+            >
+              <div class="coach-option">
+                <span class="coach-name">{{ coach.name }}</span>
+                <span class="coach-specialty">{{ coach.specialty || '综合' }}</span>
+              </div>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="封面图片">
-          <el-input v-model="form.image" placeholder="请输入图片URL" />
+          <div class="image-upload-container">
+            <div class="image-preview">
+              <el-image v-if="form.image" :src="form.image + '?t=' + imageTimestamp" style="width: 120px; height: 80px"
+                fit="cover" />
+              <div v-else class="no-image">暂无图片</div>
+            </div>
+            <div class="upload-actions">
+              <input type="file" ref="imageInputRef" accept="image/*" style="display: none"
+                @change="handleImageChange" />
+              <el-button size="small" @click="triggerImageUpload" :loading="imageUploading">
+                {{ form.image ? '更换图片' : '上传图片' }}
+              </el-button>
+              <div class="upload-tip">支持 jpg、png、webp 格式</div>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="价格" prop="price">
-          <el-input-number v-model="form.price" :min="0" :precision="2" />
+          <el-input-number v-model="form.price" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="时长(分钟)">
-          <el-input-number v-model="form.duration" :min="1" />
+          <el-input-number v-model="form.duration" :min="1" style="width: 100%" />
         </el-form-item>
         <el-form-item label="难度">
-          <el-select v-model="form.difficulty" placeholder="请选择">
+          <el-select v-model="form.difficulty" placeholder="请选择" style="width: 100%">
             <el-option label="初级" value="初级" />
             <el-option label="中级" value="中级" />
             <el-option label="高级" value="高级" />
           </el-select>
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="form.type" placeholder="请选择分类" clearable>
-            <el-option v-for="item in courseTypes" :key="item.value" :label="item.label" :value="item.value" />
+          <el-select v-model="form.type" placeholder="请选择分类" clearable style="width: 100%">
+            <el-option v-for="item in courseTypes" :key="item.value" :label="item.label" :value="item.value">
+              <el-tooltip :content="item.description" placement="right" :show-after="300">
+                <span>{{ item.label }}</span>
+              </el-tooltip>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
@@ -113,38 +164,88 @@ import request from '@/utils/request'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const imageUploading = ref(false)
+const coachSearchLoading = ref(false)
 const tableData = ref<any[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
+const imageInputRef = ref<HTMLInputElement>()
+const imageTimestamp = ref(Date.now())
+const coachOptions = ref<any[]>([])
 
-// 课程分类数据
+// 课程分类数据（带描述）
 const courseTypes = [
-  { value: '私教课程', label: '私教课程' },
-  { value: '团体训练课程', label: '团体训练课程' },
-  { value: '功能性训练课程', label: '功能性训练课程' },
-  { value: '力量训练课程', label: '力量训练课程' },
-  { value: '瑜伽课程', label: '瑜伽课程' },
-  { value: '普拉提课程', label: '普拉提课程' },
-  { value: '康复/矫正训练课程', label: '康复/矫正训练课程' },
-  { value: '专项运动表现课程', label: '专项运动表现课程' },
-  { value: '孕产/产后修复课程', label: '孕产/产后修复课程' },
-  { value: '老年/青少年体适能课程', label: '老年/青少年体适能课程' },
-  { value: '线上直播/录播课程', label: '线上直播/录播课程' }
+  { value: '私教课程', label: '私教课程', description: '一对一专属训练，根据个人目标定制计划，教练全程指导纠正动作' },
+  { value: '团体训练课程', label: '团体训练课程', description: '多人同时参与的集体课程，如动感单车、有氧操、搏击操等' },
+  { value: '功能性训练课程', label: '功能性训练课程', description: '提升日常生活运动能力，改善身体协调性和稳定性' },
+  { value: '力量训练课程', label: '力量训练课程', description: '使用器械或自重进行肌肉力量训练，增肌塑形' },
+  { value: '瑜伽课程', label: '瑜伽课程', description: '通过体式、呼吸和冥想，提升柔韧性和身心平衡' },
+  { value: '普拉提课程', label: '普拉提课程', description: '核心肌群训练，改善体态，增强身体控制力' },
+  { value: '康复/矫正训练课程', label: '康复/矫正训练课程', description: '针对体态问题、运动损伤或术后恢复的专业训练' },
+  { value: '专项运动表现课程', label: '专项运动表现课程', description: '针对特定运动项目的专业训练，提升运动表现' },
+  { value: '孕产/产后修复课程', label: '孕产/产后修复课程', description: '孕期安全运动和产后身体恢复的专业指导' },
+  { value: '老年/青少年体适能课程', label: '老年/青少年体适能课程', description: '针对特定年龄段设计的安全有效的健身课程' },
+  { value: '线上直播/录播课程', label: '线上直播/录播课程', description: '通过网络平台进行的远程健身指导课程' }
 ]
 
 const searchForm = reactive({ name: '', difficulty: '', type: '' })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const form = reactive({ id: 0, name: '', coachId: 1, image: '', price: 0, duration: 60, difficulty: '初级', type: '', description: '' })
+const form = reactive({
+  id: null as string | number | null,
+  name: '',
+  coachId: null as string | number | null,
+  image: '',
+  price: 0,
+  duration: 60,
+  difficulty: '初级',
+  type: '',
+  description: ''
+})
 
 const rules = {
   name: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
-  coachId: [{ required: true, message: '请输入教练ID', trigger: 'blur' }],
+  coachId: [{ required: true, message: '请选择授课教练', trigger: 'change' }],
   price: [{ required: true, message: '请输入价格', trigger: 'blur' }]
 }
 
 const dialogTitle = ref('添加课程')
 const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+
+// 搜索教练
+const searchCoaches = async (query: string) => {
+  if (!query) {
+    coachOptions.value = []
+    return
+  }
+  coachSearchLoading.value = true
+  try {
+    const res = await request.post('/coach/ListCoach', {
+      pageNum: 1,
+      pageSize: 20,
+      name: query
+    })
+    coachOptions.value = res.records || []
+  } catch (e) {
+    console.error('搜索教练失败:', e)
+    coachOptions.value = []
+  } finally {
+    coachSearchLoading.value = false
+  }
+}
+
+// 加载所有教练（用于初始化和编辑时显示）
+const loadAllCoaches = async () => {
+  try {
+    const res = await request.post('/coach/ListCoach', {
+      pageNum: 1,
+      pageSize: 20  // 后端限制每页最多20条
+    })
+    coachOptions.value = res.records || []
+  } catch (e) {
+    console.error('加载教练列表失败:', e)
+  }
+}
 
 const loadData = async (params?: any) => {
   loading.value = true
@@ -168,14 +269,40 @@ const resetSearch = () => { Object.assign(searchForm, { name: '', difficulty: ''
 const handleAdd = () => {
   isEdit.value = false
   dialogTitle.value = '添加课程'
-  Object.assign(form, { id: 0, name: '', coachId: 1, image: '', price: 0, duration: 60, difficulty: '初级', type: '', description: '' })
+  Object.assign(form, { 
+    id: null, 
+    name: '', 
+    coachId: null, 
+    image: '', 
+    price: 0, 
+    duration: 60, 
+    difficulty: '初级', 
+    type: '', 
+    description: '' 
+  })
+  coachOptions.value = []
+  imageTimestamp.value = Date.now()
+  loadAllCoaches()
   dialogVisible.value = true
 }
 
 const handleEdit = (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑课程'
-  Object.assign(form, { ...row })
+  // 确保所有字段都正确复制
+  Object.assign(form, {
+    id: row.id,
+    name: row.name || '',
+    coachId: row.coachId || null,
+    image: row.image || '',
+    price: row.price || 0,
+    duration: row.duration || 60,
+    difficulty: row.difficulty || '初级',
+    type: row.type || '',
+    description: row.description || ''
+  })
+  imageTimestamp.value = Date.now()
+  loadAllCoaches()
   dialogVisible.value = true
 }
 
@@ -188,15 +315,80 @@ const handleDelete = async (row: any) => {
   } catch (e) { if (e !== 'cancel') console.error(e) }
 }
 
+// 触发文件选择
+const triggerImageUpload = () => {
+  imageInputRef.value?.click()
+}
+
+// 处理图片选择
+const handleImageChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  // 验证文件类型
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.error('请选择 jpg、png 或 webp 格式的图片')
+    return
+  }
+
+  // 验证文件大小（最大5MB）
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过5MB')
+    return
+  }
+
+  imageUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('courseId', String(form.id))
+
+    const imageUrl = await request.post('/course/updateCourseImage', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }) as string
+
+    form.image = imageUrl
+    imageTimestamp.value = Date.now()
+    ElMessage.success('图片上传成功')
+  } catch (e) {
+    console.error('图片上传失败:', e)
+    ElMessage.error('图片上传失败')
+  } finally {
+    imageUploading.value = false
+    // 清空input，允许重复选择同一文件
+    if (imageInputRef.value) imageInputRef.value.value = ''
+  }
+}
+
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
   try {
     if (isEdit.value) {
-      await request.post(`/course/updateCourse?id=${form.id}`, { name: form.name, coachId: form.coachId, image: form.image, price: form.price, duration: form.duration, difficulty: form.difficulty, type: form.type, description: form.description })
+      await request.post(`/course/updateCourse?id=${form.id}`, {
+        name: form.name,
+        coachId: form.coachId,
+        image: form.image,
+        price: form.price,
+        duration: form.duration,
+        difficulty: form.difficulty,
+        type: form.type,
+        description: form.description
+      })
     } else {
-      await request.post('/course/addCourse', { name: form.name, coachId: form.coachId, image: form.image, price: form.price, duration: form.duration, difficulty: form.difficulty, type: form.type, description: form.description })
+      await request.post('/course/addCourse', {
+        name: form.name,
+        coachId: form.coachId,
+        image: form.image,
+        price: form.price,
+        duration: form.duration,
+        difficulty: form.difficulty,
+        type: form.type,
+        description: form.description
+      })
     }
     ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
     dialogVisible.value = false
@@ -224,7 +416,6 @@ onMounted(() => loadData())
   flex-wrap: wrap;
 }
 
-/* 增加下拉框宽度以改善可读性 */
 .search-form :deep(.el-select) {
   width: 200px;
 }
@@ -238,5 +429,69 @@ onMounted(() => loadData())
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+.image-placeholder {
+  width: 60px;
+  height: 40px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.image-upload-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.image-preview {
+  width: 120px;
+  height: 80px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 12px;
+}
+
+.upload-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 教练选择下拉框样式 */
+.coach-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.coach-name {
+  font-weight: 500;
+}
+
+.coach-specialty {
+  font-size: 12px;
+  color: #909399;
 }
 </style>

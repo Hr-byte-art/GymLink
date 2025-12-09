@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -138,6 +139,52 @@ const router = createRouter({
       redirect: { path: '/auth', query: { type: 'register' } }
     }
   ],
+})
+
+// 公开路由列表（无需登录即可访问）
+const publicRoutes = ['home', 'auth', 'login', 'register']
+
+// 路由守卫
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()
+
+  // 如果有 token 但用户信息未加载，先初始化
+  const token = localStorage.getItem('token')
+  if (token && !authStore.user) {
+    await authStore.initAuth()
+  }
+
+  const isAuthenticated = authStore.isAuthenticated
+  const isPublicRoute = publicRoutes.includes(to.name as string)
+  const requiresAdmin = to.meta?.role === 'admin'
+
+  // 1. 公开路由：任何人都可以访问
+  if (isPublicRoute) {
+    next()
+    return
+  }
+
+  // 2. 未登录用户访问非公开路由：重定向到登录页
+  if (!isAuthenticated) {
+    next({
+      name: 'auth',
+      query: { redirect: to.fullPath } // 保存原目标路径，登录后可跳转回来
+    })
+    return
+  }
+
+  // 3. 管理员路由：检查角色
+  if (requiresAdmin) {
+    const userRole = authStore.user?.role
+    if (userRole !== 'admin') {
+      // 非管理员访问管理员页面，重定向到首页
+      next({ name: 'home' })
+      return
+    }
+  }
+
+  // 4. 已登录用户访问普通路由：放行
+  next()
 })
 
 export default router

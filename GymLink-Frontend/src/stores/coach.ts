@@ -51,7 +51,7 @@ export const useCoachStore = defineStore('coach', () => {
   }
 
   // 获取教练详情
-  const fetchCoachDetail = async (id: number) => {
+  const fetchCoachDetail = async (id: string | number) => {
     detailLoading.value = true
     error.value = null
 

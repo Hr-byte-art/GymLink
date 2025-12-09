@@ -138,9 +138,9 @@ const recipeCategories = [
   { value: '周期化食谱', label: '分阶段/周期化食谱（Periodized Nutrition）', description: '根据训练周期（如休赛期、备赛期）动态调整热量与宏量营养素比例' }
 ]
 
-const searchForm = reactive({ title: '', tags: '' })
+const searchForm = reactive({ title: '', tags: [] as string[] })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const form = reactive({ id: 0, title: '', coverImage: '', tags: '', content: '', adminId: 1 })
+const form = reactive({ id: 0, title: '', coverImage: '', tags: [] as string[], content: '', adminId: 1 })
 
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
@@ -153,9 +153,11 @@ const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN
 const loadData = async () => {
   loading.value = true
   try {
+    // 将搜索标签数组转换为逗号分隔的字符串
+    const tagsStr = searchForm.tags.length > 0 ? searchForm.tags.join(',') : undefined
     const res = await request.post('/recipe/listRecipe', {
       pageNum: pagination.current, pageSize: pagination.pageSize,
-      title: searchForm.title || undefined, tags: searchForm.tags || undefined
+      title: searchForm.title || undefined, tags: tagsStr
     })
     tableData.value = res.records || []
     pagination.total = res.total || 0
@@ -164,12 +166,12 @@ const loadData = async () => {
 }
 
 const handleSearch = () => { pagination.current = 1; loadData() }
-const resetSearch = () => { Object.assign(searchForm, { title: '', tags: '' }); handleSearch() }
+const resetSearch = () => { Object.assign(searchForm, { title: '', tags: [] }); handleSearch() }
 
 const handleAdd = () => {
   isEdit.value = false
   dialogTitle.value = '添加菜谱'
-  Object.assign(form, { id: 0, title: '', coverImage: '', tags: '', content: '', adminId: 1 })
+  Object.assign(form, { id: 0, title: '', coverImage: '', tags: [], content: '', adminId: 1 })
   imageTimestamp.value = Date.now()
   dialogVisible.value = true
 }
@@ -177,7 +179,9 @@ const handleAdd = () => {
 const handleEdit = (row: any) => {
   isEdit.value = true
   dialogTitle.value = '编辑菜谱'
-  Object.assign(form, { ...row })
+  // 将标签字符串转换为数组
+  const tagsArray = row.tags ? row.tags.split(',').filter((t: string) => t.trim()) : []
+  Object.assign(form, { ...row, tags: tagsArray })
   imageTimestamp.value = Date.now()
   dialogVisible.value = true
 }
@@ -239,13 +243,15 @@ const handleSubmit = async () => {
   if (!valid) return
   submitLoading.value = true
   try {
+    // 将标签数组转换为逗号分隔的字符串
+    const tagsStr = Array.isArray(form.tags) ? form.tags.join(',') : form.tags
     if (isEdit.value) {
       await request.post(`/recipe/updateRecipe?id=${form.id}`, {
-        title: form.title, coverImage: form.coverImage, tags: form.tags, content: form.content
+        title: form.title, coverImage: form.coverImage, tags: tagsStr, content: form.content
       })
     } else {
       await request.post('/recipe/addRecipe', {
-        title: form.title, coverImage: form.coverImage, tags: form.tags, content: form.content, adminId: form.adminId
+        title: form.title, coverImage: form.coverImage, tags: tagsStr, content: form.content, adminId: form.adminId
       })
     }
     ElMessage.success(isEdit.value ? '更新成功' : '添加成功')

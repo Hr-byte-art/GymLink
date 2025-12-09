@@ -188,7 +188,7 @@ const goBack = () => {
 
 // 页面加载时获取食谱详情
 onMounted(() => {
-  const id = Number(route.params.id)
+  const id = route.params.id as string
   if (id) {
     recipeStore.fetchRecipeDetail(id)
   }

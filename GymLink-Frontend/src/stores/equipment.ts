@@ -45,7 +45,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   }
 
   // 获取器材详情
-  const fetchEquipmentDetail = async (id: number) => {
+  const fetchEquipmentDetail = async (id: string | number) => {
     detailLoading.value = true
     detailError.value = null
 

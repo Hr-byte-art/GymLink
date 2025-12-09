@@ -16,10 +16,11 @@
         <section class="filter-section">
           <div class="filter-container">
             <div class="filter-options">
-              <!-- 教练类型下拉框 -->
-              <div class="filter-dropdown">
-                <el-select v-model="activeSpecialty" placeholder="请选择教练类型" @change="setActiveSpecialty">
-                  <el-option label="全部教练" value="all"></el-option>
+              <!-- 教练类型/特长下拉框 -->
+              <div class="specialty-filter">
+                <span class="filter-label">教练专业：</span>
+                <el-select v-model="activeSpecialty" placeholder="请选择教练类型" clearable @change="setActiveSpecialty">
+                  <el-option label="全部教练" value=""></el-option>
                   <el-option v-for="coachType in coachTypes" :key="coachType.value" :label="coachType.label"
                     :value="coachType.value">
                     <el-tooltip :content="coachType.description" placement="right">
@@ -29,22 +30,21 @@
                 </el-select>
               </div>
 
-              <div class="rating-filter">
-                <span class="filter-label">评分：</span>
-                <el-select v-model="selectedRating" placeholder="选择评分" clearable>
-                  <el-option label="5.0" :value="5"></el-option>
-                  <el-option label="4.0及以上" :value="4"></el-option>
-                  <el-option label="3.0及以上" :value="3"></el-option>
+              <div class="gender-filter">
+                <span class="filter-label">性别：</span>
+                <el-select v-model="selectedGender" placeholder="选择性别" clearable>
+                  <el-option label="男" :value="1"></el-option>
+                  <el-option label="女" :value="2"></el-option>
                 </el-select>
               </div>
 
-              <div class="price-filter">
-                <span class="filter-label">价格：</span>
-                <el-select v-model="selectedPriceRange" placeholder="选择价格区间" clearable>
-                  <el-option label="¥100以下" value="low"></el-option>
-                  <el-option label="¥100-200" value="medium"></el-option>
-                  <el-option label="¥200以上" value="high"></el-option>
-                </el-select>
+              <div class="age-filter">
+                <span class="filter-label">年龄：</span>
+                <el-input-number v-model="minAge" :min="18" :max="70" placeholder="最小" controls-position="right"
+                  style="width: 100px" />
+                <span style="margin: 0 8px">-</span>
+                <el-input-number v-model="maxAge" :min="18" :max="70" placeholder="最大" controls-position="right"
+                  style="width: 100px" />
               </div>
 
               <div class="search-box">
@@ -81,34 +81,27 @@
               <div class="coach-card" v-for="coach in coachStore.coaches" :key="coach.id"
                 @click="viewCoachDetail(coach.id)">
                 <div class="coach-avatar">
-                  <img :src="coach.avatar" :alt="coach.name" />
+                  <img :src="coach.avatar || '/avatar-placeholder.svg'" :alt="coach.name" />
                 </div>
                 <div class="coach-info">
                   <h3 class="coach-name">{{ coach.name }}</h3>
-                  <div class="coach-specialty">{{ coach.specialty }}</div>
-                  <div class="coach-rating">
-                    <el-rate v-model="coach.rating" disabled show-score text-color="#ff9900"></el-rate>
-                  </div>
-                  <p class="coach-description">{{ coach.description }}</p>
+                  <div class="coach-specialty">{{ coach.specialty || '综合健身' }}</div>
+                  <p class="coach-description">{{ coach.intro || '暂无简介' }}</p>
                   <div class="coach-meta">
                     <div class="meta-item">
-                      <i class="icon-experience"></i>
-                      <span>{{ coach.experience }}</span>
+                      <img src="/gender.svg" alt="性别" class="icon-svg icon-gender" />
+                      <span>{{ coach.gender === 1 ? '男' : '女' }}</span>
                     </div>
                     <div class="meta-item">
-                      <i class="icon-courses"></i>
-                      <span>{{ coach.courses }}门课程</span>
+                      <img src="/age.svg" alt="年龄" class="icon-svg icon-age" />
+                      <span>{{ coach.age || '-' }}岁</span>
                     </div>
                     <div class="meta-item">
-                      <i class="icon-students"></i>
-                      <span>{{ coach.students }}名学员</span>
+                      <img src="/phone.svg" alt="电话" class="icon-svg icon-phone" />
+                      <span>{{ coach.phone || '-' }}</span>
                     </div>
                   </div>
                   <div class="coach-footer">
-                    <div class="coach-price">
-                      <span class="price-label">¥{{ coach.price }}</span>
-                      <span class="price-unit">/小时</span>
-                    </div>
                     <el-button type="primary" class="book-btn" @click.stop="bookCoach(coach)">预约教练</el-button>
                   </div>
                 </div>
@@ -126,6 +119,26 @@
       </main>
 
     </div>
+
+    <!-- 预约教练对话框 -->
+    <el-dialog v-model="bookingDialogVisible" title="预约教练" width="500px" :close-on-click-modal="false">
+      <el-form :model="bookingForm" :rules="bookingRules" ref="bookingFormRef" label-width="100px">
+        <el-form-item label="教练" prop="coachName">
+          <el-input v-model="bookingForm.coachName" disabled />
+        </el-form-item>
+        <el-form-item label="预约时间" prop="appointTime">
+          <el-date-picker v-model="bookingForm.appointTime" type="datetime" placeholder="选择预约时间"
+            :disabled-date="disabledDate" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注信息" prop="message">
+          <el-input v-model="bookingForm.message" type="textarea" :rows="3" placeholder="请输入预约备注（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="bookingDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitBooking" :loading="bookingLoading">确认预约</el-button>
+      </template>
+    </el-dialog>
   </AppLayout>
 </template>
 
@@ -133,12 +146,36 @@
 import { ref, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
+import { useAuthStore } from '@/stores/auth'
+import { bookCoach as bookCoachApi } from '@/api/coach'
 import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
 
 // 使用路由和教练状态管理
 const router = useRouter()
 const coachStore = useCoachStore()
+const authStore = useAuthStore()
+
+// 预约相关状态
+const bookingDialogVisible = ref(false)
+const bookingLoading = ref(false)
+const bookingFormRef = ref<FormInstance>()
+const selectedCoach = ref<any>(null)
+const bookingForm = reactive({
+  coachName: '',
+  appointTime: null as Date | null,
+  message: ''
+})
+
+const bookingRules = reactive<FormRules>({
+  appointTime: [{ required: true, message: '请选择预约时间', trigger: 'change' }]
+})
+
+// 禁用过去的日期
+const disabledDate = (time: Date) => {
+  return time.getTime() < Date.now() - 8.64e7
+}
 
 // 教练类型数据
 const coachTypes = [
@@ -182,9 +219,10 @@ const coachTypes = [
 
 
 // 筛选状态
-const activeSpecialty = ref('all')
-const selectedRating = ref<number | undefined>(undefined)
-const selectedPriceRange = ref('')
+const activeSpecialty = ref('')
+const selectedGender = ref<number | undefined>(undefined)
+const minAge = ref<number | undefined>(undefined)
+const maxAge = ref<number | undefined>(undefined)
 const searchKeyword = ref('')
 
 // 分页状态
@@ -192,8 +230,7 @@ const currentPage = ref(1)
 const pageSize = ref(9)
 
 // 设置活动专长
-const setActiveSpecialty = (specialty: string) => {
-  activeSpecialty.value = specialty
+const setActiveSpecialty = () => {
   currentPage.value = 1
   // 重新加载数据
   loadCoaches()
@@ -209,52 +246,92 @@ const handlePageChange = (page: number) => {
 }
 
 // 查看教练详情
-const viewCoachDetail = (id: number) => {
+const viewCoachDetail = (id: string | number) => {
   router.push(`/coaches/${id}`)
 }
 
 // 预约教练
 const bookCoach = (coach: any) => {
-  ElMessage.success({ message: `预约教练 ${coach.name} 功能开发中...`, duration: 1500 })
+  if (!authStore.isAuthenticated) {
+    ElMessage.warning('请先登录后再预约教练')
+    router.push({ name: 'auth', query: { redirect: '/coaches' } })
+    return
+  }
+
+  if (authStore.user?.role === 'coach') {
+    ElMessage.warning('教练不能预约其他教练')
+    return
+  }
+
+  // 保存选中的教练并打开对话框
+  selectedCoach.value = coach
+  bookingForm.coachName = coach.name
+  bookingForm.appointTime = null
+  bookingForm.message = ''
+  bookingDialogVisible.value = true
+}
+
+// 提交预约
+const submitBooking = async () => {
+  if (!bookingFormRef.value || !selectedCoach.value) return
+
+  await bookingFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    bookingLoading.value = true
+    try {
+      const studentId = authStore.user?.associatedUserId
+      if (!studentId) {
+        ElMessage.error('无法获取学员信息，请重新登录')
+        return
+      }
+
+      await bookCoachApi({
+        coachId: selectedCoach.value.id,
+        studentId: studentId,
+        appointTime: bookingForm.appointTime!.toISOString(),
+        message: bookingForm.message || undefined
+      })
+
+      ElMessage.success('预约成功！请等待教练确认')
+      bookingDialogVisible.value = false
+    } catch (error: any) {
+      ElMessage.error(error.message || '预约失败，请稍后重试')
+    } finally {
+      bookingLoading.value = false
+    }
+  })
 }
 
 // 加载教练数据
 const loadCoaches = () => {
-  // 构建查询参数
+  // 构建查询参数，与后端 CoachQueryPageRequest 对应
   const params: any = {
-    page: currentPage.value,
+    pageNum: currentPage.value,
     pageSize: pageSize.value
   }
 
-  // 添加专长筛选
-  if (activeSpecialty.value !== 'all') {
-    params.specialty = activeSpecialty.value
-  }
-
-  // 添加评分筛选
-  if (selectedRating.value !== undefined) {
-    params.rating = selectedRating.value
-  }
-
-  // 添加价格筛选
-  if (selectedPriceRange.value) {
-    const priceMap: { [key: string]: { min?: number; max?: number } } = {
-      'low': { max: 100 },
-      'medium': { min: 100, max: 200 },
-      'high': { min: 200 }
-    }
-    const priceRange = priceMap[selectedPriceRange.value]
-    if (priceRange.min !== undefined) {
-      params.priceMin = priceRange.min
-    }
-    if (priceRange.max !== undefined) {
-      params.priceMax = priceRange.max
-    }
-  }
-
-  // 添加关键词搜索
+  // 添加姓名搜索
   if (searchKeyword.value) {
-    params.keyword = searchKeyword.value
+    params.name = searchKeyword.value
+  }
+
+  // 添加性别筛选
+  if (selectedGender.value !== undefined) {
+    params.gender = selectedGender.value
+  }
+
+  // 添加年龄范围筛选
+  if (minAge.value !== undefined) {
+    params.minAge = minAge.value
+  }
+  if (maxAge.value !== undefined) {
+    params.maxAge = maxAge.value
+  }
+
+  // 添加专长筛选
+  if (activeSpecialty.value) {
+    params.specialty = activeSpecialty.value
   }
 
   // 调用API获取教练数据
@@ -267,7 +344,7 @@ const loadSpecialties = () => {
 }
 
 // 监听筛选条件变化，重新加载数据
-watch([activeSpecialty, selectedRating, selectedPriceRange, searchKeyword], () => {
+watch([activeSpecialty, selectedGender, minAge, maxAge, searchKeyword], () => {
   currentPage.value = 1
   loadCoaches()
 })
@@ -349,15 +426,19 @@ onMounted(() => {
   align-items: center;
 }
 
-.rating-filter,
-.price-filter {
+.gender-filter,
+.age-filter,
+.specialty-filter {
   display: flex;
   align-items: center;
 }
 
 /* 增加下拉框宽度以改善可读性 */
-.rating-filter :deep(.el-select),
-.price-filter :deep(.el-select) {
+.gender-filter :deep(.el-select) {
+  width: 120px;
+}
+
+.specialty-filter :deep(.el-select) {
   width: 200px;
 }
 
@@ -447,10 +528,6 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
-.coach-rating {
-  margin-bottom: 15px;
-}
-
 .coach-description {
   color: #666;
   line-height: 1.6;
@@ -475,8 +552,8 @@ onMounted(() => {
   color: #666;
 }
 
-.meta-item i {
-  margin-right: 8px;
+.meta-item .icon-svg {
+  margin-right: 18px;
   color: #667eea;
 }
 
@@ -518,16 +595,10 @@ onMounted(() => {
 }
 
 /* 图标样式 */
-.icon-experience::before {
-  content: '🏆';
-}
-
-.icon-courses::before {
-  content: '📚';
-}
-
-.icon-students::before {
-  content: '👥';
+.icon-svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
 }
 
 /* 响应式设计 */

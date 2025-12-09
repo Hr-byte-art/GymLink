@@ -350,9 +350,9 @@ const reviewForm = ref({
   content: ''
 })
 
-// 获取器材ID
+// 获取器材ID（保持字符串类型，避免大数精度丢失）
 const equipmentId = computed(() => {
-  return Number(route.params.id)
+  return route.params.id as string
 })
 
 // 获取状态文本

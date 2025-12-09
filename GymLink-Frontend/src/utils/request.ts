@@ -1,11 +1,43 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// JavaScript 安全整数范围: -9007199254740991 到 9007199254740991 (约16位)
+const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER // 9007199254740991
+
+// 自定义 JSON 解析，将大数字转换为字符串，避免精度丢失
+const transformResponse = (data: string) => {
+  if (!data || typeof data !== 'string') return data
+  try {
+    // 使用更精确的正则表达式匹配所有可能的大数字场景
+    // 匹配 JSON 中的数字（不在引号内），如果超过安全范围则转为字符串
+    const transformed = data.replace(
+      /([:\[,]\s*)(\d{15,})(\s*[,\}\]])/g,
+      (match, prefix, num, suffix) => {
+        // 检查数字是否超过安全整数范围
+        if (num.length >= 16 || (num.length === 15 && num > '9007199254740991')) {
+          return `${prefix}"${num}"${suffix}`
+        }
+        return match
+      }
+    )
+    return JSON.parse(transformed)
+  } catch (e) {
+    console.error('JSON parse error:', e)
+    // 如果解析失败，尝试直接解析原始数据
+    try {
+      return JSON.parse(data)
+    } catch {
+      return data
+    }
+  }
+}
+
 const request = axios.create({
   baseURL: 'http://localhost:8080/api', // Backend API base URL
   timeout: 10000, // 增加超时时间到30秒，支持文件上传
   // 前后端分离模式下，使用 Header 传递 token，不需要 Cookie
   // withCredentials: true,
+  transformResponse: [transformResponse]
 })
 
 // Request interceptor

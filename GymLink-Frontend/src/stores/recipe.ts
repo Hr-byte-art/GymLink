@@ -95,7 +95,7 @@ export const useRecipeStore = defineStore('recipe', () => {
   }
 
   // 获取菜谱详情
-  const fetchRecipeDetail = async (id: number) => {
+  const fetchRecipeDetail = async (id: string | number) => {
     detailLoading.value = true
     error.value = null
 

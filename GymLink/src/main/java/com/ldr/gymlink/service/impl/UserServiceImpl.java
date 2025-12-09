@@ -293,7 +293,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
                 .le(maxAge != null, Coach::getAge, maxAge)
                 .like(StrUtil.isNotBlank(specialty), Coach::getSpecialty, specialty)
                 .ge(createTime != null, Coach::getCreateTime, createTime);
-
         if (StrUtil.isNotBlank(sortField)) {
             boolean isAsc = !"descend".equals(sortOrder);
 

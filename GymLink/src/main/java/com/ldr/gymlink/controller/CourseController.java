@@ -8,11 +8,14 @@ import com.ldr.gymlink.model.dto.course.UpdateCourseRequest;
 import com.ldr.gymlink.model.vo.CourseStatisticsVo;
 import com.ldr.gymlink.model.vo.CourseVo;
 import com.ldr.gymlink.service.CourseService;
+import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.utils.ResultUtils;
+import com.ldr.gymlink.utils.ThrowUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * @Author 王哈哈
@@ -44,7 +47,7 @@ public class CourseController {
 
     @PostMapping("/deleteCourse")
     @Operation(summary = "删除课程信息")
-    public BaseResponse<Boolean> deleteCourse(@RequestParam Integer id) {
+    public BaseResponse<Boolean> deleteCourse(@RequestParam Long id) {
         boolean delete = courseService.deleteCourse(id);
         return ResultUtils.success(delete);
     }
@@ -52,7 +55,7 @@ public class CourseController {
     @PostMapping("/updateCourse")
     @Operation(summary = "更新课程信息")
     public BaseResponse<Boolean> updateCourse(
-            @RequestParam Integer id,
+            @RequestParam Long id,
             @RequestBody UpdateCourseRequest updateCourseRequest) {
         boolean update = courseService.updateCourse(id, updateCourseRequest);
         return ResultUtils.success(update);
@@ -60,7 +63,7 @@ public class CourseController {
 
     @GetMapping("/getCourseById")
     @Operation(summary = "获取课程信息")
-    public BaseResponse<CourseVo> getCourseById(@RequestParam Integer id) {
+    public BaseResponse<CourseVo> getCourseById(@RequestParam Long id) {
         CourseVo courseVo = courseService.getCourseById(id);
         return ResultUtils.success(courseVo);
     }
@@ -70,5 +73,15 @@ public class CourseController {
     public BaseResponse<CourseStatisticsVo> getStatistics() {
         CourseStatisticsVo statistics = courseService.getCourseStatistics();
         return ResultUtils.success(statistics);
+    }
+
+    @PostMapping("/updateCourseImage")
+    @Operation(summary = "修改课程封面图片")
+    public BaseResponse<String> updateCourseImage(
+            @RequestParam Long courseId,
+            @RequestParam MultipartFile image) {
+        ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
+        String imageUrl = courseService.updateCourseImage(courseId, image);
+        return ResultUtils.success(imageUrl);
     }
 }

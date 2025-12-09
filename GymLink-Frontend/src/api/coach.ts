@@ -32,22 +32,26 @@ export function getCoachList(params: CoachQueryParams = {}): Promise<Page<Coach>
 }
 
 // 获取教练详情 - GET /coach/getCoachById
-export function getCoachDetail(id: number): Promise<Coach> {
+export function getCoachDetail(id: string | number): Promise<Coach> {
   return request.get('/coach/getCoachById', {
-    params: { id }
+    params: { id: String(id) }
   }) as Promise<Coach>
 }
 
 // 预约教练 - POST /appointment/bookingCoach
 export interface BookCoachRequest {
-  coachId: number
-  studentId: number
-  appointmentTime: string
-  purpose: string
+  coachId: string | number
+  studentId: string | number
+  appointTime: string  // 预约日期时间
+  message?: string     // 备注信息
 }
 
 export function bookCoach(data: BookCoachRequest): Promise<boolean> {
-  return request.post('/appointment/bookingCoach', data) as Promise<boolean>
+  return request.post('/appointment/bookingCoach', {
+    ...data,
+    coachId: String(data.coachId),
+    studentId: String(data.studentId)
+  }) as Promise<boolean>
 }
 
 // 取消预约教练 - GET /appointment/cancelCoachAppointment

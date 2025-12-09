@@ -11,7 +11,7 @@
  Target Server Version : 80040 (8.0.40)
  File Encoding         : 65001
 
- Date: 01/12/2025 23:02:12
+ Date: 09/12/2025 22:00:27
 */
 
 SET NAMES utf8mb4;
@@ -30,7 +30,20 @@ CREATE TABLE `admin`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '管理员表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '管理员表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for announcement
+-- ----------------------------
+DROP TABLE IF EXISTS `announcement`;
+CREATE TABLE `announcement`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '公告标题',
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '公告内容',
+  `admin_id` bigint NULL DEFAULT NULL COMMENT '发布管理员ID',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '系统公告表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for coach
@@ -49,7 +62,7 @@ CREATE TABLE `coach`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '入驻时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '教练信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1997598239422427138 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '教练信息表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for coach_appointment
@@ -67,6 +80,27 @@ CREATE TABLE `coach_appointment`  (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '教练预约表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for comment
+-- ----------------------------
+DROP TABLE IF EXISTS `comment`;
+CREATE TABLE `comment`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '评论内容',
+  `experience_id` bigint NOT NULL COMMENT '关联的健身经验ID',
+  `user_id` bigint NOT NULL COMMENT '评论者ID',
+  `user_role` int NOT NULL COMMENT '评论者角色 1:教练 2:学员',
+  `parent_id` bigint NULL DEFAULT NULL COMMENT '父评论ID（NULL表示顶级评论）',
+  `reply_to_user_id` bigint NULL DEFAULT NULL COMMENT '被回复的用户ID',
+  `like_count` int NOT NULL DEFAULT 0 COMMENT '点赞数',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_experience_id`(`experience_id` ASC) USING BTREE,
+  INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
+  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE,
+  INDEX `idx_create_time`(`create_time` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '评论表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for course
 -- ----------------------------
 DROP TABLE IF EXISTS `course`;
@@ -80,8 +114,9 @@ CREATE TABLE `course`  (
   `duration` int NULL DEFAULT 60 COMMENT '课程时长(分钟)',
   `difficulty` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '初级' COMMENT '难度等级',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `type` char(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '课程类别',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身课程表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身课程表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for course_order
@@ -113,8 +148,9 @@ CREATE TABLE `equipment`  (
   `status` tinyint(1) NULL DEFAULT 1 COMMENT '状态 1:正常 2:损坏/维护中',
   `total_count` int NULL DEFAULT 1 COMMENT '器材总数量',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '录入时间',
+  `type` char(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '分类类型',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身器材表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身器材表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for equipment_reservation
@@ -130,6 +166,38 @@ CREATE TABLE `equipment_reservation`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '器材预约表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for experience
+-- ----------------------------
+DROP TABLE IF EXISTS `experience`;
+CREATE TABLE `experience`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '标题',
+  `content` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '经验内容(富文本)',
+  `user_id` bigint NOT NULL COMMENT '发布者ID(教练或学员)',
+  `user_role` tinyint(1) NOT NULL COMMENT '发布者角色 1:教练 2:学员',
+  `view_count` bigint NULL DEFAULT 0 COMMENT '浏览量',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身经验/社区帖子表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for experience_reaction
+-- ----------------------------
+DROP TABLE IF EXISTS `experience_reaction`;
+CREATE TABLE `experience_reaction`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `experience_id` bigint UNSIGNED NOT NULL COMMENT '关联的帖子ID（外键关联帖子表）',
+  `user_id` bigint UNSIGNED NOT NULL COMMENT '操作用户ID（外键关联用户表）',
+  `reaction_type` tinyint NOT NULL COMMENT '反应类型：1=点赞，2=点不喜欢',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间（如取消后重新操作）',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_experience_user`(`experience_id` ASC, `user_id` ASC) USING BTREE COMMENT '唯一约束：同一用户对同一帖子只能有一个反应',
+  INDEX `idx_user_id`(`user_id` ASC) USING BTREE COMMENT '用户维度查询索引（如“我的点赞记录”）',
+  INDEX `idx_post_id`(`experience_id` ASC) USING BTREE COMMENT '帖子维度查询索引（如“帖子的点赞数”）'
+) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '帖子点赞/点不喜欢记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for recharge_record
@@ -156,7 +224,7 @@ CREATE TABLE `recipe`  (
   `admin_id` bigint NULL DEFAULT NULL COMMENT '发布人ID(管理员)',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身菜谱表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身菜谱表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for student
@@ -175,7 +243,7 @@ CREATE TABLE `student`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '学员/用户信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1996238958139863042 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '学员/用户信息表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for user

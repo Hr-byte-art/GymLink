@@ -23,7 +23,12 @@ public class UpdateCourseRequest implements Serializable {
     /**
      * 关联教练ID
      */
-    private Integer coachId;
+    private Long coachId;
+
+    /**
+     * 课程类型/分类
+     */
+    private String type;
 
     /**
      * 课程封面图

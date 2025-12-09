@@ -30,9 +30,9 @@ export function getEquipmentList(params: EquipmentQueryParams = {}): Promise<Pag
 }
 
 // 获取器材详情 - GET /equipment/getEquipmentById
-export function getEquipmentDetail(id: number): Promise<Equipment> {
+export function getEquipmentDetail(id: string | number): Promise<Equipment> {
   return request.get('/equipment/getEquipmentById', {
-    params: { id }
+    params: { id: String(id) }
   }) as Promise<Equipment>
 }
 

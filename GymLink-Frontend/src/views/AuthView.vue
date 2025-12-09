@@ -182,7 +182,9 @@ const handleLogin = async () => {
           if (loginForm.role === 'admin') {
             router.push('/admin/students')
           } else {
-            router.push('/')
+            // 如果有重定向地址，跳转回原来想访问的页面
+            const redirectPath = route.query.redirect as string
+            router.push(redirectPath || '/')
           }
         } else {
           ElMessage.error(result.error || '登录失败')

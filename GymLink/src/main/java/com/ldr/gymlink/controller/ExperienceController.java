@@ -111,11 +111,12 @@ public class ExperienceController {
      * 获取当前用户对帖子的反应
      */
     @GetMapping("/getCurrentUserReaction")
-    public BaseResponse<Integer> getUserReaction(@RequestBody GetUserReactionRequest getUserReactionRequest) {
-        Long experienceId = getUserReactionRequest.getExperienceId();
-        Long userId = getUserReactionRequest.getUserId();
+    public BaseResponse<Integer> getUserReaction(@RequestParam Long experienceId, @RequestParam Long userId) {
         ThrowUtils.throwIf(experienceId == null, ErrorCode.PARAMS_ERROR, "帖子id不能为空");
         ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
+        GetUserReactionRequest getUserReactionRequest = new GetUserReactionRequest();
+        getUserReactionRequest.setExperienceId(experienceId);
+        getUserReactionRequest.setUserId(userId);
         Integer userReaction = experienceReactionService.getUserReaction(getUserReactionRequest);
         return ResultUtils.success(userReaction);
     }

@@ -39,9 +39,39 @@ public class ExperienceVo implements Serializable {
     private Integer userRole;
 
     /**
+     * 发布者名称
+     */
+    private String userName;
+
+    /**
+     * 发布者头像
+     */
+    private String userAvatar;
+
+    /**
      * 浏览量
      */
     private Long viewCount;
+
+    /**
+     * 点赞数
+     */
+    private Long likeCount;
+
+    /**
+     * 当前用户是否已点赞
+     */
+    private Boolean isLiked;
+
+    /**
+     * 当前用户的反应类型 (0=不喜欢, 1=点赞, null=无反应)
+     */
+    private Integer userReactionType;
+
+    /**
+     * 评论数
+     */
+    private Long commentCount;
 
     /**
      * 发布时间

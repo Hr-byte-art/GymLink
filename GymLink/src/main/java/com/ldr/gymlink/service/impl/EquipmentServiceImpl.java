@@ -370,8 +370,8 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
         queryWrapper.like(StringUtils.isNotBlank(location), Equipment::getLocation, location);
         // 精确查询状态
         queryWrapper.eq(status != null, Equipment::getStatus, status);
-
-        queryWrapper.eq(Equipment::getType , type);
+        // 精确查询类型（只有当 type 不为空时才添加条件）
+        queryWrapper.eq(StringUtils.isNotBlank(type), Equipment::getType, type);
         return queryWrapper;
     }
 
