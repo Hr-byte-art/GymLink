@@ -30,29 +30,45 @@
           <div class="coach-basic-info">
             <h1 class="coach-name">{{ coachStore.coachDetail.name }}</h1>
             <div class="coach-specialty">{{ getCoachSpecialtyName(coachStore.coachDetail.specialty) }}</div>
-            <div class="coach-rating">
-              <el-rate v-model="coachStore.coachDetail.rating" disabled show-score text-color="#ff9900"></el-rate>
-              <span class="review-count">({{ coachStore.coachDetail.reviewCount }}条评价)</span>
+            <!-- 评分显示 -->
+            <div class="coach-rating" v-if="coachStats">
+              <el-rate v-model="coachStats.avgRating" disabled show-score text-color="#ff9900"></el-rate>
+              <span class="review-count">({{ coachStats.reviewCount }}条评价)</span>
             </div>
-            <p class="coach-description">{{ coachStore.coachDetail.description }}</p>
-            <div class="coach-meta">
-              <div class="meta-item">
-                <i class="icon-experience"></i>
-                <span>{{ coachStore.coachDetail.experience }}</span>
+            <!-- 基本信息：性别、年龄、电话 -->
+            <div class="coach-basic-meta">
+              <div class="basic-meta-item">
+                <img src="/gender.svg" alt="性别" class="icon-svg" />
+                <span>{{ coachStore.coachDetail.gender === 1 ? '男' : '女' }}</span>
               </div>
-              <div class="meta-item">
-                <i class="icon-courses"></i>
-                <span>{{ coachStore.coachDetail.courses }}门课程</span>
+              <div class="basic-meta-item">
+                <img src="/age.svg" alt="年龄" class="icon-svg" />
+                <span>{{ coachStore.coachDetail.age || '-' }}岁</span>
               </div>
-              <div class="meta-item">
-                <i class="icon-students"></i>
-                <span>{{ coachStore.coachDetail.students }}名学员</span>
+              <div class="basic-meta-item">
+                <img src="/phone.svg" alt="电话" class="icon-svg" />
+                <span>{{ coachStore.coachDetail.phone || '-' }}</span>
               </div>
             </div>
-            <div class="coach-price">
-              <span class="price-label">¥{{ coachStore.coachDetail.price }}</span>
+            <!-- 统计信息：课程数、学员数 -->
+            <div class="coach-stats" v-if="coachStats">
+              <div class="stat-item">
+                <img src="/courses.svg" alt="课程" class="icon-svg" />
+                <span>{{ coachStats.courseCount }}门课程</span>
+              </div>
+              <div class="stat-item">
+                <img src="/students.svg" alt="学员" class="icon-svg" />
+                <span>{{ coachStats.studentCount }}名学员</span>
+              </div>
+            </div>
+
+            <!-- 预约价格 -->
+            <div class="coach-price" v-if="coachStore.coachDetail.price">
+              <span class="price-label">预约价格：</span>
+              <span class="price-value">¥{{ coachStore.coachDetail.price }}</span>
               <span class="price-unit">/小时</span>
             </div>
+
             <div class="coach-actions">
               <el-button type="primary" size="large" class="book-btn" @click="bookCoach">预约教练</el-button>
               <el-button size="large" class="contact-btn" @click="contactCoach">联系教练</el-button>
@@ -61,128 +77,112 @@
         </div>
       </section>
 
-      <!-- 标签页内容 -->
-      <section class="coach-tabs-section">
-        <div class="coach-tabs-container">
-          <el-tabs v-model="activeTab" class="coach-tabs">
-            <!-- 个人简介 -->
-            <el-tab-pane label="个人简介" name="profile">
-              <div class="tab-content">
-                <div class="coach-profile">
-                  <h3 class="section-title">个人简介</h3>
-                  <div class="profile-content" v-html="coachStore.coachDetail.profile"></div>
+      <!-- 个人简介区域 -->
+      <section class="coach-intro-section" v-if="coachStore.coachDetail.intro">
+        <div class="intro-container">
+          <div class="intro-content">
+            <h3 class="section-title">个人简介</h3>
+            <p class="intro-text">{{ coachStore.coachDetail.intro }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 教练课程区域 -->
+      <section class="coach-courses-section">
+        <div class="courses-container">
+          <div class="courses-content">
+            <h3 class="section-title">在售课程</h3>
+            <div v-if="coursesLoading" class="courses-loading">
+              <el-loading :loading="true" text="加载课程中..."></el-loading>
+            </div>
+            <div v-else-if="coachCourses.length > 0" class="courses-grid">
+              <div v-for="course in coachCourses" :key="course.id" class="course-card" @click="viewCourseDetail(course.id)">
+                <div class="course-image">
+                  <img :src="course.image || '/course1.svg'" :alt="course.name" />
+                </div>
+                <div class="course-info">
+                  <h4 class="course-name">{{ course.name }}</h4>
+                  <div class="course-meta">
+                    <span class="meta-item">{{ course.duration }}分钟</span>
+                    <span class="meta-item">{{ course.difficulty }}</span>
+                  </div>
+                  <div class="course-price">¥{{ course.price }}</div>
                 </div>
               </div>
-            </el-tab-pane>
+            </div>
+            <div v-else class="no-courses">
+              <el-empty description="暂无在售课程"></el-empty>
+            </div>
+          </div>
+        </div>
+      </section>
 
-            <!-- 专业资质 -->
-            <el-tab-pane label="专业资质" name="qualifications">
-              <div class="tab-content">
-                <div class="coach-qualifications">
-                  <h3 class="section-title">专业资质</h3>
-                  <div class="qualifications-list">
-                    <div v-for="(qualification, index) in coachStore.coachDetail.qualifications" :key="index"
-                      class="qualification-item">
-                      <div class="qualification-icon">
-                        <i class="icon-certificate"></i>
-                      </div>
-                      <div class="qualification-content">
-                        <h4 class="qualification-title">{{ qualification.title }}</h4>
-                        <div class="qualification-issuer">{{ qualification.issuer }}</div>
-                        <div class="qualification-date">{{ qualification.date }}</div>
-                      </div>
-                    </div>
+      <!-- 学员评价区域 -->
+      <section class="coach-reviews-section">
+        <div class="reviews-container">
+          <div class="reviews-content">
+            <h3 class="section-title">学员评价</h3>
+            
+            <!-- 评价统计 -->
+            <div class="review-summary" v-if="coachStats && coachStats.reviewCount > 0">
+              <div class="rating-overview">
+                <div class="rating-score">{{ coachStats.avgRating }}</div>
+                <div class="rating-stars">
+                  <el-rate v-model="coachStats.avgRating" disabled></el-rate>
+                </div>
+                <div class="rating-count">{{ coachStats.reviewCount }}条评价</div>
+              </div>
+              <div class="rating-distribution">
+                <div v-for="star in 5" :key="star" class="rating-bar">
+                  <div class="bar-label">{{ 6 - star }}星</div>
+                  <div class="bar-container">
+                    <div class="bar-fill" :style="{ width: getRatingPercentage(6 - star) + '%' }"></div>
                   </div>
+                  <div class="bar-count">{{ getRatingCount(6 - star) }}</div>
                 </div>
               </div>
-            </el-tab-pane>
+            </div>
 
-            <!-- 课程安排 -->
-            <el-tab-pane label="课程安排" name="schedule">
-              <div class="tab-content">
-                <div class="coach-schedule">
-                  <h3 class="section-title">课程安排</h3>
-                  <div class="schedule-container">
-                    <div class="schedule-filters">
-                      <el-select v-model="selectedWeek" placeholder="选择周" @change="filterSchedule">
-                        <el-option label="本周" value="current"></el-option>
-                        <el-option label="下周" value="next"></el-option>
-                      </el-select>
+            <!-- 评价列表 -->
+            <div v-if="reviewsLoading" class="reviews-loading">
+              <el-loading :loading="true" text="加载评价中..."></el-loading>
+            </div>
+            <div v-else-if="reviews.length > 0" class="reviews-list">
+              <div v-for="review in reviews" :key="review.id" class="review-item">
+                <div class="review-header">
+                  <div class="reviewer-info">
+                    <div class="reviewer-avatar">
+                      <img :src="review.studentAvatar || '/avatar-placeholder.svg'" :alt="review.studentName" />
                     </div>
-                    <div class="schedule-grid">
-                      <div v-for="(day, index) in filteredSchedule" :key="index" class="schedule-day">
-                        <h4 class="day-title">{{ day.date }} ({{ day.weekday }})</h4>
-                        <div class="time-slots">
-                          <div v-for="slot in day.timeSlots" :key="slot.time" class="time-slot"
-                            :class="{ available: slot.available, booked: !slot.available }">
-                            <div class="slot-time">{{ slot.time }}</div>
-                            <div class="slot-status">{{ slot.available ? '可预约' : '已预约' }}</div>
-                          </div>
-                        </div>
-                      </div>
+                    <div class="reviewer-details">
+                      <div class="reviewer-name">{{ review.studentName || '匿名用户' }}</div>
+                      <div class="review-course">课程：{{ review.courseName }}</div>
                     </div>
+                  </div>
+                  <div class="review-rating">
+                    <el-rate v-model="review.rating" disabled></el-rate>
+                    <span class="review-date">{{ formatDate(review.createTime) }}</span>
                   </div>
                 </div>
+                <div class="review-content" v-if="review.content">{{ review.content }}</div>
               </div>
-            </el-tab-pane>
-
-            <!-- 学员评价 -->
-            <el-tab-pane label="学员评价" name="reviews">
-              <div class="tab-content">
-                <div class="coach-reviews">
-                  <h3 class="section-title">学员评价</h3>
-
-                  <!-- 评价统计 -->
-                  <div class="review-summary">
-                    <div class="rating-overview">
-                      <div class="rating-score">{{ coachStore.coachDetail.rating }}</div>
-                      <div class="rating-stars">
-                        <el-rate v-model="coachStore.coachDetail.rating" disabled></el-rate>
-                      </div>
-                      <div class="rating-count">{{ coachStore.coachDetail.reviewCount }}条评价</div>
-                    </div>
-                    <div class="rating-distribution">
-                      <div v-for="star in 5" :key="star" class="rating-bar">
-                        <div class="bar-label">{{ 6 - star }}星</div>
-                        <div class="bar-container">
-                          <div class="bar-fill" :style="{ width: getRatingPercentage(6 - star) + '%' }"></div>
-                        </div>
-                        <div class="bar-count">{{ getRatingCount(6 - star) }}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 评价列表 -->
-                  <div class="reviews-list">
-                    <div v-for="review in coachStore.coachDetail.reviews" :key="review.id" class="review-item">
-                      <div class="review-header">
-                        <div class="reviewer-info">
-                          <div class="reviewer-avatar">
-                            <img :src="review.avatar" :alt="review.name" />
-                          </div>
-                          <div class="reviewer-details">
-                            <div class="reviewer-name">{{ review.name }}</div>
-                            <div class="review-date">{{ review.date }}</div>
-                          </div>
-                        </div>
-                        <div class="review-rating">
-                          <el-rate v-model="review.rating" disabled></el-rate>
-                        </div>
-                      </div>
-                      <div class="review-content">{{ review.content }}</div>
-                      <div v-if="review.reply" class="review-reply">
-                        <div class="reply-header">
-                          <span class="reply-label">教练回复</span>
-                          <span class="reply-date">{{ review.reply.date }}</span>
-                        </div>
-                        <div class="reply-content">{{ review.reply.content }}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              
+              <!-- 分页 -->
+              <div class="reviews-pagination" v-if="reviewTotal > reviewPageSize">
+                <el-pagination
+                  background
+                  layout="prev, pager, next"
+                  :total="reviewTotal"
+                  :page-size="reviewPageSize"
+                  :current-page="reviewPage"
+                  @current-change="handleReviewPageChange"
+                />
               </div>
-            </el-tab-pane>
-          </el-tabs>
+            </div>
+            <div v-else class="no-reviews">
+              <el-empty description="暂无评价"></el-empty>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -193,14 +193,22 @@
         <el-form-item label="教练" prop="coachName">
           <el-input v-model="bookingForm.coachName" disabled />
         </el-form-item>
-        <el-form-item label="预约时间" prop="appointTime">
+        <el-form-item label="开始时间" prop="appointTime">
           <el-date-picker
             v-model="bookingForm.appointTime"
             type="datetime"
-            placeholder="选择预约时间"
+            placeholder="选择开始时间"
             :disabled-date="disabledDate"
             style="width: 100%"
+            format="YYYY-MM-DD HH:mm"
           />
+        </el-form-item>
+        <el-form-item label="预约时长" prop="duration">
+          <el-radio-group v-model="bookingForm.duration" class="duration-radio-group">
+            <el-radio-button v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </el-radio-button>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="备注信息" prop="message">
           <el-input
@@ -225,9 +233,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
 import { useAuthStore } from '@/stores/auth'
 import { bookCoach as bookCoachApi } from '@/api/coach'
+import { getCoachReviewStats, getReviewList, type CourseReview, type CoachReviewStats } from '@/api/review'
+import { getCourseList, type Course } from '@/api/course'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import NavBar from '@/components/NavBar.vue'
+
 import AppLayout from '@/components/AppLayout.vue'
 import { getCoachSpecialtyName } from '@/constants/categories'
 
@@ -237,11 +247,17 @@ const router = useRouter()
 const coachStore = useCoachStore()
 const authStore = useAuthStore()
 
-// 当前活动标签页
-const activeTab = ref('profile')
+// 评价相关状态
+const coachStats = ref<CoachReviewStats | null>(null)
+const reviews = ref<CourseReview[]>([])
+const reviewsLoading = ref(false)
+const reviewPage = ref(1)
+const reviewPageSize = ref(10)
+const reviewTotal = ref(0)
 
-// 选中的周
-const selectedWeek = ref('current')
+// 课程相关状态
+const coachCourses = ref<Course[]>([])
+const coursesLoading = ref(false)
 
 // 预约相关状态
 const bookingDialogVisible = ref(false)
@@ -250,11 +266,21 @@ const bookingFormRef = ref<FormInstance>()
 const bookingForm = reactive({
   coachName: '',
   appointTime: null as Date | null,
+  duration: 60, // 默认1小时
   message: ''
 })
 
+// 时长选项（分钟）
+const durationOptions = [
+  { label: '30分钟', value: 30 },
+  { label: '1小时', value: 60 },
+  { label: '1.5小时', value: 90 },
+  { label: '2小时', value: 120 }
+]
+
 const bookingRules = reactive<FormRules>({
-  appointTime: [{ required: true, message: '请选择预约时间', trigger: 'change' }]
+  appointTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  duration: [{ required: true, message: '请选择时长', trigger: 'change' }]
 })
 
 // 禁用过去的日期
@@ -267,18 +293,7 @@ const coachId = computed(() => {
   return route.params.id as string
 })
 
-// 过滤后的课程安排
-const filteredSchedule = computed(() => {
-  if (!coachStore.coachDetail || !coachStore.coachDetail.schedule) {
-    return []
-  }
 
-  if (selectedWeek.value === 'current') {
-    return coachStore.coachDetail.schedule.currentWeek
-  } else {
-    return coachStore.coachDetail.schedule.nextWeek
-  }
-})
 
 // 返回教练列表
 const goBack = () => {
@@ -301,6 +316,7 @@ const openBookingDialog = () => {
   // 重置表单
   bookingForm.coachName = coachStore.coachDetail?.name || ''
   bookingForm.appointTime = null
+  bookingForm.duration = 60
   bookingForm.message = ''
   bookingDialogVisible.value = true
 }
@@ -321,10 +337,15 @@ const submitBooking = async () => {
         return
       }
       
+      // 计算结束时间
+      const appointTime = new Date(bookingForm.appointTime!)
+      const endTime = new Date(appointTime.getTime() + bookingForm.duration * 60 * 1000)
+      
       await bookCoachApi({
         coachId: coachId.value,
         studentId: studentId,
-        appointTime: bookingForm.appointTime!.toISOString(),
+        appointTime: appointTime.toISOString(),
+        endTime: endTime.toISOString(),
         message: bookingForm.message || undefined
       })
       
@@ -352,32 +373,7 @@ const contactCoach = () => {
   ElMessage.success({ message: `教练电话：${coachStore.coachDetail.phone}`, duration: 3000 })
 }
 
-// 过滤课程安排
-const filterSchedule = () => {
-  // 这个方法会在selectedWeek变化时自动触发计算属性重新计算
-}
 
-// 获取评分百分比
-const getRatingPercentage = (star: number) => {
-  if (!coachStore.coachDetail || !coachStore.coachDetail.ratingDistribution) {
-    return 0
-  }
-
-  const distribution = coachStore.coachDetail.ratingDistribution
-  const count = distribution[star] || 0
-  const total = coachStore.coachDetail.reviewCount || 1
-
-  return Math.round((count / total) * 100)
-}
-
-// 获取评分数量
-const getRatingCount = (star: number) => {
-  if (!coachStore.coachDetail || !coachStore.coachDetail.ratingDistribution) {
-    return 0
-  }
-
-  return coachStore.coachDetail.ratingDistribution[star] || 0
-}
 
 // 加载教练详情
 const loadCoachDetail = () => {
@@ -386,9 +382,95 @@ const loadCoachDetail = () => {
   }
 }
 
+// 加载教练课程
+const loadCoachCourses = async () => {
+  if (!coachId.value) return
+  coursesLoading.value = true
+  try {
+    const res = await getCourseList({
+      coachId: Number(coachId.value),
+      current: 1,
+      pageSize: 20
+    })
+    coachCourses.value = res.records || []
+  } catch (error) {
+    console.error('获取教练课程失败:', error)
+  } finally {
+    coursesLoading.value = false
+  }
+}
+
+// 查看课程详情
+const viewCourseDetail = (courseId: number) => {
+  router.push(`/courses/${courseId}`)
+}
+
+// 加载教练评价统计
+const loadCoachStats = async () => {
+  if (!coachId.value) return
+  try {
+    coachStats.value = await getCoachReviewStats(coachId.value)
+  } catch (error) {
+    console.error('获取教练统计失败:', error)
+  }
+}
+
+// 加载评价列表
+const loadReviews = async () => {
+  if (!coachId.value) return
+  reviewsLoading.value = true
+  try {
+    const res = await getReviewList({
+      coachId: coachId.value,
+      pageNum: reviewPage.value,
+      pageSize: reviewPageSize.value
+    })
+    reviews.value = res.records || []
+    reviewTotal.value = res.total || 0
+  } catch (error) {
+    console.error('获取评价列表失败:', error)
+  } finally {
+    reviewsLoading.value = false
+  }
+}
+
+// 处理评价分页变化
+const handleReviewPageChange = (page: number) => {
+  reviewPage.value = page
+  loadReviews()
+}
+
+// 获取评分百分比
+const getRatingPercentage = (star: number) => {
+  if (!coachStats.value || !coachStats.value.ratingDistribution) {
+    return 0
+  }
+  const count = coachStats.value.ratingDistribution[star] || 0
+  const total = coachStats.value.reviewCount || 1
+  return Math.round((count / total) * 100)
+}
+
+// 获取评分数量
+const getRatingCount = (star: number) => {
+  if (!coachStats.value || !coachStats.value.ratingDistribution) {
+    return 0
+  }
+  return coachStats.value.ratingDistribution[star] || 0
+}
+
+// 格式化日期
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   loadCoachDetail()
+  loadCoachStats()
+  loadReviews()
+  loadCoachCourses()
 })
 </script>
 
@@ -464,59 +546,7 @@ onMounted(() => {
   opacity: 0.9;
 }
 
-.coach-rating {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-}
 
-.review-count {
-  font-size: 16px;
-  opacity: 0.9;
-}
-
-.coach-description {
-  font-size: 18px;
-  line-height: 1.6;
-  margin-bottom: 25px;
-  opacity: 0.9;
-}
-
-.coach-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  font-size: 16px;
-}
-
-.meta-item i {
-  margin-right: 8px;
-  font-size: 18px;
-}
-
-.coach-price {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 30px;
-}
-
-.price-label {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.price-unit {
-  font-size: 16px;
-  margin-left: 5px;
-  opacity: 0.9;
-}
 
 .coach-actions {
   display: flex;
@@ -539,23 +569,18 @@ onMounted(() => {
   padding: 12px 30px;
 }
 
-/* 标签页区域样式 */
-.coach-tabs-section {
-  flex: 1;
+/* 个人简介区域样式 */
+.coach-intro-section {
   padding: 40px 0;
 }
 
-.coach-tabs-container {
+.intro-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
-.coach-tabs {
-  margin-bottom: 30px;
-}
-
-.tab-content {
+.intro-content {
   background: white;
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
@@ -571,146 +596,205 @@ onMounted(() => {
   border-bottom: 2px solid #f0f2f5;
 }
 
-/* 个人简介样式 */
-.profile-content {
+.intro-text {
   line-height: 1.8;
   color: #555;
-}
-
-/* 专业资质样式 */
-.qualifications-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.qualification-item {
-  display: flex;
-  gap: 15px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  transition: all 0.3s ease;
-}
-
-.qualification-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-}
-
-.qualification-icon {
-  flex-shrink: 0;
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 24px;
-}
-
-.qualification-content h4 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 5px;
-}
-
-.qualification-issuer {
   font-size: 16px;
-  color: #667eea;
-  margin-bottom: 5px;
 }
 
-.qualification-date {
-  font-size: 14px;
-  color: #666;
+/* SVG 图标样式 */
+.icon-svg {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  filter: brightness(0) invert(1); /* 白色图标 */
 }
 
-/* 课程安排样式 */
-.schedule-filters {
-  margin-bottom: 20px;
-}
 
-.schedule-controls {
+
+/* 基本信息样式（性别、年龄、电话） */
+.coach-basic-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 25px;
   margin-bottom: 20px;
+  padding: 15px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.week-selector {
+.basic-meta-item {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.basic-meta-item .icon-svg {
+  margin-right: 8px;
+}
+
+/* 评分样式 */
+.coach-rating {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: 15px;
 }
 
-.week-selector :deep(.el-select) {
-  width: 200px;
+.review-count {
+  font-size: 14px;
+  opacity: 0.9;
 }
 
-.week-nav {
+/* 统计信息样式 */
+.coach-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 25px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
   display: flex;
   align-items: center;
-  gap: 15px;
+  font-size: 16px;
 }
 
-.schedule-grid {
+.stat-item .icon-svg {
+  margin-right: 8px;
+}
+
+/* 预约价格样式 */
+.coach-price {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 20px;
+}
+
+.price-label {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.price-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.price-unit {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+/* 课程区域样式 */
+.coach-courses-section {
+  padding: 40px 0;
+}
+
+.courses-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.courses-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  padding: 30px;
+}
+
+.courses-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.courses-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
 }
 
-.schedule-day {
+.course-card {
   background: #f8f9fa;
   border-radius: 10px;
-  padding: 20px;
-}
-
-.day-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 15px;
-  text-align: center;
-}
-
-.time-slots {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.time-slot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 15px;
-  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.time-slot.available {
-  background: #e8f5e9;
-  color: #2e7d32;
+.course-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
-.time-slot.booked {
-  background: #ffebee;
-  color: #c62828;
+.course-card .course-image {
+  height: 140px;
+  overflow: hidden;
 }
 
-.slot-time {
-  font-weight: 500;
+.course-card .course-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.slot-status {
-  font-size: 14px;
+.course-card .course-info {
+  padding: 15px;
 }
 
-/* 学员评价样式 */
+.course-card .course-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-card .course-meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.course-card .course-meta .meta-item {
+  font-size: 13px;
+  color: #888;
+}
+
+.course-card .course-price {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f56c6c;
+}
+
+.no-courses {
+  padding: 40px 0;
+}
+
+/* 评价区域样式 */
+.coach-reviews-section {
+  padding: 40px 0;
+  background: #f8f9fa;
+}
+
+.reviews-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.reviews-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  padding: 30px;
+}
+
 .review-summary {
   display: flex;
   gap: 40px;
@@ -721,6 +805,7 @@ onMounted(() => {
 
 .rating-overview {
   text-align: center;
+  min-width: 120px;
 }
 
 .rating-score {
@@ -736,6 +821,7 @@ onMounted(() => {
 
 .rating-count {
   color: #666;
+  font-size: 14px;
 }
 
 .rating-distribution {
@@ -777,6 +863,12 @@ onMounted(() => {
   color: #666;
 }
 
+.reviews-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
 .reviews-list {
   display: flex;
   flex-direction: column;
@@ -792,6 +884,7 @@ onMounted(() => {
 .review-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 15px;
 }
 
@@ -817,62 +910,60 @@ onMounted(() => {
 .reviewer-name {
   font-weight: 600;
   color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.review-course {
+  font-size: 13px;
+  color: #888;
+}
+
+.review-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
 }
 
 .review-date {
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: #999;
 }
 
 .review-content {
   line-height: 1.6;
   color: #555;
-  margin-bottom: 15px;
 }
 
-.review-reply {
-  padding: 15px;
-  background: white;
-  border-radius: 8px;
-  border-left: 3px solid #667eea;
-}
-
-.reply-header {
+.reviews-pagination {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  justify-content: center;
+  margin-top: 30px;
 }
 
-.reply-label {
-  font-weight: 600;
-  color: #667eea;
+.no-reviews {
+  padding: 40px 0;
 }
 
-.reply-date {
-  font-size: 14px;
-  color: #666;
+/* 预约时长按钮样式 */
+.duration-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.reply-content {
-  line-height: 1.6;
-  color: #555;
+.duration-radio-group .el-radio-button {
+  margin-right: 0;
 }
 
-/* 图标样式 */
-.icon-experience::before {
-  content: '🏆';
+.duration-radio-group .el-radio-button__inner {
+  border-radius: 6px !important;
+  border: 1px solid #dcdfe6;
 }
 
-.icon-courses::before {
-  content: '📚';
-}
-
-.icon-students::before {
-  content: '👥';
-}
-
-.icon-certificate::before {
-  content: '🏅';
+.duration-radio-group .el-radio-button:first-child .el-radio-button__inner,
+.duration-radio-group .el-radio-button:last-child .el-radio-button__inner {
+  border-radius: 6px !important;
 }
 
 /* 响应式设计 */
@@ -882,7 +973,12 @@ onMounted(() => {
     text-align: center;
   }
 
-  .coach-meta {
+  .coach-basic-meta,
+  .coach-stats {
+    justify-content: center;
+  }
+
+  .coach-rating {
     justify-content: center;
   }
 
@@ -905,10 +1001,6 @@ onMounted(() => {
     font-size: 18px;
   }
 
-  .coach-description {
-    font-size: 16px;
-  }
-
   .coach-actions {
     flex-direction: column;
     gap: 10px;
@@ -919,15 +1011,7 @@ onMounted(() => {
     width: 100%;
   }
 
-  .qualifications-list {
-    grid-template-columns: 1fr;
-  }
-
-  .schedule-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tab-content {
+  .intro-content {
     padding: 20px;
   }
 }

@@ -25,7 +25,7 @@ public class CourseQueryPageRequest extends PageRequest implements Serializable 
     /**
      * 关联教练ID
      */
-    private Integer coachId;
+    private Long coachId;
 
     /**
      * 难度等级

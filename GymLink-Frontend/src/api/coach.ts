@@ -13,6 +13,7 @@ export interface Coach {
   specialty: string
   intro: string
   createTime: string
+  price: number // 预约价格
 }
 
 // 教练查询参数 - 匹配后端 CoachQueryPageRequest
@@ -42,7 +43,8 @@ export function getCoachDetail(id: string | number): Promise<Coach> {
 export interface BookCoachRequest {
   coachId: string | number
   studentId: string | number
-  appointTime: string  // 预约日期时间
+  appointTime: string  // 预约开始时间
+  endTime: string      // 预约结束时间
   message?: string     // 备注信息
 }
 

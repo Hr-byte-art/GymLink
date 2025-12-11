@@ -75,6 +75,12 @@ public class Coach implements Serializable {
     @TableField(value = "create_time")
     private Date createTime;
 
+    /**
+     * 预约价格
+     */
+    @TableField(value = "price")
+    private java.math.BigDecimal price;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

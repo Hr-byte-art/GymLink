@@ -191,39 +191,61 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         Long coachId = bookingCoachRequest.getCoachId();
         Long studentId = bookingCoachRequest.getStudentId();
         Date appointTime = bookingCoachRequest.getAppointTime();
+        Date endTime = bookingCoachRequest.getEndTime();
 
         ThrowUtils.throwIf(coachId == null, ErrorCode.PARAMS_ERROR, "教练ID不能为空");
         ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
-        ThrowUtils.throwIf(appointTime == null, ErrorCode.PARAMS_ERROR, "预约时间不能为空");
+        ThrowUtils.throwIf(appointTime == null, ErrorCode.PARAMS_ERROR, "开始时间不能为空");
+        ThrowUtils.throwIf(endTime == null, ErrorCode.PARAMS_ERROR, "结束时间不能为空");
+        ThrowUtils.throwIf(endTime.before(appointTime) || endTime.equals(appointTime), 
+                ErrorCode.PARAMS_ERROR, "结束时间必须晚于开始时间");
 
         // 检查教练是否存在
         Coach coach = this.getById(coachId);
         ThrowUtils.throwIf(coach == null, ErrorCode.NOT_FOUND_ERROR, "教练不存在");
 
-        // 检查学员在同一时间是否已有预约
-        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> wrapper = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
+        // 检查教练在该时间段是否已有预约（时间冲突检测）
+        // 冲突条件：新预约的开始时间 < 已有预约的结束时间 AND 新预约的结束时间 > 已有预约的开始时间
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> coachConflictWrapper = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
+                .eq(com.ldr.gymlink.model.entity.CoachAppointment::getCoachId, coachId)
+                .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1) // 待确认或已确认
+                .and(w -> w
+                        .lt(com.ldr.gymlink.model.entity.CoachAppointment::getAppointTime, endTime)
+                        .gt(com.ldr.gymlink.model.entity.CoachAppointment::getEndTime, appointTime)
+                );
+        long coachConflictCount = coachAppointmentService.count(coachConflictWrapper);
+        if (coachConflictCount > 0) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "该教练在此时间段已有其他预约");
+        }
+
+        // 检查学员在该时间段是否已有预约
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> studentConflictWrapper = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
                 .eq(com.ldr.gymlink.model.entity.CoachAppointment::getStudentId, studentId)
-                .eq(com.ldr.gymlink.model.entity.CoachAppointment::getAppointTime, appointTime)
-                .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1);
-        long count = coachAppointmentService.count(wrapper);
-        if (count > 0) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "该时间段已有预约");
+                .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1)
+                .and(w -> w
+                        .lt(com.ldr.gymlink.model.entity.CoachAppointment::getAppointTime, endTime)
+                        .gt(com.ldr.gymlink.model.entity.CoachAppointment::getEndTime, appointTime)
+                );
+        long studentConflictCount = coachAppointmentService.count(studentConflictWrapper);
+        if (studentConflictCount > 0) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您在此时间段已有其他预约");
         }
 
         // 检查当天预约教练的次数(限制为3次)
-        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> wrapper2 = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> dailyLimitWrapper = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
                 .eq(com.ldr.gymlink.model.entity.CoachAppointment::getStudentId, studentId)
                 .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1)
                 .apply("DATE(create_time) = DATE(NOW())");
-        long count2 = coachAppointmentService.count(wrapper2);
-        if (count2 >= 3) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当天预约教练次数已达上限");
+        long dailyCount = coachAppointmentService.count(dailyLimitWrapper);
+        if (dailyCount >= 3) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当天预约教练次数已达上限（最多3次）");
         }
 
         com.ldr.gymlink.model.entity.CoachAppointment coachAppointment = new com.ldr.gymlink.model.entity.CoachAppointment();
         coachAppointment.setStudentId(studentId);
         coachAppointment.setCoachId(coachId);
         coachAppointment.setAppointTime(appointTime);
+        coachAppointment.setEndTime(endTime);
         coachAppointment.setMessage(bookingCoachRequest.getMessage());
         coachAppointment.setStatus(0); // 待确认
         coachAppointment.setCreateTime(new Date());

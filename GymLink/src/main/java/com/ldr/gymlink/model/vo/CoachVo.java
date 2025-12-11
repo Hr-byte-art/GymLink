@@ -65,6 +65,11 @@ public class CoachVo implements Serializable {
      */
     private Date createTime;
 
+    /**
+     * 预约价格
+     */
+    private java.math.BigDecimal price;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

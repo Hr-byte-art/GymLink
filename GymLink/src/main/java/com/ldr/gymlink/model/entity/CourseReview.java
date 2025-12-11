@@ -9,12 +9,12 @@ import java.util.Date;
 import lombok.Data;
 
 /**
- * 教练预约表
- * @TableName coach_appointment
+ * 课程评价表
+ * @TableName course_review
  */
-@TableName(value ="coach_appointment")
+@TableName(value ="course_review")
 @Data
-public class CoachAppointment implements Serializable {
+public class CourseReview implements Serializable {
     /**
      * 主键ID
      */
@@ -28,37 +28,43 @@ public class CoachAppointment implements Serializable {
     private Long studentId;
 
     /**
-     * 预约的教练ID
+     * 课程ID（课程评价时使用）
+     */
+    @TableField(value = "course_id")
+    private Long courseId;
+
+    /**
+     * 教练预约ID（预约评价时使用）
+     */
+    @TableField(value = "appointment_id")
+    private Long appointmentId;
+
+    /**
+     * 教练ID
      */
     @TableField(value = "coach_id")
     private Long coachId;
 
     /**
-     * 预约开始时间
+     * 评价类型 1:课程评价 2:预约评价
      */
-    @TableField(value = "appoint_time")
-    private Date appointTime;
+    @TableField(value = "review_type")
+    private Integer reviewType;
 
     /**
-     * 预约结束时间
+     * 评分 1-5星
      */
-    @TableField(value = "end_time")
-    private Date endTime;
+    @TableField(value = "rating")
+    private Integer rating;
 
     /**
-     * 备注信息
+     * 评价内容
      */
-    @TableField(value = "message")
-    private String message;
+    @TableField(value = "content")
+    private String content;
 
     /**
-     * 状态 0:待确认 1:已确认 2:已拒绝 3:已取消
-     */
-    @TableField(value = "status")
-    private Integer status;
-
-    /**
-     * 提交时间
+     * 创建时间
      */
     @TableField(value = "create_time")
     private Date createTime;

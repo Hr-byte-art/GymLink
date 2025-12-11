@@ -160,7 +160,11 @@
                     <div class="course-coach">授课教练：{{ course.coachName || '未知' }}</div>
                     <div class="course-price">购买价格：¥{{ course.price }}</div>
                     <div class="course-time">购买时间：{{ formatDate(course.purchaseTime) }}</div>
-                    <el-button type="primary" size="small" class="view-btn" @click.stop="viewCourseDetail(course.courseId)">查看详情</el-button>
+                    <div class="course-actions">
+                      <el-button type="primary" size="small" @click.stop="viewCourseDetail(course.courseId)">查看详情</el-button>
+                      <el-button v-if="course.status === 1 && course.canReview" type="success" size="small" @click.stop="openReviewDialog(course)">评价课程</el-button>
+                      <el-tag v-else-if="course.status === 1 && !course.canReview" type="info" size="small">已评价</el-tag>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -176,8 +180,11 @@
               <el-tab-pane label="教练预约" name="coach">
                 <el-table :data="coachAppointments" style="width: 100%" v-loading="loading.coachAppointments">
                   <el-table-column prop="coachName" label="教练"></el-table-column>
-                  <el-table-column label="预约时间" width="180">
+                  <el-table-column label="开始时间" width="180">
                     <template #default="scope">{{ formatDateTime(scope.row.appointTime) }}</template>
+                  </el-table-column>
+                  <el-table-column label="结束时间" width="180">
+                    <template #default="scope">{{ formatDateTime(scope.row.endTime) }}</template>
                   </el-table-column>
                   <el-table-column prop="message" label="备注"></el-table-column>
                   <el-table-column label="状态" width="120">
@@ -186,10 +193,13 @@
                         getCoachAppointmentStatusText(scope.row.status) }}</el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column label="操作" width="120">
+                  <el-table-column label="操作" width="180">
                     <template #default="scope">
                       <el-button v-if="scope.row.status === 0" size="small" type="danger"
                         @click="handleCancelCoachAppointment(scope.row.id)">取消</el-button>
+                      <el-button v-if="scope.row.status === 1 && scope.row.canReview" size="small" type="success"
+                        @click="openAppointmentReviewDialog(scope.row)">评价</el-button>
+                      <el-tag v-else-if="scope.row.status === 1 && !scope.row.canReview" type="info" size="small">已评价</el-tag>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -233,6 +243,28 @@
         </div>
       </div>
     </div>
+
+    <!-- 评价对话框 -->
+    <el-dialog v-model="reviewDialogVisible" :title="reviewForm.reviewType === 1 ? '评价课程' : '评价教练'" width="500px" :close-on-click-modal="false">
+      <el-form :model="reviewForm" :rules="reviewRules" ref="reviewFormRef" label-width="80px">
+        <el-form-item v-if="reviewForm.reviewType === 1" label="课程">
+          <el-input :model-value="reviewForm.courseName" disabled />
+        </el-form-item>
+        <el-form-item v-else label="教练">
+          <el-input :model-value="reviewForm.coachName" disabled />
+        </el-form-item>
+        <el-form-item label="评分" prop="rating">
+          <el-rate v-model="reviewForm.rating" show-text :texts="['很差', '较差', '一般', '满意', '非常满意']" />
+        </el-form-item>
+        <el-form-item label="评价内容" prop="content">
+          <el-input v-model="reviewForm.content" type="textarea" :rows="4" :placeholder="reviewForm.reviewType === 1 ? '请输入您对课程的评价（选填）' : '请输入您对教练的评价（选填）'" maxlength="500" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitReview" :loading="loading.review">提交评价</el-button>
+      </template>
+    </el-dialog>
   </AppLayout>
 </template>
 
@@ -243,6 +275,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { changePassword } from '@/api/user'
 import { getStudentByUserId, updateStudent, uploadStudentAvatar, getPurchasedCourses, type PurchasedCourse } from '@/api/student'
+import { addCourseReview, canReviewCourse, canReviewAppointment } from '@/api/review'
 import { getCoachByUserId, updateCoach, uploadCoachAvatar } from '@/api/coach'
 import { listStudentCoachAppointment, listStudentEquipmentReservation, cancelCoachAppointment, cancelEquipmentReservation, type CoachAppointment, type EquipmentReservation } from '@/api/appointment'
 import AppLayout from '@/components/AppLayout.vue'
@@ -280,17 +313,33 @@ const securityRules = {
   }]
 }
 
-const loading = ref({ userInfo: false, submit: false, password: false, coachAppointments: false, equipmentReservations: false, avatar: false, purchasedCourses: false })
-const coachAppointments = ref<CoachAppointment[]>([])
+const loading = ref({ userInfo: false, submit: false, password: false, coachAppointments: false, equipmentReservations: false, avatar: false, purchasedCourses: false, review: false })
+const coachAppointments = ref<(CoachAppointment & { canReview?: boolean })[]>([])
 const equipmentReservations = ref<EquipmentReservation[]>([])
 const coachAppointmentPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
 const equipmentReservationPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
 
 // 已购课程相关
-const purchasedCourses = ref<PurchasedCourse[]>([])
+const purchasedCourses = ref<(PurchasedCourse & { canReview?: boolean })[]>([])
 const purchasedCoursesPagination = ref({ total: 0, pageSize: 6, currentPage: 1 })
 const courseSearchKeyword = ref('')
 const courseStatusFilter = ref<number | undefined>(undefined)
+
+// 评价相关
+const reviewDialogVisible = ref(false)
+const reviewFormRef = ref()
+const reviewForm = ref({ 
+  courseId: 0, 
+  courseName: '', 
+  appointmentId: 0,
+  coachName: '',
+  reviewType: 1, // 1:课程评价 2:预约评价
+  rating: 5, 
+  content: '' 
+})
+const reviewRules = {
+  rating: [{ required: true, message: '请选择评分', trigger: 'change' }]
+}
 
 const user = computed(() => authStore.user)
 const displayName = computed(() => userDetailInfo.value?.name || authStore.displayName || user.value?.username || '')
@@ -348,7 +397,22 @@ const loadPurchasedCourses = async () => {
       courseName: courseSearchKeyword.value || undefined,
       status: courseStatusFilter.value
     })
-    purchasedCourses.value = res.records || []
+    const courses = res.records || []
+    // 检查每个课程是否可以评价
+    const coursesWithReviewStatus = await Promise.all(
+      courses.map(async (course) => {
+        if (course.status === 1) {
+          try {
+            const canReview = await canReviewCourse(studentId, course.courseId)
+            return { ...course, canReview }
+          } catch {
+            return { ...course, canReview: false }
+          }
+        }
+        return { ...course, canReview: false }
+      })
+    )
+    purchasedCourses.value = coursesWithReviewStatus
     purchasedCoursesPagination.value.total = res.total || 0
   } catch (error) { console.error('获取已购课程失败:', error) }
   finally { loading.value.purchasedCourses = false }
@@ -357,6 +421,79 @@ const loadPurchasedCourses = async () => {
 const handlePurchasedCoursesPageChange = (page: number) => {
   purchasedCoursesPagination.value.currentPage = page
   loadPurchasedCourses()
+}
+
+// 打开课程评价对话框
+const openReviewDialog = (course: PurchasedCourse) => {
+  reviewForm.value = {
+    courseId: course.courseId,
+    courseName: course.courseName,
+    appointmentId: 0,
+    coachName: '',
+    reviewType: 1,
+    rating: 5,
+    content: ''
+  }
+  reviewDialogVisible.value = true
+}
+
+// 打开预约评价对话框
+const openAppointmentReviewDialog = (appointment: CoachAppointment) => {
+  reviewForm.value = {
+    courseId: 0,
+    courseName: '',
+    appointmentId: appointment.id,
+    coachName: appointment.coachName || '',
+    reviewType: 2,
+    rating: 5,
+    content: ''
+  }
+  reviewDialogVisible.value = true
+}
+
+// 提交评价
+const submitReview = async () => {
+  const valid = await reviewFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  const studentId = studentForm.value.id || user.value?.associatedUserId
+  if (!studentId) {
+    ElMessage.error('学员信息未加载完成')
+    return
+  }
+
+  loading.value.review = true
+  try {
+    if (reviewForm.value.reviewType === 1) {
+      // 课程评价
+      await addCourseReview({
+        studentId,
+        courseId: reviewForm.value.courseId,
+        reviewType: 1,
+        rating: reviewForm.value.rating,
+        content: reviewForm.value.content || undefined
+      })
+      // 刷新课程列表以更新评价状态
+      loadPurchasedCourses()
+    } else {
+      // 预约评价
+      await addCourseReview({
+        studentId,
+        appointmentId: reviewForm.value.appointmentId,
+        reviewType: 2,
+        rating: reviewForm.value.rating,
+        content: reviewForm.value.content || undefined
+      })
+      // 刷新预约列表以更新评价状态
+      loadCoachAppointments()
+    }
+    ElMessage.success('评价提交成功')
+    reviewDialogVisible.value = false
+  } catch (error: any) {
+    ElMessage.error(error.message || '评价提交失败')
+  } finally {
+    loading.value.review = false
+  }
 }
 const handleAppointmentTabChange = (tab: string) => { if (tab === 'coach') loadCoachAppointments(); else if (tab === 'equipment') loadEquipmentReservations() }
 
@@ -534,7 +671,22 @@ const loadCoachAppointments = async () => {
   loading.value.coachAppointments = true
   try {
     const res = await listStudentCoachAppointment({ studentId, pageNum: coachAppointmentPagination.value.currentPage, pageSize: coachAppointmentPagination.value.pageSize })
-    coachAppointments.value = res.records || []
+    const appointments = res.records || []
+    // 检查每个已确认的预约是否可以评价
+    const appointmentsWithReviewStatus = await Promise.all(
+      appointments.map(async (appointment) => {
+        if (appointment.status === 1) {
+          try {
+            const canReview = await canReviewAppointment(studentId, appointment.id)
+            return { ...appointment, canReview }
+          } catch {
+            return { ...appointment, canReview: false }
+          }
+        }
+        return { ...appointment, canReview: false }
+      })
+    )
+    coachAppointments.value = appointmentsWithReviewStatus
     coachAppointmentPagination.value.total = res.total || 0
   } catch (error) { console.error('获取教练预约记录失败:', error) }
   finally { loading.value.coachAppointments = false }
@@ -840,9 +992,21 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-.purchased-course-card .view-btn {
+.purchased-course-card .course-actions {
+  display: flex;
+  gap: 10px;
   margin-top: 10px;
-  width: 100%;
+}
+
+.purchased-course-card .course-actions .el-button {
+  flex: 1;
+}
+
+.purchased-course-card .course-actions .el-tag {
+  flex: 1;
+  text-align: center;
+  height: 32px;
+  line-height: 30px;
 }
 
 @media (max-width: 768px) {
