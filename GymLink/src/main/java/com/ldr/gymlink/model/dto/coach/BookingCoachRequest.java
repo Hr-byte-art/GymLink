@@ -22,9 +22,14 @@ public class BookingCoachRequest {
     private Long studentId;
 
     /**
-     * 预约的日期时间
+     * 预约开始时间
      */
     private Date appointTime;
+
+    /**
+     * 预约结束时间
+     */
+    private Date endTime;
 
     /**
      * 备注信息

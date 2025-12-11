@@ -107,4 +107,36 @@ public interface StudentService extends IService<Student> {
      * @return 已购课程ID列表
      */
     java.util.List<Long> getPurchasedCourseIds(Long studentId);
+
+    /**
+     * 申请课程退款
+     *
+     * @param orderId 订单ID
+     * @return 是否申请成功
+     */
+    boolean refundCourse(Long orderId);
+
+    /**
+     * 管理员审核通过退款
+     *
+     * @param orderId 订单ID
+     * @return 是否操作成功
+     */
+    boolean approveRefund(Long orderId);
+
+    /**
+     * 管理员拒绝退款
+     *
+     * @param orderId 订单ID
+     * @return 是否操作成功
+     */
+    boolean rejectRefund(Long orderId);
+
+    /**
+     * 获取退款订单列表（管理员用）
+     *
+     * @param request 查询请求
+     * @return 退款订单列表
+     */
+    Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> getRefundOrders(com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest request);
 }

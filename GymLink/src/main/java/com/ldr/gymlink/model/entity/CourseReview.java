@@ -5,28 +5,21 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.util.Date;
 import lombok.Data;
 
 /**
- * 课程购买订单表
- * @TableName course_order
+ * 课程评价表
+ * @TableName course_review
  */
-@TableName(value ="course_order")
+@TableName(value ="course_review")
 @Data
-public class CourseOrder implements Serializable {
+public class CourseReview implements Serializable {
     /**
      * 主键ID
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
-
-    /**
-     * 订单号
-     */
-    @TableField(value = "order_no")
-    private String orderNo;
 
     /**
      * 学员ID
@@ -35,31 +28,43 @@ public class CourseOrder implements Serializable {
     private Long studentId;
 
     /**
-     * 课程ID
+     * 课程ID（课程评价时使用）
      */
     @TableField(value = "course_id")
     private Long courseId;
 
     /**
-     * 冗余教练ID(方便查询)
+     * 教练预约ID（预约评价时使用）
+     */
+    @TableField(value = "appointment_id")
+    private Long appointmentId;
+
+    /**
+     * 教练ID
      */
     @TableField(value = "coach_id")
     private Long coachId;
 
     /**
-     * 成交价格
+     * 评价类型 1:课程评价 2:预约评价
      */
-    @TableField(value = "price")
-    private BigDecimal price;
+    @TableField(value = "review_type")
+    private Integer reviewType;
 
     /**
-     * 订单状态 1:已支付 2:已退款 3:退款申请中
+     * 评分 1-5星
      */
-    @TableField(value = "status")
-    private Integer status;
+    @TableField(value = "rating")
+    private Integer rating;
 
     /**
-     * 购买时间
+     * 评价内容
+     */
+    @TableField(value = "content")
+    private String content;
+
+    /**
+     * 创建时间
      */
     @TableField(value = "create_time")
     private Date createTime;

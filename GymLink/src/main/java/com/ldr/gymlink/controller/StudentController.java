@@ -118,4 +118,36 @@ public class StudentController {
         java.util.List<Long> courseIds = studentService.getPurchasedCourseIds(studentId);
         return ResultUtils.success(courseIds);
     }
+
+    @GetMapping("/refundCourse")
+    @Operation(summary = "申请课程退款")
+    public BaseResponse<Boolean> refundCourse(@RequestParam Long orderId) {
+        ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
+        boolean result = studentService.refundCourse(orderId);
+        return ResultUtils.success(result);
+    }
+
+    @GetMapping("/approveRefund")
+    @Operation(summary = "管理员审核通过退款")
+    public BaseResponse<Boolean> approveRefund(@RequestParam Long orderId) {
+        ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
+        boolean result = studentService.approveRefund(orderId);
+        return ResultUtils.success(result);
+    }
+
+    @GetMapping("/rejectRefund")
+    @Operation(summary = "管理员拒绝退款")
+    public BaseResponse<Boolean> rejectRefund(@RequestParam Long orderId) {
+        ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
+        boolean result = studentService.rejectRefund(orderId);
+        return ResultUtils.success(result);
+    }
+
+    @PostMapping("/getRefundOrders")
+    @Operation(summary = "获取退款订单列表（管理员）")
+    public BaseResponse<Page<com.ldr.gymlink.model.vo.PurchasedCourseVo>> getRefundOrders(
+            @RequestBody com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest request) {
+        Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> page = studentService.getRefundOrders(request);
+        return ResultUtils.success(page);
+    }
 }

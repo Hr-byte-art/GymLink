@@ -72,9 +72,14 @@ public class PurchasedCourseVo implements Serializable {
     private Date purchaseTime;
 
     /**
-     * 订单状态 1:已支付 2:已退款
+     * 订单状态 1:已支付 2:已退款 3:退款申请中
      */
     private Integer status;
+
+    /**
+     * 学员姓名（管理员查看退款订单时使用）
+     */
+    private String studentName;
 
     private static final long serialVersionUID = 1L;
 }

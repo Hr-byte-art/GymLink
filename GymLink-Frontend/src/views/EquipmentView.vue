@@ -55,9 +55,8 @@
             <div class="status-filter">
               <span class="filter-label">状态：</span>
               <el-select v-model="selectedStatus" placeholder="选择状态" clearable>
-                <el-option label="可用" value="available"></el-option>
-                <el-option label="使用中" value="in_use"></el-option>
-                <el-option label="维护中" value="maintenance"></el-option>
+                <el-option label="可用" :value="1"></el-option>
+                <el-option label="维护中" :value="2"></el-option>
               </el-select>
             </div>
 
@@ -99,11 +98,12 @@
 
           <!-- 器材列表 -->
           <div v-else class="equipment-grid">
-            <div class="equipment-card" v-for="equipment in equipmentStore.equipmentList" :key="equipment.id">
+            <div class="equipment-card" v-for="equipment in equipmentStore.equipmentList" :key="equipment.id"
+              @click="viewEquipmentDetail(equipment.id)">
               <div class="equipment-image">
                 <img :src="equipment.image" :alt="equipment.name" />
                 <div class="equipment-category">{{ equipment.category }}</div>
-                <div class="equipment-status" :class="equipment.status">
+                <div class="equipment-status" :class="'status-' + equipment.status">
                   {{ getStatusText(equipment.status) }}
                 </div>
               </div>
@@ -133,9 +133,8 @@
                     <span class="price-unit">/小时</span>
                   </div>
                   <div class="equipment-actions">
-                    <el-button size="small" @click="viewEquipmentDetail(equipment.id)">查看详情</el-button>
-                    <el-button type="primary" size="small" :disabled="equipment.status !== 'available'"
-                      @click="reserveEquipment(equipment.id)">
+                    <el-button type="primary" class="reserve-btn" :disabled="equipment.status !== 1"
+                      @click.stop="reserveEquipment({ id: equipment.id, name: equipment.name })">
                       预约器材
                     </el-button>
                   </div>
@@ -153,24 +152,105 @@
         </div>
       </section>
     </main>
+
+    <!-- 预约器材对话框 -->
+    <el-dialog v-model="reservationDialogVisible" title="预约器材" width="500px" :close-on-click-modal="false">
+      <el-form :model="reservationForm" :rules="reservationRules" ref="reservationFormRef" label-width="100px">
+        <el-form-item label="器材名称">
+          <el-input v-model="reservationForm.equipmentName" disabled />
+        </el-form-item>
+        <el-form-item label="开始时间" prop="startTime">
+          <el-date-picker
+            v-model="reservationForm.startTime"
+            type="datetime"
+            placeholder="选择开始时间"
+            :disabled-date="disabledDate"
+            style="width: 100%"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+          />
+        </el-form-item>
+        <el-form-item label="使用时长" prop="duration">
+          <el-radio-group v-model="reservationForm.duration" class="duration-radio-group">
+            <el-radio-button v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="结束时间">
+          <el-input :value="computedEndTime" disabled />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reservationDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitReservation" :loading="reservationLoading">确认预约</el-button>
+      </template>
+    </el-dialog>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useEquipmentStore } from '@/stores/equipment'
+import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
+import { reserveEquipment as reserveEquipmentApi } from '@/api/equipment'
 
 // 使用器材状态管理
 const equipmentStore = useEquipmentStore()
+const authStore = useAuthStore()
 const router = useRouter()
+
+// 预约相关状态
+const reservationDialogVisible = ref(false)
+const reservationLoading = ref(false)
+const reservationFormRef = ref<FormInstance>()
+const currentEquipment = ref<{ id: number; name: string } | null>(null)
+const reservationForm = reactive({
+  equipmentName: '',
+  startTime: null as string | null,
+  duration: 60 // 默认1小时
+})
+
+// 时长选项（分钟）
+const durationOptions = [
+  { label: '30分钟', value: 30 },
+  { label: '1小时', value: 60 },
+  { label: '1.5小时', value: 90 },
+  { label: '2小时', value: 120 }
+]
+
+const reservationRules = reactive<FormRules>({
+  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  duration: [{ required: true, message: '请选择使用时长', trigger: 'change' }]
+})
+
+// 禁用过去的日期
+const disabledDate = (time: Date) => {
+  return time.getTime() < Date.now() - 8.64e7
+}
+
+// 计算结束时间
+const computedEndTime = computed(() => {
+  if (!reservationForm.startTime) return ''
+  const startDate = new Date(reservationForm.startTime)
+  const endDate = new Date(startDate.getTime() + reservationForm.duration * 60 * 1000)
+  return endDate.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+})
 
 // 筛选状态
 const activeCategory = ref('all')
 const activeSubCategory = ref('')
-const selectedStatus = ref('')
+const selectedStatus = ref<number | undefined>(undefined)
 const selectedLocation = ref('')
 const searchKeyword = ref('')
 
@@ -223,13 +303,12 @@ const handlePageChange = (page: number) => {
 }
 
 // 获取状态文本
-const getStatusText = (status: string) => {
-  const statusMap: { [key: string]: string } = {
-    'available': '可用',
-    'in_use': '使用中',
-    'maintenance': '维护中'
+const getStatusText = (status: number) => {
+  const statusMap: { [key: number]: string } = {
+    1: '可用',
+    2: '维护中'
   }
-  return statusMap[status] || status
+  return statusMap[status] || '未知'
 }
 
 // 查看器材详情
@@ -237,71 +316,108 @@ const viewEquipmentDetail = (id: number) => {
   router.push(`/equipment/${id}`)
 }
 
-// 预约器材
-const reserveEquipment = (id: number) => {
-  // 这里可以打开预约对话框或跳转到预约页面
-  ElMessage.info('预约功能开发中，敬请期待')
+// 预约器材 - 打开预约对话框
+const reserveEquipment = (equipment: { id: number; name: string }) => {
+  if (!authStore.isAuthenticated) {
+    ElMessage.warning('请先登录后再预约器材')
+    router.push({ name: 'auth', query: { redirect: '/equipment' } })
+    return
+  }
+
+  if (authStore.user?.role === 'coach') {
+    ElMessage.warning('教练不能预约器材')
+    return
+  }
+
+  // 设置当前器材并重置表单
+  currentEquipment.value = equipment
+  reservationForm.equipmentName = equipment.name
+  reservationForm.startTime = null
+  reservationForm.duration = 60
+  reservationDialogVisible.value = true
+}
+
+// 提交预约
+const submitReservation = async () => {
+  if (!reservationFormRef.value || !currentEquipment.value) return
+
+  await reservationFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    reservationLoading.value = true
+    try {
+      const studentId = authStore.user?.associatedUserId
+      if (!studentId) {
+        ElMessage.error('无法获取学员信息，请重新登录')
+        return
+      }
+
+      const startDate = new Date(reservationForm.startTime!)
+      const endDate = new Date(startDate.getTime() + reservationForm.duration * 60 * 1000)
+
+      await reserveEquipmentApi({
+        equipmentId: currentEquipment.value.id,
+        studentId: Number(studentId),
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString()
+      })
+
+      ElMessage.success('预约成功！')
+      reservationDialogVisible.value = false
+    } catch {
+      // 错误已在 request 拦截器中处理，这里不重复显示
+    } finally {
+      reservationLoading.value = false
+    }
+  })
+}
+
+// 主分类标签映射
+const mainCategoryLabels: { [key: string]: string } = {
+  '1': '有氧健身器材',
+  '2': '力量训练器材',
+  '3': '功能性训练器材',
+  '4': '小型健身器械',
+  '5': '康复与辅助器材',
+  '6': '其他辅助设备',
+  '7': '商用专用器材',
+  '8': '家用专用器材'
+}
+
+// 子分类标签映射
+const subCategoryLabelMap: { [key: string]: string } = {
+  '1-1': '跑步机',
+  '1-2': '椭圆机',
+  '1-3': '动感单车',
+  '1-4': '划船机',
+  '1-5': '健身车',
+  '1-6': '楼梯机',
+  '1-7': '体适能运动机',
+  '2-1': '固定器械',
+  '2-2': '自由重量器材',
+  '2-3': '综合训练器材'
 }
 
 // 加载器材数据
 const loadEquipment = () => {
-  // 构建查询参数
+  // 构建查询参数，与后端 EquipmentQueryPageRequest 对应
   const params: any = {
-    page: currentPage.value,
+    pageNum: currentPage.value,
     pageSize: pageSize.value
   }
 
-  // 添加类别筛选
+  // 添加类别筛选（后端字段是 type）
   if (activeCategory.value !== 'all') {
     // 如果有子分类选中，使用子分类；否则使用主分类
-    if (activeSubCategory.value) {
-      const categoryLabelMap: { [key: string]: string } = {
-        '1-1': '跑步机',
-        '1-2': '椭圆机',
-        '1-3': '动感单车',
-        '1-4': '划船机',
-        '1-5': '健身车',
-        '1-6': '楼梯机',
-        '1-7': '体适能运动机',
-        '2-1': '固定器械',
-        '2-2': '自由重量器材',
-        '2-3': '综合训练器材'
-      }
-
-      // 对于没有子分类的主分类，直接使用主分类标签
-      if (!categoryLabelMap[activeSubCategory.value]) {
-        const mainCategoryLabels: { [key: string]: string } = {
-          '1': '有氧健身器材',
-          '2': '力量训练器材',
-          '3': '功能性训练器材',
-          '4': '小型健身器械',
-          '5': '康复与辅助器材',
-          '6': '其他辅助设备',
-          '7': '商用专用器材',
-          '8': '家用专用器材'
-        }
-        params.category = mainCategoryLabels[activeCategory.value]
-      } else {
-        params.category = categoryLabelMap[activeSubCategory.value]
-      }
+    if (activeSubCategory.value && subCategoryLabelMap[activeSubCategory.value]) {
+      params.type = subCategoryLabelMap[activeSubCategory.value]
     } else {
-      // 只选择了主分类，没有选择子分类
-      const mainCategoryLabels: { [key: string]: string } = {
-        '1': '有氧健身器材',
-        '2': '力量训练器材',
-        '3': '功能性训练器材',
-        '4': '小型健身器械',
-        '5': '康复与辅助器材',
-        '6': '其他辅助设备',
-        '7': '商用专用器材',
-        '8': '家用专用器材'
-      }
-      params.category = mainCategoryLabels[activeCategory.value]
+      params.type = mainCategoryLabels[activeCategory.value]
     }
   }
 
   // 添加状态筛选
-  if (selectedStatus.value) {
+  if (selectedStatus.value !== undefined) {
     params.status = selectedStatus.value
   }
 
@@ -310,11 +426,9 @@ const loadEquipment = () => {
     params.location = selectedLocation.value
   }
 
-
-
-  // 添加关键词搜索
+  // 添加名称搜索（后端字段是 name）
   if (searchKeyword.value) {
-    params.keyword = searchKeyword.value
+    params.name = searchKeyword.value
   }
 
   // 调用API获取器材数据
@@ -507,6 +621,7 @@ onMounted(() => {
   overflow: hidden;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .equipment-card:hover {
@@ -553,17 +668,12 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.equipment-status.available {
+.equipment-status.status-1 {
   background: #67c23a;
   color: white;
 }
 
-.equipment-status.in_use {
-  background: #e6a23c;
-  color: white;
-}
-
-.equipment-status.maintenance {
+.equipment-status.status-2 {
   background: #f56c6c;
   color: white;
 }
@@ -647,6 +757,23 @@ onMounted(() => {
 .equipment-actions {
   display: flex;
   gap: 10px;
+  margin-left: auto;
+}
+
+.equipment-actions .reserve-btn {
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  border: none;
+  padding: 8px 20px;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.equipment-actions .reserve-btn:hover {
+  background: linear-gradient(135deg, #85ce61 0%, #67c23a 100%);
+}
+
+.equipment-actions .reserve-btn:disabled {
+  background: #c0c4cc;
 }
 
 /* 分页样式 */
@@ -657,8 +784,12 @@ onMounted(() => {
 }
 
 /* 图标样式 */
-.icon-location::before {
-  content: '📍';
+.icon-location {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: url('/position.svg') no-repeat center center;
+  background-size: contain;
 }
 
 .icon-rating::before {
@@ -719,5 +850,26 @@ onMounted(() => {
     width: 100%;
     justify-content: space-between;
   }
+}
+
+/* 预约时长按钮样式 */
+.duration-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.duration-radio-group .el-radio-button {
+  margin-right: 0;
+}
+
+.duration-radio-group .el-radio-button__inner {
+  border-radius: 6px !important;
+  border: 1px solid #dcdfe6;
+}
+
+.duration-radio-group .el-radio-button:first-child .el-radio-button__inner,
+.duration-radio-group .el-radio-button:last-child .el-radio-button__inner {
+  border-radius: 6px !important;
 }
 </style>

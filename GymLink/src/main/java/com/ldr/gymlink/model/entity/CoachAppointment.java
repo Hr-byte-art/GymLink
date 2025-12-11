@@ -34,10 +34,16 @@ public class CoachAppointment implements Serializable {
     private Long coachId;
 
     /**
-     * 预约的日期时间
+     * 预约开始时间
      */
     @TableField(value = "appoint_time")
     private Date appointTime;
+
+    /**
+     * 预约结束时间
+     */
+    @TableField(value = "end_time")
+    private Date endTime;
 
     /**
      * 备注信息

@@ -1,28 +1,26 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-// JavaScript 安全整数范围: -9007199254740991 到 9007199254740991 (约16位)
-const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER // 9007199254740991
-
 // 自定义 JSON 解析，将大数字转换为字符串，避免精度丢失
+// JavaScript 安全整数范围: -9007199254740991 到 9007199254740991 (约15-16位)
 const transformResponse = (data: string) => {
   if (!data || typeof data !== 'string') return data
   try {
-    // 使用更精确的正则表达式匹配所有可能的大数字场景
-    // 匹配 JSON 中的数字（不在引号内），如果超过安全范围则转为字符串
-    const transformed = data.replace(
-      /([:\[,]\s*)(\d{15,})(\s*[,\}\]])/g,
-      (match, prefix, num, suffix) => {
-        // 检查数字是否超过安全整数范围
-        if (num.length >= 16 || (num.length === 15 && num > '9007199254740991')) {
-          return `${prefix}"${num}"${suffix}`
-        }
-        return match
-      }
-    )
+    // 匹配 JSON 中所有超过15位的数字（不在引号内），将其转为字符串
+    // 这个正则会匹配: 冒号后、逗号后、方括号后的大数字
+    // 使用全局替换，处理所有情况
+    const transformed = data
+      // 处理 "key": 1234567890123456789 的情况
+      .replace(/:(\s*)(\d{15,})(\s*)([,\}\]])/g, (_match, s1, num, s2, end) => {
+        return `:"${num}"${end}`
+      })
+      // 处理数组中的大数字 [1234567890123456789, ...] 或 [..., 1234567890123456789]
+      .replace(/([,\[])(\s*)(\d{15,})(\s*)([,\]])/g, (_match, start, s1, num, s2, end) => {
+        return `${start}"${num}"${end}`
+      })
     return JSON.parse(transformed)
   } catch (e) {
-    console.error('JSON parse error:', e)
+    console.error('JSON parse error:', e, 'Original data:', data?.substring(0, 500))
     // 如果解析失败，尝试直接解析原始数据
     try {
       return JSON.parse(data)
@@ -71,7 +69,7 @@ request.interceptors.response.use(
     // Backend returns BaseResponse<T> with structure: { code, data, message }
     // Success code is 0
     if (res.code !== 0) {
-      ElMessage.error(res.message || 'Error')
+      ElMessage.error({ message: res.message || 'Error', duration: 2000, grouping: true })
       return Promise.reject(new Error(res.message || 'Error'))
     }
     // Return the unwrapped data field so stores don't need to access res.data
@@ -79,7 +77,7 @@ request.interceptors.response.use(
   },
   (error) => {
     console.log('Response Interceptor - Error:', error)
-    ElMessage.error(error.message || 'Request Error')
+    ElMessage.error({ message: error.message || 'Request Error', duration: 2000, grouping: true })
     return Promise.reject(error)
   }
 )

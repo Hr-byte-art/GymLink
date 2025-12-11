@@ -159,23 +159,26 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
         Date startTime = bookingEquipmentRequest.getStartTime();
         Date endTime = bookingEquipmentRequest.getEndTime();
 
-        // 检查当前器材是否被预约
+        // 检查当前器材在指定时间段是否已被预约（时间段重叠检测）
+        // 重叠条件：新预约开始时间 < 已有预约结束时间 AND 新预约结束时间 > 已有预约开始时间
         LambdaQueryWrapper<EquipmentReservation> wrapper = new LambdaQueryWrapper<EquipmentReservation>()
                 .eq(EquipmentReservation::getEquipmentId, equipmentId)
-                .eq(EquipmentReservation::getStatus, 1);
+                .eq(EquipmentReservation::getStatus, 1)
+                .lt(EquipmentReservation::getStartTime, endTime)
+                .gt(EquipmentReservation::getEndTime, startTime);
         if (equipmentReservationService.count(wrapper) > 0) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前器材已被预约");
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前器材在该时间段已被预约");
         }
 
-        // 校验用户的所选时间段内是否预约了其余的器材
-
+        // 校验用户在所选时间段内是否已预约了其他器材（时间段重叠检测）
         LambdaQueryWrapper<EquipmentReservation> wrapper1 = new LambdaQueryWrapper<EquipmentReservation>()
                 .eq(EquipmentReservation::getStudentId, studentId)
-                .between(EquipmentReservation::getStartTime, startTime, endTime)
-                .eq(EquipmentReservation::getStatus, 1);
+                .eq(EquipmentReservation::getStatus, 1)
+                .lt(EquipmentReservation::getStartTime, endTime)
+                .gt(EquipmentReservation::getEndTime, startTime);
         long count = equipmentReservationService.count(wrapper1);
         if (count > 0) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前用户已预约其他器材");
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您在该时间段已预约其他器材");
         }
 
         // 检查用户当天是否预约了超过4个器材
@@ -336,10 +339,16 @@ public class EquipmentServiceImpl extends ServiceImpl<EquipmentMapper, Equipment
             if (equipment != null) {
                 vo.setEquipmentName(equipment.getName());
             }
-            // 填充学员姓名
-            StudentVo student = studentService.getStudentById(reservation.getStudentId());
-            if (student != null) {
-                vo.setStudentName(student.getName());
+            // 填充学员姓名（安全处理，学员可能已被删除）
+            try {
+                StudentVo student = studentService.getStudentById(reservation.getStudentId());
+                if (student != null) {
+                    vo.setStudentName(student.getName());
+                }
+            } catch (Exception e) {
+                // 学员不存在时设置默认值
+                vo.setStudentName("未知用户");
+                log.warn("获取学员信息失败，studentId: {}", reservation.getStudentId());
             }
             return vo;
         }).collect(Collectors.toList());

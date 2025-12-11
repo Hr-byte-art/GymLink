@@ -62,6 +62,12 @@
             </el-icon>
             <span>教练数据分析</span>
           </el-menu-item>
+          <el-menu-item index="/admin/refunds">
+            <el-icon>
+              <Wallet />
+            </el-icon>
+            <span>退款申请</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -97,7 +103,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { DataAnalysis, User, Avatar, Reading, SetUp, Food, Document, DataLine, TrendCharts, Histogram } from '@element-plus/icons-vue'
+import { DataAnalysis, User, Avatar, Reading, SetUp, Food, Document, DataLine, TrendCharts, Histogram, Wallet } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,7 +120,8 @@ const pageTitles: Record<string, string> = {
   '/admin/posts': '帖子管理',
   '/admin/equipment-stats': '器材数据分析',
   '/admin/course-stats': '课程数据分析',
-  '/admin/coach-stats': '教练数据分析'
+  '/admin/coach-stats': '教练数据分析',
+  '/admin/refunds': '退款申请'
 }
 
 const currentPageTitle = computed(() => pageTitles[route.path] || '管理后台')

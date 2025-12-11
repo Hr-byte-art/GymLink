@@ -1,7 +1,5 @@
 package com.ldr.gymlink.service.impl;
 
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -22,6 +20,7 @@ import com.luciad.imageio.webp.WebPWriteParam;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,9 +33,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -78,6 +74,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
      */
     private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
             "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
+    @Resource
+    private com.ldr.gymlink.mapper.CoachMapper coachMapper;
 
 
     @Override
@@ -474,5 +472,130 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 writer.dispose();
             }
         }
+    }
+
+    @Override
+    public boolean refundCourse(Long orderId) {
+        ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
+
+        // 查询订单
+        CourseOrder order = courseOrderService.getById(orderId);
+        ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
+        ThrowUtils.throwIf(order.getStatus() != 1, ErrorCode.OPERATION_ERROR, "该订单已退款或不可申请退款");
+
+        // 更新订单状态为退款申请中
+        order.setStatus(3);
+        boolean updateOrder = courseOrderService.updateById(order);
+        ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "申请退款失败");
+
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean approveRefund(Long orderId) {
+        ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
+
+        // 查询订单
+        CourseOrder order = courseOrderService.getById(orderId);
+        ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
+        ThrowUtils.throwIf(order.getStatus() != 3, ErrorCode.OPERATION_ERROR, "该订单不是退款申请状态");
+
+        // 获取学员信息
+        Student student = this.getById(order.getStudentId());
+        ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
+
+        // 退款金额返还到学员余额
+        BigDecimal refundAmount = order.getPrice();
+        student.setBalance(student.getBalance().add(refundAmount));
+        boolean updateStudent = this.updateById(student);
+        ThrowUtils.throwIf(!updateStudent, ErrorCode.SYSTEM_ERROR, "退款失败，更新学员余额失败");
+
+        // 更新订单状态为已退款
+        order.setStatus(2);
+        boolean updateOrder = courseOrderService.updateById(order);
+        ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "退款失败，更新订单状态失败");
+
+        return true;
+    }
+
+    @Override
+    public boolean rejectRefund(Long orderId) {
+        ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
+
+        // 查询订单
+        CourseOrder order = courseOrderService.getById(orderId);
+        ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
+        ThrowUtils.throwIf(order.getStatus() != 3, ErrorCode.OPERATION_ERROR, "该订单不是退款申请状态");
+
+        // 拒绝退款，恢复为已支付状态
+        order.setStatus(1);
+        boolean updateOrder = courseOrderService.updateById(order);
+        ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "操作失败");
+
+        return true;
+    }
+
+    @Override
+    public Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> getRefundOrders(com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest request) {
+        int pageNum = request.getPageNum();
+        int pageSize = request.getPageSize();
+
+        // 查询订单（管理员查看所有订单，不限制studentId）
+        LambdaQueryWrapper<CourseOrder> queryWrapper = new LambdaQueryWrapper<>();
+        if (request.getStatus() != null) {
+            queryWrapper.eq(CourseOrder::getStatus, request.getStatus());
+        }
+        queryWrapper.orderByDesc(CourseOrder::getCreateTime);
+
+        Page<CourseOrder> orderPage = courseOrderService.page(Page.of(pageNum, pageSize), queryWrapper);
+
+        // 转换为VO
+        Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> voPage = new Page<>(pageNum, pageSize);
+        voPage.setTotal(orderPage.getTotal());
+
+        List<com.ldr.gymlink.model.vo.PurchasedCourseVo> voList = orderPage.getRecords().stream().map(order -> {
+            com.ldr.gymlink.model.vo.PurchasedCourseVo vo = new com.ldr.gymlink.model.vo.PurchasedCourseVo();
+            vo.setOrderId(order.getId());
+            vo.setOrderNo(order.getOrderNo());
+            vo.setCourseId(order.getCourseId());
+            vo.setCoachId(order.getCoachId());
+            vo.setPrice(order.getPrice());
+            vo.setPurchaseTime(order.getCreateTime());
+            vo.setStatus(order.getStatus());
+
+            // 获取课程信息
+            Course course = courseService.getById(order.getCourseId());
+            if (course != null) {
+                vo.setCourseName(course.getName());
+                vo.setCourseImage(course.getImage());
+                vo.setCourseType(course.getType());
+                vo.setDifficulty(course.getDifficulty());
+                vo.setDuration(course.getDuration());
+
+                // 课程名称模糊搜索
+                if (StrUtil.isNotBlank(request.getCourseName()) &&
+                    !course.getName().contains(request.getCourseName())) {
+                    return null;
+                }
+            }
+
+            // 获取教练姓名
+            Coach coach = coachMapper.selectById(order.getCoachId());
+            if (coach != null) {
+                vo.setCoachName(coach.getName());
+            }
+
+            // 获取学员姓名
+            Student student = this.getById(order.getStudentId());
+            if (student != null) {
+                vo.setStudentName(student.getName());
+            }
+
+            return vo;
+        }).filter(java.util.Objects::nonNull).toList();
+
+        voPage.setRecords(voList);
+        return voPage;
     }
 }

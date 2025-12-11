@@ -81,6 +81,9 @@
               立即购买
             </el-button>
             <el-button size="large" @click="showCoachDialog">联系教练</el-button>
+            <el-button size="large" @click="handleToggleFavorite">
+              {{ isFavorite ? '❤️ 已收藏' : '🤍 收藏' }}
+            </el-button>
           </div>
         </div>
       </div>
@@ -136,6 +139,7 @@ import { getCourseTypeName, getCoachSpecialtyName } from '@/constants/categories
 import { useAuthStore } from '@/stores/auth'
 import { purchaseCourse, getPurchasedCourseIds } from '@/api/student'
 import { getCoachDetail, type Coach } from '@/api/coach'
+import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,6 +157,9 @@ const isPurchased = ref(false)
 const coachDialogVisible = ref(false)
 const coachLoading = ref(false)
 const coachInfo = ref<Coach | null>(null)
+
+// 收藏状态
+const isFavorite = ref(false)
 
 // 获取难度样式类
 const getDifficultyClass = (difficulty: string) => {
@@ -295,6 +302,31 @@ const showCoachDialog = async () => {
   }
 }
 
+// 切换收藏状态
+const handleToggleFavorite = async () => {
+  try {
+    const res = await toggleFavoriteApi({
+      targetId: Number(route.params.id),
+      type: FavoriteType.COURSE
+    })
+    // request.ts 响应拦截器已解包，res 直接就是 boolean
+    isFavorite.value = res as unknown as boolean
+    ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
+  } catch (error) {
+    ElMessage.error('操作失败，请先登录')
+  }
+}
+
+// 检查收藏状态
+const checkFavoriteStatus = async () => {
+  try {
+    const res = await checkFavorite(Number(route.params.id), FavoriteType.COURSE)
+    isFavorite.value = res.data
+  } catch (error) {
+    // 未登录时忽略错误
+  }
+}
+
 onMounted(async () => {
   // 确保用户信息已加载
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
@@ -303,6 +335,7 @@ onMounted(async () => {
   }
   
   loadCourseDetail()
+  checkFavoriteStatus()
 })
 
 // 监听 associatedUserId 变化，重新检查购买状态

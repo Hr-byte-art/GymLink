@@ -70,6 +70,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'admin' }
     },
     {
+      path: '/admin/refunds',
+      name: 'admin-refunds',
+      component: () => import('../views/admin/RefundManage.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
       path: '/courses',
       name: 'courses',
       component: () => import('../views/CoursesView.vue')

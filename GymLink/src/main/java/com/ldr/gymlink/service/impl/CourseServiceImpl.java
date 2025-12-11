@@ -341,7 +341,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
         }
 
         String name = courseQueryPageRequest.getName();
-        Integer coachId = courseQueryPageRequest.getCoachId();
+        Long coachId = courseQueryPageRequest.getCoachId();
         String difficulty = courseQueryPageRequest.getDifficulty();
         String type = courseQueryPageRequest.getType();
         // 模糊查询课程名称

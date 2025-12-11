@@ -13,15 +13,27 @@ export interface Equipment {
   createTime: string
 }
 
+// 器材预约记录
+export interface EquipmentReservation {
+  id: number
+  studentId: number
+  equipmentId: number
+  startTime: string
+  endTime: string
+  status: number // 1:预约成功 2:已取消 3:已完成
+  createTime: string
+  equipmentName?: string
+  studentName?: string
+}
+
 // 器材查询参数 - 匹配后端 EquipmentQueryPageRequest
 export interface EquipmentQueryParams {
-  current?: number
+  pageNum?: number
   pageSize?: number
   name?: string
   location?: string
+  type?: string
   status?: number
-  sortField?: string
-  sortOrder?: string
 }
 
 // 获取器材列表 - POST /equipment/listEquipment
@@ -53,4 +65,16 @@ export function cancelReservation(bookingId: number): Promise<boolean> {
   return request.get('/appointment/cancelBookingEquipment', {
     params: { bookingId }
   }) as Promise<boolean>
+}
+
+// 获取器材的预约记录 - POST /appointment/listEquipmentReservations
+export interface EquipmentReservationQueryParams {
+  equipmentId: number
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+export function getEquipmentReservations(params: EquipmentReservationQueryParams): Promise<Page<EquipmentReservation>> {
+  return request.post('/appointment/listEquipmentReservations', params) as Promise<Page<EquipmentReservation>>
 }

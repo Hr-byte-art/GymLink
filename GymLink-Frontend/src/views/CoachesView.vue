@@ -40,11 +40,9 @@
 
               <div class="age-filter">
                 <span class="filter-label">年龄：</span>
-                <el-input-number v-model="minAge" :min="18" :max="70" placeholder="最小" controls-position="right"
-                  style="width: 100px" />
-                <span style="margin: 0 8px">-</span>
-                <el-input-number v-model="maxAge" :min="18" :max="70" placeholder="最大" controls-position="right"
-                  style="width: 100px" />
+                <el-select v-model="selectedAgeRange" placeholder="选择年龄段" clearable @change="handleAgeRangeChange">
+                  <el-option v-for="range in ageRangeOptions" :key="range.value" :label="range.label" :value="range.value" />
+                </el-select>
               </div>
 
               <div class="search-box">
@@ -126,9 +124,16 @@
         <el-form-item label="教练" prop="coachName">
           <el-input v-model="bookingForm.coachName" disabled />
         </el-form-item>
-        <el-form-item label="预约时间" prop="appointTime">
-          <el-date-picker v-model="bookingForm.appointTime" type="datetime" placeholder="选择预约时间"
-            :disabled-date="disabledDate" style="width: 100%" />
+        <el-form-item label="开始时间" prop="appointTime">
+          <el-date-picker v-model="bookingForm.appointTime" type="datetime" placeholder="选择开始时间"
+            :disabled-date="disabledDate" style="width: 100%" format="YYYY-MM-DD HH:mm" />
+        </el-form-item>
+        <el-form-item label="预约时长" prop="duration">
+          <el-radio-group v-model="bookingForm.duration" class="duration-radio-group">
+            <el-radio-button v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </el-radio-button>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="备注信息" prop="message">
           <el-input v-model="bookingForm.message" type="textarea" :rows="3" placeholder="请输入预约备注（可选）" />
@@ -166,11 +171,21 @@ const selectedCoach = ref<any>(null)
 const bookingForm = reactive({
   coachName: '',
   appointTime: null as Date | null,
+  duration: 60, // 默认1小时
   message: ''
 })
 
+// 时长选项（分钟）
+const durationOptions = [
+  { label: '30分钟', value: 30 },
+  { label: '1小时', value: 60 },
+  { label: '1.5小时', value: 90 },
+  { label: '2小时', value: 120 }
+]
+
 const bookingRules = reactive<FormRules>({
-  appointTime: [{ required: true, message: '请选择预约时间', trigger: 'change' }]
+  appointTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  duration: [{ required: true, message: '请选择时长', trigger: 'change' }]
 })
 
 // 禁用过去的日期
@@ -183,12 +198,36 @@ const coachTypes = coachSpecialtyOptions
 
 
 
+// 年龄区间选项
+const ageRangeOptions = [
+  { label: '20岁以下', value: '0-20', min: 0, max: 20 },
+  { label: '20-30岁', value: '20-30', min: 20, max: 30 },
+  { label: '30-40岁', value: '30-40', min: 30, max: 40 },
+  { label: '40-50岁', value: '40-50', min: 40, max: 50 },
+  { label: '50岁以上', value: '50-100', min: 50, max: 100 }
+]
+
 // 筛选状态
 const activeSpecialty = ref('')
 const selectedGender = ref<number | undefined>(undefined)
+const selectedAgeRange = ref('')
 const minAge = ref<number | undefined>(undefined)
 const maxAge = ref<number | undefined>(undefined)
 const searchKeyword = ref('')
+
+// 处理年龄区间变化
+const handleAgeRangeChange = (value: string) => {
+  if (!value) {
+    minAge.value = undefined
+    maxAge.value = undefined
+  } else {
+    const range = ageRangeOptions.find(r => r.value === value)
+    if (range) {
+      minAge.value = range.min
+      maxAge.value = range.max
+    }
+  }
+}
 
 // 分页状态
 const currentPage = ref(1)
@@ -232,6 +271,7 @@ const bookCoach = (coach: any) => {
   selectedCoach.value = coach
   bookingForm.coachName = coach.name
   bookingForm.appointTime = null
+  bookingForm.duration = 60
   bookingForm.message = ''
   bookingDialogVisible.value = true
 }
@@ -251,10 +291,15 @@ const submitBooking = async () => {
         return
       }
 
+      // 计算结束时间
+      const appointTime = new Date(bookingForm.appointTime!)
+      const endTime = new Date(appointTime.getTime() + bookingForm.duration * 60 * 1000)
+
       await bookCoachApi({
         coachId: selectedCoach.value.id,
         studentId: studentId,
-        appointTime: bookingForm.appointTime!.toISOString(),
+        appointTime: appointTime.toISOString(),
+        endTime: endTime.toISOString(),
         message: bookingForm.message || undefined
       })
 
@@ -309,7 +354,7 @@ const loadSpecialties = () => {
 }
 
 // 监听筛选条件变化，重新加载数据
-watch([activeSpecialty, selectedGender, minAge, maxAge, searchKeyword], () => {
+watch([activeSpecialty, selectedGender, selectedAgeRange, searchKeyword], () => {
   currentPage.value = 1
   loadCoaches()
 })
@@ -407,6 +452,10 @@ onMounted(() => {
   width: 200px;
 }
 
+.age-filter :deep(.el-select) {
+  width: 140px;
+}
+
 .filter-label {
   margin-right: 8px;
   font-weight: 500;
@@ -441,115 +490,148 @@ onMounted(() => {
 
 .coaches-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
   margin-bottom: 50px;
 }
 
 .coach-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   cursor: pointer;
+  border: 1px solid #f0f0f0;
 }
 
 .coach-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  border-color: #409eff;
 }
 
 .coach-avatar {
-  height: 200px;
+  height: 220px;
   overflow: hidden;
+  position: relative;
+}
+
+.coach-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.1));
 }
 
 .coach-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.4s ease;
 }
 
 .coach-card:hover .coach-avatar img {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .coach-info {
-  padding: 25px;
+  padding: 20px 24px 24px;
 }
 
 .coach-name {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 8px;
+  color: #1a1a1a;
+  margin-bottom: 6px;
 }
 
 .coach-specialty {
-  color: #667eea;
+  color: #409eff;
   font-weight: 500;
+  font-size: 14px;
   margin-bottom: 12px;
+  padding: 4px 10px;
+  background: #ecf5ff;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .coach-description {
   color: #666;
+  font-size: 14px;
   line-height: 1.6;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: 44px;
 }
 
 .coach-meta {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 20px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: #555;
 }
 
 .meta-item .icon-svg {
-  margin-right: 18px;
-  color: #667eea;
+  margin-right: 6px;
+  opacity: 0.7;
 }
 
 .coach-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.coach-price {
-  display: flex;
-  align-items: baseline;
-}
-
-.price-label {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f56c6c;
-}
-
-.price-unit {
-  font-size: 14px;
-  color: #666;
-  margin-left: 2px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .book-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #409eff;
   border: none;
   padding: 8px 20px;
   font-weight: 500;
+}
+
+.book-btn:hover {
+  background: #66b1ff;
+}
+
+/* 预约时长按钮样式 */
+.duration-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.duration-radio-group .el-radio-button {
+  margin-right: 0;
+}
+
+.duration-radio-group .el-radio-button__inner {
+  border-radius: 6px !important;
+  border: 1px solid #dcdfe6;
+}
+
+.duration-radio-group .el-radio-button:first-child .el-radio-button__inner,
+.duration-radio-group .el-radio-button:last-child .el-radio-button__inner {
+  border-radius: 6px !important;
 }
 
 /* 分页样式 */

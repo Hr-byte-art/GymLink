@@ -68,6 +68,13 @@
                 </div>
               </div>
             </div>
+
+            <!-- 收藏按钮 -->
+            <div class="recipe-actions">
+              <el-button size="large" @click="handleToggleFavorite">
+                {{ isFavorite ? '❤️ 已收藏' : '🤍 收藏' }}
+              </el-button>
+            </div>
           </div>
         </header>
 
@@ -149,6 +156,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipe'
 import { ArrowLeft, Clock, User, Star, InfoFilled } from '@element-plus/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
+import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -156,6 +165,9 @@ const recipeStore = useRecipeStore()
 
 // 食材复选框状态
 const checkedIngredients = ref<boolean[]>([])
+
+// 收藏状态
+const isFavorite = ref(false)
 
 // 获取当前食谱
 const recipe = computed(() => recipeStore.recipeDetail)
@@ -186,12 +198,38 @@ const goBack = () => {
   router.push('/recipes')
 }
 
+// 切换收藏状态
+const handleToggleFavorite = async () => {
+  try {
+    const res = await toggleFavoriteApi({
+      targetId: Number(route.params.id),
+      type: FavoriteType.RECIPE
+    })
+    // request.ts 响应拦截器已解包，res 直接就是 boolean
+    isFavorite.value = res as unknown as boolean
+    ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
+  } catch (error) {
+    ElMessage.error('操作失败，请先登录')
+  }
+}
+
+// 检查收藏状态
+const checkFavoriteStatus = async () => {
+  try {
+    const res = await checkFavorite(Number(route.params.id), FavoriteType.RECIPE)
+    isFavorite.value = res.data
+  } catch (error) {
+    // 未登录时忽略错误
+  }
+}
+
 // 页面加载时获取食谱详情
 onMounted(() => {
   const id = route.params.id as string
   if (id) {
     recipeStore.fetchRecipeDetail(id)
   }
+  checkFavoriteStatus()
 })
 
 // 监听recipe变化
@@ -291,6 +329,10 @@ onUnmounted(() => {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.recipe-actions {
+  margin-top: 1.5rem;
 }
 
 .info-card {

@@ -66,7 +66,6 @@
                                         <span class="course-time">{{ course.time }}</span>
                                         <span class="course-difficulty">{{ course.difficulty }}</span>
                                     </div>
-                                    <el-button type="primary" class="course-btn">预约课程</el-button>
                                 </div>
                             </div>
                         </div>
@@ -85,7 +84,6 @@
                                 <h3 class="coach-name">{{ coach.name }}</h3>
                                 <p class="coach-specialty">{{ getCoachSpecialtyName(coach.specialty) }}</p>
                                 <p class="coach-description">{{ coach.description }}</p>
-                                <el-button type="primary" class="coach-btn">预约教练</el-button>
                             </div>
                         </div>
                     </div>
@@ -374,11 +372,7 @@ onMounted(() => {
     border-radius: 4px;
 }
 
-.course-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-    border: none;
-}
+
 
 /* 教练样式 */
 .coaches-section {
@@ -439,11 +433,7 @@ onMounted(() => {
     margin-bottom: 20px;
 }
 
-.coach-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-    border: none;
-}
+
 
 /* 响应式设计 */
 @media (max-width: 992px) {

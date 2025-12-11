@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 // 学员接口类型
 export interface Student {
-  id: number
+  id: number | string // 支持大数字转字符串
   username: string
   name: string
   gender: number // 1:男 2:女
@@ -100,4 +100,18 @@ export function getPurchasedCourseIds(studentId: string | number): Promise<numbe
   return request.get('/student/getPurchasedCourseIds', {
     params: { studentId: String(studentId) }
   }) as Promise<number[]>
+}
+
+// 课程退款
+export function refundCourse(orderId: string | number): Promise<boolean> {
+  return request.get('/student/refundCourse', {
+    params: { orderId: String(orderId) }
+  }) as Promise<boolean>
+}
+
+// 学员充值
+export function studentTopUp(studentId: string | number, money: number): Promise<boolean> {
+  return request.get('/student/studentTopUp', {
+    params: { id: String(studentId), money: String(money) }
+  }) as Promise<boolean>
 }

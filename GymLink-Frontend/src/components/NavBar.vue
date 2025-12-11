@@ -47,7 +47,6 @@
             <span class="username">{{ displayName }}</span>
             <div class="dropdown-menu">
               <router-link to="/profile" class="dropdown-item">个人中心</router-link>
-              <router-link to="/settings" class="dropdown-item">设置</router-link>
               <div class="dropdown-divider"></div>
               <a href="#" class="dropdown-item" @click.prevent="handleLogout">退出登录</a>
             </div>
@@ -266,6 +265,14 @@ const handleLogout = () => {
   color: #333;
   text-decoration: none;
   transition: background-color 0.2s;
+}
+
+.dropdown-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-item:last-child {
+  border-radius: 0 0 8px 8px;
 }
 
 .dropdown-item:hover {
