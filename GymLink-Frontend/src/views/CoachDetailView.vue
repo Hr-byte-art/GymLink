@@ -125,7 +125,7 @@
         <div class="reviews-container">
           <div class="reviews-content">
             <h3 class="section-title">学员评价</h3>
-            
+
             <!-- 评价统计 -->
             <div class="review-summary" v-if="coachStats && coachStats.reviewCount > 0">
               <div class="rating-overview">
@@ -169,7 +169,7 @@
                 </div>
                 <div class="review-content" v-if="review.content">{{ review.content }}</div>
               </div>
-              
+
               <!-- 分页 -->
               <div class="reviews-pagination" v-if="reviewTotal > reviewPageSize">
                 <el-pagination
@@ -314,12 +314,12 @@ const openBookingDialog = () => {
     router.push({ name: 'auth', query: { redirect: route.fullPath } })
     return
   }
-  
+
   if (authStore.user?.role === 'coach') {
     ElMessage.warning('教练不能预约其他教练')
     return
   }
-  
+
   // 重置表单
   bookingForm.coachName = coachStore.coachDetail?.name || ''
   bookingForm.appointTime = null
@@ -331,10 +331,10 @@ const openBookingDialog = () => {
 // 提交预约
 const submitBooking = async () => {
   if (!bookingFormRef.value) return
-  
+
   await bookingFormRef.value.validate(async (valid) => {
     if (!valid) return
-    
+
     bookingLoading.value = true
     try {
       // 获取学员ID（使用 associatedUserId）
@@ -343,11 +343,11 @@ const submitBooking = async () => {
         ElMessage.error('无法获取学员信息，请重新登录')
         return
       }
-      
+
       // 计算结束时间
       const appointTime = new Date(bookingForm.appointTime!)
       const endTime = new Date(appointTime.getTime() + bookingForm.duration * 60 * 1000)
-      
+
       await bookCoachApi({
         coachId: coachId.value,
         studentId: studentId,
@@ -355,7 +355,7 @@ const submitBooking = async () => {
         endTime: endTime.toISOString(),
         message: bookingForm.message || undefined
       })
-      
+
       ElMessage.success('预约成功！请等待教练确认')
       bookingDialogVisible.value = false
     } catch (error: any) {
