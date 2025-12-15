@@ -56,7 +56,9 @@
           <el-table-column prop="totalCount" label="数量" width="80" />
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'warning'">{{ row.status === 1 ? '正常' : '维护中' }}</el-tag>
+              <el-tag :type="row.status === 1 ? 'success' : 'warning'"
+                >{{ row.status === 1 ? '正常' : '维护中' }}
+              </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="类型" width="150">
@@ -73,9 +75,15 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-pagination class="pagination" v-model:current-page="pagination.current"
-          v-model:page-size="pagination.pageSize" :total="pagination.total" :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next" @change="loadData" />
+        <el-pagination
+          class="pagination"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @change="loadData"
+        />
       </el-card>
     </div>
 
@@ -87,15 +95,30 @@
         <el-form-item label="图片">
           <div class="image-upload-container">
             <div class="image-preview">
-              <el-image v-if="form.image" :src="form.image + '?t=' + imageTimestamp" style="width: 120px; height: 80px"
-                fit="cover" />
+              <el-image
+                v-if="previewImageUrl"
+                :src="previewImageUrl"
+                style="width: 120px; height: 80px"
+                fit="cover"
+              />
+              <el-image
+                v-else-if="form.image"
+                :src="form.image + '?t=' + imageTimestamp"
+                style="width: 120px; height: 80px"
+                fit="cover"
+              />
               <div v-else class="no-image">暂无图片</div>
             </div>
             <div class="upload-actions">
-              <input type="file" ref="imageInputRef" accept="image/*" style="display: none"
-                @change="handleImageChange" />
+              <input
+                type="file"
+                ref="imageInputRef"
+                accept="image/*"
+                style="display: none"
+                @change="handleImageChange"
+              />
               <el-button size="small" @click="triggerImageUpload" :loading="imageUploading">
-                {{ form.image ? '更换图片' : '上传图片' }}
+                {{ form.image || previewImageUrl ? '更换图片' : '上传图片' }}
               </el-button>
               <div class="upload-tip">支持 jpg、png、webp 格式</div>
             </div>
@@ -114,8 +137,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="类别">
-          <el-cascader v-model="form.typeArray" :options="categoryOptions" :props="cascaderProps" clearable
-            placeholder="请选择器材类别" style="width: 100%" @change="handleTypeChange" />
+          <el-cascader
+            v-model="form.typeArray"
+            :options="categoryOptions"
+            :props="cascaderProps"
+            clearable
+            placeholder="请选择器材类别"
+            style="width: 100%"
+            @change="handleTypeChange"
+          />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述" />
@@ -145,10 +175,27 @@ const isEdit = ref(false)
 const formRef = ref()
 const imageInputRef = ref<HTMLInputElement>()
 const imageTimestamp = ref(Date.now())
+const previewImageUrl = ref('')
 
-const searchForm = reactive({ name: '', location: '', status: null as number | null, type: '', typeArray: [] as string[] })
+const searchForm = reactive({
+  name: '',
+  location: '',
+  status: null as number | null,
+  type: '',
+  typeArray: [] as string[],
+})
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const form = reactive({ id: 0, name: '', image: '', location: '', totalCount: 1, status: 1, description: '', type: '' as string, typeArray: [] as string[] })
+const form = reactive({
+  id: 0,
+  name: '',
+  image: '',
+  location: '',
+  totalCount: 1,
+  status: 1,
+  description: '',
+  type: '' as string,
+  typeArray: [] as string[,
+})
 
 // 使用统一的器材类别选项
 const categoryOptions = equipmentTypeOptions
@@ -165,7 +212,7 @@ const rules = {
 }
 
 const dialogTitle = ref('添加器材')
-const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
 // 使用统一的类型名称获取函数
 const getTypeName = getEquipmentTypeName
@@ -183,8 +230,11 @@ const loadData = async () => {
     })
     tableData.value = res.records || []
     pagination.total = res.total || 0
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 类型筛选变化
@@ -196,7 +246,10 @@ const handleTypeFilterChange = (value: string[]) => {
   }
 }
 
-const handleSearch = () => { pagination.current = 1; loadData() }
+const handleSearch = () => {
+  pagination.current = 1
+  loadData()
+}
 const resetSearch = () => {
   Object.assign(searchForm, { name: '', location: '', status: null, type: '', typeArray: [] })
   handleSearch()
@@ -205,7 +258,18 @@ const resetSearch = () => {
 const handleAdd = () => {
   isEdit.value = false
   dialogTitle.value = '添加器材'
-  Object.assign(form, { id: 0, name: '', image: '', location: '', totalCount: 1, status: 1, description: '', type: '', typeArray: [] })
+  Object.assign(form, {
+    id: 0,
+    name: '',
+    image: '',
+    location: '',
+    totalCount: 1,
+    status: 1,
+    description: '',
+    type: '',
+    typeArray: []
+  })
+  previewImageUrl.value = ''
   imageTimestamp.value = Date.now()
   dialogVisible.value = true
 }
@@ -216,6 +280,7 @@ const handleEdit = (row: any) => {
   // 将 type 字符串转换为级联选择器数组格式
   const typeArray = row.type ? parseTypeToArray(row.type) : []
   Object.assign(form, { ...row, typeArray })
+  previewImageUrl.value = ''
   imageTimestamp.value = Date.now()
   dialogVisible.value = true
 }
@@ -248,7 +313,9 @@ const handleDelete = async (row: any) => {
     await request.post('/equipment/deleteEquipment', null, { params: { id: row.id } })
     ElMessage.success('删除成功')
     loadData()
-  } catch (e) { if (e !== 'cancel') console.error(e) }
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
 }
 
 // 触发文件选择
@@ -256,7 +323,7 @@ const triggerImageUpload = () => {
   imageInputRef.value?.click()
 }
 
-// 处理图片选择
+// 处理图片选择 - 选择后立即上传
 const handleImageChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -275,25 +342,37 @@ const handleImageChange = async (event: Event) => {
     return
   }
 
+  // 先显示本地预览
+  previewImageUrl.value = URL.createObjectURL(file)
   imageUploading.value = true
+
   try {
+    // 立即上传到通用图片接口
     const formData = new FormData()
     formData.append('image', file)
-    formData.append('equipmentId', String(form.id))
+    formData.append('type', 'equipment')
 
-    const imageUrl = await request.post('/equipment/updateEquipmentImage', formData, {
+    const imageUrl = (await request.post('/file/uploadImage', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
-    }) as string
+    })) as string
 
+    // 上传成功，保存URL
     form.image = imageUrl
     imageTimestamp.value = Date.now()
+    // 清除本地预览
+    if (previewImageUrl.value) {
+      URL.revokeObjectURL(previewImageUrl.value)
+      previewImageUrl.value = ''
+    }
     ElMessage.success('图片上传成功')
   } catch (e) {
     console.error('图片上传失败:', e)
-    ElMessage.error('图片上传失败')
+    if (previewImageUrl.value) {
+      URL.revokeObjectURL(previewImageUrl.value)
+      previewImageUrl.value = ''
+    }
   } finally {
     imageUploading.value = false
-    // 清空input，允许重复选择同一文件
     if (imageInputRef.value) imageInputRef.value.value = ''
   }
 }
@@ -305,20 +384,36 @@ const handleSubmit = async () => {
   try {
     if (isEdit.value) {
       await request.post(`/equipment/updateEquipment?id=${form.id}`, {
-        name: form.name, image: form.image, location: form.location,
-        totalCount: form.totalCount, status: form.status, description: form.description, type: form.type
+        name: form.name,
+        image: form.image,
+        location: form.location,
+        totalCount: form.totalCount,
+        status: form.status,
+        description: form.description,
+        type: form.type
       })
+      ElMessage.success('更新成功')
     } else {
+      // 新建：图片已经上传好了，直接使用 form.image
       await request.post('/equipment/addEquipment', {
-        name: form.name, image: form.image, location: form.location,
-        totalCount: form.totalCount, status: form.status, description: form.description, type: form.type
+        name: form.name,
+        image: form.image,
+        location: form.location,
+        totalCount: form.totalCount,
+        status: form.status,
+        description: form.description,
+        type: form.type
       })
+      ElMessage.success('添加成功')
     }
-    ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
+
     dialogVisible.value = false
     loadData()
-  } catch (e) { console.error(e) }
-  finally { submitLoading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 onMounted(() => loadData())

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import AiChatBot from '@/components/AiChatBot.vue'
 
 const authStore = useAuthStore()
 
@@ -12,6 +13,8 @@ onMounted(() => {
 
 <template>
   <RouterView />
+  <!-- AI 聊天机器人 -->
+  <AiChatBot />
 </template>
 
 <style scoped></style>
