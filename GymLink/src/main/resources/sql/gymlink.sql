@@ -11,7 +11,7 @@
  Target Server Version : 80040 (8.0.40)
  File Encoding         : 65001
 
- Date: 21/12/2025 01:10:38
+ Date: 21/12/2025 02:25:09
 */
 
 SET NAMES utf8mb4;
@@ -300,6 +300,14 @@ CREATE TABLE `recipe`  (
   `tags` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '标签(如:增肌,减脂)',
   `admin_id` bigint NULL DEFAULT NULL COMMENT '发布人ID(管理员)',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+  `calories` int NULL DEFAULT NULL COMMENT '热量(千卡)',
+  `protein` int NULL DEFAULT NULL COMMENT '蛋白质(克)',
+  `carbs` int NULL DEFAULT NULL COMMENT '碳水化合物(克)',
+  `fat` int NULL DEFAULT NULL COMMENT '脂肪(克)',
+  `prep_time` int NULL DEFAULT NULL COMMENT '准备时间(分钟)',
+  `cook_time` int NULL DEFAULT NULL COMMENT '烹饪时间(分钟)',
+  `servings` int NULL DEFAULT 1 COMMENT '份数',
+  `difficulty` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '难度(easy/medium/hard)',
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '健身菜谱表' ROW_FORMAT = Dynamic;
 
