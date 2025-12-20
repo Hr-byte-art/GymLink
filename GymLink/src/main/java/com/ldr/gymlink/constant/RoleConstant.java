@@ -16,7 +16,7 @@ public interface RoleConstant {
     /**
      * 默认角色
      */
-    String DEFAULT_ROLE = "user";
+    String DEFAULT_ROLE = "student";
 
     /**
      * 管理员角色
