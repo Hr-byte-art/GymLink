@@ -98,6 +98,71 @@
             {{ course.description || '暂无课程介绍' }}
           </div>
         </el-card>
+
+        <!-- 用户评价 -->
+        <el-card class="detail-card reviews-card">
+          <template #header>
+            <div class="reviews-header">
+              <span class="card-title">用户评价</span>
+            </div>
+          </template>
+          <div v-loading="reviewLoading" class="reviews-content">
+            <!-- 评价统计 -->
+            <div class="review-summary" v-if="courseStats && courseStats.reviewCount > 0">
+              <div class="rating-overview">
+                <div class="rating-score">{{ courseStats.avgRating }}</div>
+                <div class="rating-stars">
+                  <el-rate v-model="courseStats.avgRating" disabled></el-rate>
+                </div>
+                <div class="rating-count">{{ courseStats.reviewCount }}条评价</div>
+              </div>
+              <div class="rating-distribution">
+                <div v-for="star in 5" :key="star" class="rating-bar">
+                  <div class="bar-label">{{ 6 - star }}星</div>
+                  <div class="bar-container">
+                    <div class="bar-fill" :style="{ width: getRatingPercentage(6 - star) + '%' }"></div>
+                  </div>
+                  <div class="bar-count">{{ getRatingCount(6 - star) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 评价列表 -->
+            <div v-if="reviews.length > 0" class="reviews-list">
+              <div v-for="review in reviews" :key="review.id" class="review-item">
+                <div class="review-header">
+                  <div class="reviewer-info">
+                    <div class="reviewer-avatar">
+                      <img :src="review.studentAvatar || '/avatar-placeholder.svg'" :alt="review.studentName" />
+                    </div>
+                    <div class="reviewer-details">
+                      <div class="reviewer-name">{{ review.studentName || '匿名用户' }}</div>
+                    </div>
+                  </div>
+                  <div class="review-rating">
+                    <el-rate v-model="review.rating" disabled></el-rate>
+                    <span class="review-date">{{ formatDate(review.createTime) }}</span>
+                  </div>
+                </div>
+                <div class="review-text" v-if="review.content">{{ review.content }}</div>
+                <div class="review-text empty" v-else>用户未填写评价内容</div>
+              </div>
+            </div>
+            <el-empty v-else description="暂无评价" />
+            
+            <!-- 分页 -->
+            <div v-if="reviewTotal > reviewPageSize" class="reviews-pagination">
+              <el-pagination
+                background
+                layout="prev, pager, next"
+                :total="reviewTotal"
+                :page-size="reviewPageSize"
+                :current-page="reviewPage"
+                @current-change="handleReviewPageChange"
+              />
+            </div>
+          </div>
+        </el-card>
       </div>
     </div>
 
@@ -140,6 +205,7 @@ import { useAuthStore } from '@/stores/auth'
 import { purchaseCourse, getPurchasedCourseIds } from '@/api/student'
 import { getCoachDetail, type Coach } from '@/api/coach'
 import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
+import { getReviewList, getCourseReviewStats, type CourseReview, type CourseReviewStats } from '@/api/review'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,6 +226,14 @@ const coachInfo = ref<Coach | null>(null)
 
 // 收藏状态
 const isFavorite = ref(false)
+
+// 评价相关
+const reviews = ref<CourseReview[]>([])
+const reviewLoading = ref(false)
+const reviewTotal = ref(0)
+const reviewPage = ref(1)
+const reviewPageSize = 5
+const courseStats = ref<CourseReviewStats | null>(null)
 
 // 获取难度样式类
 const getDifficultyClass = (difficulty: string) => {
@@ -327,6 +401,69 @@ const checkFavoriteStatus = async () => {
   }
 }
 
+// 加载评价列表
+const loadReviews = async () => {
+  const courseId = route.params.id as string
+  if (!courseId) return
+
+  reviewLoading.value = true
+  try {
+    const res = await getReviewList({
+      courseId: Number(courseId),
+      pageNum: reviewPage.value,
+      pageSize: reviewPageSize
+    })
+    reviews.value = res.records || []
+    reviewTotal.value = res.total || 0
+  } catch (e) {
+    console.error('获取评价列表失败:', e)
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+// 评价分页变化
+const handleReviewPageChange = (page: number) => {
+  reviewPage.value = page
+  loadReviews()
+}
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+// 加载课程评价统计
+const loadCourseStats = async () => {
+  const courseId = route.params.id as string
+  if (!courseId) return
+  try {
+    courseStats.value = await getCourseReviewStats(courseId)
+  } catch (e) {
+    console.error('获取课程评价统计失败:', e)
+  }
+}
+
+// 获取评分百分比
+const getRatingPercentage = (star: number) => {
+  if (!courseStats.value || !courseStats.value.ratingDistribution) {
+    return 0
+  }
+  const count = courseStats.value.ratingDistribution[star] || 0
+  const total = courseStats.value.reviewCount || 1
+  return Math.round((count / total) * 100)
+}
+
+// 获取评分数量
+const getRatingCount = (star: number) => {
+  if (!courseStats.value || !courseStats.value.ratingDistribution) {
+    return 0
+  }
+  return courseStats.value.ratingDistribution[star] || 0
+}
+
 onMounted(async () => {
   // 确保用户信息已加载
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
@@ -336,6 +473,8 @@ onMounted(async () => {
   
   loadCourseDetail()
   checkFavoriteStatus()
+  loadCourseStats()
+  loadReviews()
 })
 
 // 监听 associatedUserId 变化，重新检查购买状态
@@ -559,6 +698,163 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
   color: #2c3e50;
 }
 
+/* 评价区域样式 */
+.reviews-card {
+  margin-top: 20px;
+}
+
+.reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reviews-content {
+  min-height: 100px;
+}
+
+/* 评价统计样式 */
+.review-summary {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.rating-overview {
+  text-align: center;
+  min-width: 120px;
+}
+
+.rating-score {
+  font-size: 48px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.rating-stars {
+  margin-bottom: 10px;
+}
+
+.rating-count {
+  color: #666;
+  font-size: 14px;
+}
+
+.rating-distribution {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rating-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label {
+  width: 30px;
+  font-size: 14px;
+  color: #666;
+}
+
+.bar-container {
+  flex: 1;
+  height: 10px;
+  background: #f0f2f5;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bar-count {
+  width: 30px;
+  text-align: right;
+  font-size: 14px;
+  color: #666;
+}
+
+/* 评价列表样式 */
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.review-item {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.reviewer-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.reviewer-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.reviewer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reviewer-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.review-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.review-date {
+  font-size: 13px;
+  color: #999;
+}
+
+.review-text {
+  line-height: 1.6;
+  color: #555;
+}
+
+.review-text.empty {
+  color: #c0c4cc;
+  font-style: italic;
+}
+
+.reviews-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
 @media (max-width: 768px) {
   .course-header {
     flex-direction: column;
@@ -576,6 +872,11 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
 
   .action-buttons {
     flex-direction: column;
+  }
+
+  .review-header {
+    flex-direction: column;
+    gap: 10px;
   }
 }
 </style>

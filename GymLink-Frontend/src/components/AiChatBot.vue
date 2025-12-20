@@ -34,7 +34,17 @@
               class="message-avatar"
             />
             <div class="message-content">
-              <div class="message-bubble" v-html="formatMessage(msg.content)"></div>
+              <!-- 如果是正在流式输出的消息（最后一条且内容为空），显示loading动画 -->
+              <div 
+                v-if="msg.role === 'assistant' && isLoading && index === messages.length - 1 && !msg.content" 
+                class="message-bubble typing"
+              >
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+              <!-- 否则显示消息内容 -->
+              <div v-else class="message-bubble" v-html="formatMessage(msg.content)"></div>
             </div>
             <img
               v-if="msg.role === 'user'"
@@ -42,18 +52,6 @@
               alt="用户"
               class="message-avatar"
             />
-          </div>
-
-          <!-- 加载中 -->
-          <div v-if="isLoading" class="message assistant">
-            <img src="/AI.png" alt="小健" class="message-avatar" />
-            <div class="message-content">
-              <div class="message-bubble typing">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -78,10 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { Close, Promotion } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
-import { chat } from '@/api/ai'
+import { chatStream } from '@/api/ai'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -117,7 +115,10 @@ const toggleChat = () => {
   }
 }
 
-// 发送消息
+// 用于存储关闭流的函数
+let closeStream: (() => void) | null = null
+
+// 发送消息（流式）
 const sendMessage = async () => {
   const message = inputMessage.value.trim()
   if (!message || isLoading.value) return
@@ -130,28 +131,41 @@ const sendMessage = async () => {
   inputMessage.value = ''
   isLoading.value = true
 
+  // 添加一个空的助手消息，用于流式填充
+  const assistantMessageIndex = messages.value.length
+  messages.value.push({
+    role: 'assistant',
+    content: ''
+  })
+
   // 滚动到底部
   await nextTick()
   scrollToBottom()
 
-  try {
-    // 调用 AI 接口
-    const response = await chat(userId.value, message)
-    messages.value.push({
-      role: 'assistant',
-      content: response
-    })
-  } catch (error) {
-    console.error('AI 对话失败:', error)
-    messages.value.push({
-      role: 'assistant',
-      content: '抱歉，我暂时无法回复，请稍后再试 😅'
-    })
-  } finally {
-    isLoading.value = false
-    await nextTick()
-    scrollToBottom()
-  }
+  // 调用流式 AI 接口
+  closeStream = chatStream(
+    userId.value,
+    message,
+    // onMessage: 收到流式片段
+    (text: string) => {
+      messages.value[assistantMessageIndex].content += text
+      scrollToBottom()
+    },
+    // onError: 发生错误
+    (error: Error) => {
+      console.error('AI 对话失败:', error)
+      if (!messages.value[assistantMessageIndex].content) {
+        messages.value[assistantMessageIndex].content = '抱歉，我暂时无法回复，请稍后再试 😅'
+      }
+      isLoading.value = false
+    },
+    // onComplete: 流式完成
+    () => {
+      isLoading.value = false
+      closeStream = null
+      nextTick(() => scrollToBottom())
+    }
+  )
 }
 
 // 滚动到底部

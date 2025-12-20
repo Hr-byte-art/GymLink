@@ -179,7 +179,7 @@ const form = reactive({
 
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入内容', trigger: 'blur' },
+  content: [{ required: true, message: '请输入内容', trigger: 'blur' }],
 }
 
 const dialogTitle = ref('添加菜谱')

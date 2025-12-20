@@ -44,6 +44,18 @@
             </el-icon>
             <span>帖子管理</span>
           </el-menu-item>
+          <el-menu-item index="/admin/refunds">
+            <el-icon>
+              <Wallet />
+            </el-icon>
+            <span>退款申请</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/announcements">
+            <el-icon>
+              <Bell />
+            </el-icon>
+            <span>公告管理</span>
+          </el-menu-item>
           <el-menu-item index="/admin/equipment-stats">
             <el-icon>
               <DataLine />
@@ -62,12 +74,6 @@
             </el-icon>
             <span>教练数据分析</span>
           </el-menu-item>
-          <el-menu-item index="/admin/refunds">
-            <el-icon>
-              <Wallet />
-            </el-icon>
-            <span>退款申请</span>
-          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -79,6 +85,7 @@
             </el-breadcrumb>
           </div>
           <div class="header-right">
+            <NotificationBell />
             <span class="admin-name">{{ authStore.user?.name || '管理员' }}</span>
             <el-dropdown @command="handleCommand">
               <el-avatar :size="36" :src="authStore.user?.avatar || '/avatar-placeholder.svg'" />
@@ -103,7 +110,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { DataAnalysis, User, Avatar, Reading, SetUp, Food, Document, DataLine, TrendCharts, Histogram, Wallet } from '@element-plus/icons-vue'
+import { DataAnalysis, User, Avatar, Reading, SetUp, Food, Document, DataLine, TrendCharts, Histogram, Wallet, Bell } from '@element-plus/icons-vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,7 +129,8 @@ const pageTitles: Record<string, string> = {
   '/admin/equipment-stats': '器材数据分析',
   '/admin/course-stats': '课程数据分析',
   '/admin/coach-stats': '教练数据分析',
-  '/admin/refunds': '退款申请'
+  '/admin/refunds': '退款申请',
+  '/admin/announcements': '公告管理'
 }
 
 const currentPageTitle = computed(() => pageTitles[route.path] || '管理后台')

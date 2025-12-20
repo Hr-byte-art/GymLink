@@ -4,18 +4,20 @@
       <div class="profile-header">
         <div class="profile-banner">
           <div class="profile-info">
-            <div class="avatar-wrapper">
-              <img :src="userDetailInfo?.avatar || '/avatar-placeholder.svg'" :alt="displayName" class="user-avatar" />
-              <label class="avatar-upload-btn" :class="{ 'uploading': loading.avatar }">
-                <input type="file" accept="image/*" @change="handleAvatarChange" :disabled="loading.avatar" />
-                <span v-if="loading.avatar">上传中...</span>
-                <span v-else>更换头像</span>
+            <div class="avatar-wrapper" :class="{ 'uploading': loading.avatar }">
+              <label class="avatar-clickable">
+                <img :src="userDetailInfo?.avatar || authStore.user?.avatar || '/avatar-placeholder.svg'" :alt="displayName" class="user-avatar" />
+                <input type="file" accept="image/*" @change="handleAvatarChange" :disabled="loading.avatar" hidden />
+                <div class="avatar-overlay">
+                  <span v-if="loading.avatar">上传中...</span>
+                  <span v-else>点击更换</span>
+                </div>
               </label>
             </div>
             <div class="user-details">
               <h1 class="username">{{ displayName }}</h1>
               <p class="user-role">用户身份: {{ getUserRoleText }}</p>
-              <p class="join-date">加入时间: {{ formatDate(userDetailInfo?.createTime) }}</p>
+              <p class="join-date">加入时间: {{ userDetailInfo?.createTime ? formatDate(userDetailInfo.createTime) : '加载中...' }}</p>
             </div>
           </div>
         </div>
@@ -39,9 +41,20 @@
             <el-menu-item index="favorites">
               <span>我的收藏</span>
             </el-menu-item>
+            <el-menu-item index="announcements">
+              <span>公告通知</span>
+            </el-menu-item>
+            <el-menu-item index="notifications">
+              <el-badge v-if="notificationUnreadCount > 0" :value="notificationUnreadCount" class="menu-badge">
+                <span>消息通知</span>
+              </el-badge>
+              <span v-else>消息通知</span>
+            </el-menu-item>
             <el-menu-item index="coach-appointments" v-if="isCoach">
-              <span>预约管理</span>
-              <el-badge v-if="pendingAppointmentCount > 0" :value="pendingAppointmentCount" class="appointment-badge" />
+              <el-badge v-if="pendingAppointmentCount > 0" :value="pendingAppointmentCount" class="menu-badge">
+                <span>预约管理</span>
+              </el-badge>
+              <span v-else>预约管理</span>
             </el-menu-item>
           </el-menu>
         </div>
@@ -336,6 +349,58 @@
             </el-tabs>
           </div>
 
+          <!-- 公告通知 -->
+          <div v-if="activeMenu === 'announcements'" class="profile-section">
+            <h2>公告通知</h2>
+            <div v-loading="loading.announcements" class="announcements-list">
+              <div v-if="announcementList.length > 0">
+                <div v-for="item in announcementList" :key="item.id" class="announcement-card">
+                  <div class="announcement-card-header">
+                    <h3 class="announcement-card-title">{{ item.title }}</h3>
+                    <span class="announcement-card-time">{{ formatDate(item.createTime) }}</span>
+                  </div>
+                  <div class="announcement-card-content">{{ item.content }}</div>
+                </div>
+              </div>
+              <el-empty v-else description="暂无公告" />
+            </div>
+            <el-pagination v-if="announcementPagination.total > 0" layout="prev, pager, next"
+              :total="announcementPagination.total" :page-size="announcementPagination.pageSize"
+              :current-page="announcementPagination.currentPage"
+              @current-change="handleAnnouncementPageChange" class="pagination" />
+          </div>
+
+          <!-- 消息通知 -->
+          <div v-if="activeMenu === 'notifications'" class="profile-section">
+            <h2>消息通知</h2>
+            <div class="notifications-header">
+              <el-button v-if="notificationUnreadCount > 0" type="primary" link @click="handleMarkAllNotificationsRead">全部标为已读</el-button>
+            </div>
+            <div v-loading="loading.notifications" class="notifications-list">
+              <div v-if="notificationList.length > 0">
+                <div v-for="item in notificationList" :key="item.id" class="notification-card" :class="{ unread: item.isRead === 0 }" @click="handleNotificationClick(item)">
+                  <div class="notification-card-icon">
+                    <el-icon v-if="item.type === 1" color="#409eff" :size="24"><Calendar /></el-icon>
+                    <el-icon v-else color="#67c23a" :size="24"><Bell /></el-icon>
+                  </div>
+                  <div class="notification-card-content">
+                    <div class="notification-card-header">
+                      <h3 class="notification-card-title">{{ item.title }}</h3>
+                      <span class="notification-card-time">{{ formatDate(item.createTime) }}</span>
+                    </div>
+                    <div class="notification-card-text">{{ item.content }}</div>
+                  </div>
+                  <div v-if="item.isRead === 0" class="notification-unread-dot"></div>
+                </div>
+              </div>
+              <el-empty v-else description="暂无消息" />
+            </div>
+            <el-pagination v-if="notificationPagination.total > 0" layout="prev, pager, next"
+              :total="notificationPagination.total" :page-size="notificationPagination.pageSize"
+              :current-page="notificationPagination.currentPage"
+              @current-change="handleNotificationPageChange" class="pagination" />
+          </div>
+
           <!-- 预约管理 - 教练 -->
           <div v-if="activeMenu === 'coach-appointments' && isCoach" class="profile-section">
             <h2>预约管理</h2>
@@ -432,8 +497,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { changePassword } from '@/api/user'
@@ -442,10 +507,14 @@ import { addCourseReview, canReviewCourse, canReviewAppointmentSilent } from '@/
 import { getCoachByUserId, updateCoach, uploadCoachAvatar } from '@/api/coach'
 import { listStudentCoachAppointment, listStudentEquipmentReservation, cancelCoachAppointment, cancelEquipmentReservation, listAppointmentsByCoach, confirmCoachAppointment, rejectCoachAppointment, type CoachAppointment, type EquipmentReservation } from '@/api/appointment'
 import { getFavoriteList, removeFavorite, FavoriteType, type FavoriteVo } from '@/api/favorite'
+import { getAnnouncementList, type Announcement } from '@/api/announcement'
+import { getNotificationList, getUnreadCount, markAsRead, markAllAsRead, type Notification } from '@/api/notification'
+import { Calendar, Bell } from '@element-plus/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const activeMenu = ref('basic')
 const appointmentTab = ref('coach')
 const favoriteTab = ref('course')
@@ -478,7 +547,7 @@ const securityRules = {
   }]
 }
 
-const loading = ref({ userInfo: false, submit: false, password: false, coachAppointments: false, equipmentReservations: false, avatar: false, purchasedCourses: false, review: false, favorites: false, topUp: false, coachAppointmentList: false })
+const loading = ref({ userInfo: false, submit: false, password: false, coachAppointments: false, equipmentReservations: false, avatar: false, purchasedCourses: false, review: false, favorites: false, topUp: false, coachAppointmentList: false, announcements: false, notifications: false })
 const coachAppointments = ref<(CoachAppointment & { canReview?: boolean })[]>([])
 const equipmentReservations = ref<EquipmentReservation[]>([])
 
@@ -494,6 +563,15 @@ const favoriteCoaches = ref<FavoriteVo[]>([])
 const favoriteEquipments = ref<FavoriteVo[]>([])
 const favoriteRecipes = ref<FavoriteVo[]>([])
 const equipmentReservationPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
+
+// 公告相关
+const announcementList = ref<Announcement[]>([])
+const announcementPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
+
+// 消息通知相关
+const notificationList = ref<Notification[]>([])
+const notificationPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
+const notificationUnreadCount = ref(0)
 
 // 已购课程相关
 const purchasedCourses = ref<(PurchasedCourse & { canReview?: boolean })[]>([])
@@ -559,6 +637,8 @@ const handleMenuSelect = (index: string) => {
   else if (index === 'courses') loadPurchasedCourses()
   else if (index === 'favorites') loadFavorites(FavoriteType.COURSE)
   else if (index === 'coach-appointments') loadCoachAppointmentList()
+  else if (index === 'announcements') loadAnnouncements()
+  else if (index === 'notifications') loadNotifications()
 }
 
 // 查看课程详情
@@ -964,6 +1044,81 @@ const getCoachAppointmentStatusText = (status: number) => ({ 0: '待确认', 1: 
 const getEquipmentReservationStatusType = (status: number) => ({ 1: 'success', 2: 'info', 3: 'success' }[status] || 'info')
 const getEquipmentReservationStatusText = (status: number) => ({ 1: '预约成功', 2: '已取消', 3: '已完成' }[status] || '未知')
 
+// 公告相关函数
+const loadAnnouncements = async () => {
+  loading.value.announcements = true
+  try {
+    const res = await getAnnouncementList({
+      current: announcementPagination.value.currentPage,
+      pageSize: announcementPagination.value.pageSize
+    })
+    announcementList.value = res.records || []
+    announcementPagination.value.total = res.total || 0
+  } catch (error) {
+    console.error('获取公告列表失败:', error)
+  } finally {
+    loading.value.announcements = false
+  }
+}
+
+const handleAnnouncementPageChange = (page: number) => {
+  announcementPagination.value.currentPage = page
+  loadAnnouncements()
+}
+
+// 消息通知相关函数
+const loadNotifications = async () => {
+  if (!user.value?.id) return
+  loading.value.notifications = true
+  try {
+    const res = await getNotificationList(user.value.id, notificationPagination.value.currentPage, notificationPagination.value.pageSize)
+    notificationList.value = res.records || []
+    notificationPagination.value.total = res.total || 0
+  } catch (error) {
+    console.error('获取通知列表失败:', error)
+  } finally {
+    loading.value.notifications = false
+  }
+}
+
+const loadNotificationUnreadCount = async () => {
+  if (!user.value?.id) return
+  try {
+    notificationUnreadCount.value = await getUnreadCount(user.value.id)
+  } catch (error) {
+    console.error('获取未读数量失败:', error)
+  }
+}
+
+const handleNotificationClick = async (item: Notification) => {
+  if (item.isRead === 0) {
+    try {
+      await markAsRead(item.id)
+      item.isRead = 1
+      notificationUnreadCount.value = Math.max(0, notificationUnreadCount.value - 1)
+    } catch (error) {
+      console.error('标记已读失败:', error)
+    }
+  }
+}
+
+const handleMarkAllNotificationsRead = async () => {
+  if (!user.value?.id) return
+  try {
+    await markAllAsRead(user.value.id)
+    notificationList.value.forEach(n => n.isRead = 1)
+    notificationUnreadCount.value = 0
+    ElMessage.success('已全部标为已读')
+  } catch (error) {
+    console.error('标记全部已读失败:', error)
+  }
+}
+
+const handleNotificationPageChange = (page: number) => {
+  notificationPagination.value.currentPage = page
+  loadNotifications()
+}
+
 // 收藏相关函数
 const loadFavorites = async (type: FavoriteType) => {
   loading.value.favorites = true
@@ -1100,6 +1255,33 @@ const getAppointmentStatusText = (status: number) => {
   return map[status] || '未知'
 }
 
+// 处理 URL query 参数切换 tab
+const handleQueryTab = () => {
+  const tab = route.query.tab as string
+  if (tab) {
+    activeMenu.value = tab
+    // 根据 tab 加载对应数据
+    if (tab === 'appointments') {
+      loadCoachAppointments()
+    } else if (tab === 'coach-appointments') {
+      loadCoachAppointmentList()
+    } else if (tab === 'notifications') {
+      loadNotifications()
+    } else if (tab === 'courses') {
+      loadPurchasedCourses()
+    } else if (tab === 'favorites') {
+      loadFavorites(FavoriteType.COURSE)
+    } else if (tab === 'announcements') {
+      loadAnnouncements()
+    }
+  }
+}
+
+// 监听路由 query 变化
+watch(() => route.query.tab, () => {
+  handleQueryTab()
+})
+
 onMounted(async () => {
   // 确保用户信息已加载，如果没有 associatedUserId 也需要重新获取
   if (!authStore.user || !authStore.user.associatedUserId) {
@@ -1118,6 +1300,12 @@ onMounted(async () => {
     // 加载待处理预约数量
     loadPendingAppointmentCount()
   }
+  
+  // 加载未读通知数量
+  loadNotificationUnreadCount()
+  
+  // 处理 URL query 参数
+  handleQueryTab()
 })
 </script>
 
@@ -1149,39 +1337,47 @@ onMounted(async () => {
   margin-right: 30px;
 }
 
-.user-avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  object-fit: cover;
-}
-
-.avatar-upload-btn {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.avatar-upload-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.avatar-upload-btn.uploading {
-  cursor: not-allowed;
+.avatar-wrapper.uploading {
+  pointer-events: none;
   opacity: 0.7;
 }
 
-.avatar-upload-btn input {
-  display: none;
+.avatar-clickable {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 120px;
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  object-fit: cover;
+  box-sizing: border-box;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.avatar-clickable:hover .avatar-overlay {
+  opacity: 1;
 }
 
 .user-details h1 {
@@ -1548,9 +1744,7 @@ onMounted(async () => {
 }
 
 /* 教练预约管理样式 */
-.appointment-badge {
-  margin-left: 8px;
-}
+
 
 .appointments-filter {
   display: flex;
@@ -1565,5 +1759,142 @@ onMounted(async () => {
 .time-to {
   font-size: 12px;
   color: #909399;
+}
+
+/* 公告通知样式 */
+.announcements-list {
+  min-height: 200px;
+}
+
+.announcement-card {
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 15px;
+  transition: box-shadow 0.3s;
+}
+
+.announcement-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.announcement-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.announcement-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+}
+
+.announcement-card-time {
+  font-size: 13px;
+  color: #909399;
+}
+
+.announcement-card-content {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 消息通知样式 */
+.notifications-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 15px;
+}
+
+.notifications-list {
+  min-height: 200px;
+}
+
+.notification-card {
+  display: flex;
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 15px;
+  transition: all 0.3s;
+  cursor: pointer;
+  position: relative;
+}
+
+.notification-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.notification-card.unread {
+  background: #ecf5ff;
+  border-color: #b3d8ff;
+}
+
+.notification-card-icon {
+  margin-right: 15px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.notification-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.notification-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+}
+
+.notification-card-time {
+  font-size: 13px;
+  color: #909399;
+  flex-shrink: 0;
+  margin-left: 15px;
+}
+
+.notification-card-text {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.notification-unread-dot {
+  width: 10px;
+  height: 10px;
+  background: #f56c6c;
+  border-radius: 50%;
+  margin-left: 15px;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.menu-badge {
+  width: 100%;
+}
+
+.menu-badge :deep(.el-badge__content) {
+  top: 8px;
+  right: 15px;
 }
 </style>

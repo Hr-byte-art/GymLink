@@ -231,7 +231,7 @@ const form = reactive({
 const rules = {
   name: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
   coachId: [{ required: true, message: '请选择授课教练', trigger: 'change' }],
-  price: [{ required: true, message: '请输入价格', trigger: 'blur' },
+  price: [{ required: true, message: '请输入价格', trigger: 'blur' }],
 }
 
 const dialogTitle = ref('添加课程')

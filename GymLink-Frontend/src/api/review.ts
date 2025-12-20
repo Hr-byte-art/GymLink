@@ -82,6 +82,20 @@ export function getCoachReviewStats(coachId: string | number): Promise<CoachRevi
     }) as Promise<CoachReviewStats>
 }
 
+// 课程评价统计
+export interface CourseReviewStats {
+    avgRating: number
+    reviewCount: number
+    ratingDistribution: Record<number, number>
+}
+
+// 获取课程评价统计
+export function getCourseReviewStats(courseId: string | number): Promise<CourseReviewStats> {
+    return request.get('/review/courseStats', {
+        params: { courseId: String(courseId) }
+    }) as Promise<CourseReviewStats>
+}
+
 // 检查是否可以评价预约
 export function canReviewAppointment(studentId: string | number, appointmentId: string | number): Promise<boolean> {
     return request.get('/review/canReviewAppointment', {

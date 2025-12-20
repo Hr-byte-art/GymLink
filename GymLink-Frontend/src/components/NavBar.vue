@@ -38,8 +38,10 @@
         <!-- 未登录状态显示登录/注册按钮 -->
         <router-link v-if="!isAuthenticated" to="/auth" class="auth-btn">登录/注册</router-link>
 
-        <!-- 已登录状态显示用户信息和退出按钮 -->
-        <div v-else class="user-info">
+        <!-- 已登录状态显示通知和用户信息 -->
+        <template v-else>
+          <NotificationBell />
+          <div class="user-info">
           <div class="user-avatar">
             <img :src="user?.avatar || '/avatar-placeholder.svg'" alt="用户头像" />
           </div>
@@ -52,6 +54,7 @@
             </div>
           </div>
         </div>
+        </template>
       </div>
     </div>
   </header>
@@ -61,6 +64,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -174,6 +178,7 @@ const handleLogout = () => {
 .navbar-actions {
   display: flex;
   align-items: center;
+  gap: 20px;
 }
 
 .auth-btn {

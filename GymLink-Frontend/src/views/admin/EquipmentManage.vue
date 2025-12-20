@@ -194,7 +194,7 @@ const form = reactive({
   status: 1,
   description: '',
   type: '' as string,
-  typeArray: [] as string[,
+  typeArray: [] as string[],
 })
 
 // 使用统一的器材类别选项

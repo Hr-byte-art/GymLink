@@ -1,5 +1,31 @@
 <template>
     <AppLayout>
+        <!-- 公告弹窗 -->
+        <el-dialog
+            v-model="announcementVisible"
+            width="500px"
+            :close-on-click-modal="false"
+            class="announcement-dialog"
+        >
+            <template #header>
+                <div class="announcement-header">
+                    <img src="/announcement.svg" alt="公告" class="announcement-icon" />
+                    <span>系统公告</span>
+                </div>
+            </template>
+            <div v-if="currentAnnouncement" class="announcement-content">
+                <h3 class="announcement-title">{{ currentAnnouncement.title }}</h3>
+                <div class="announcement-time">{{ formatDate(currentAnnouncement.createTime) }}</div>
+                <div class="announcement-text">{{ currentAnnouncement.content }}</div>
+                <div v-if="missedCount > 0" class="announcement-missed">
+                    💡 您还有 {{ missedCount }} 条公告错过了，记得查看哦~
+                </div>
+            </div>
+            <template #footer>
+                <el-button type="primary" @click="closeAnnouncement">我知道了</el-button>
+            </template>
+        </el-dialog>
+
         <!-- 主要内容区域 -->
         <main class="main-content">
             <!-- 加载状态 -->
@@ -94,15 +120,56 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useHomeStore } from '@/stores/home'
+import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/AppLayout.vue'
 import { getCoachSpecialtyName } from '@/constants/categories'
+import { getUnreadAnnouncement, markAnnouncementAsRead, type Announcement } from '@/api/announcement'
 
 // 使用路由和首页状态管理
 const router = useRouter()
 const homeStore = useHomeStore()
+const authStore = useAuthStore()
+
+// 公告相关
+const announcementVisible = ref(false)
+const currentAnnouncement = ref<Announcement | null>(null)
+const missedCount = ref(0)
+
+// 检查并显示未读公告（使用Redis）
+const checkAnnouncements = async () => {
+    // 只有登录用户才检查公告
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+        return
+    }
+    try {
+        const result = await getUnreadAnnouncement(authStore.user.id)
+        if (result && result.announcement) {
+            currentAnnouncement.value = result.announcement
+            missedCount.value = result.missedCount || 0
+            announcementVisible.value = true
+        }
+    } catch (e) {
+        console.error('获取公告失败:', e)
+    }
+}
+
+// 关闭公告弹窗
+const closeAnnouncement = async () => {
+    if (currentAnnouncement.value && authStore.user?.id) {
+        try {
+            await markAnnouncementAsRead(authStore.user.id, currentAnnouncement.value.id)
+        } catch (e) {
+            console.error('标记已读失败:', e)
+        }
+    }
+    announcementVisible.value = false
+}
+
+// 格式化日期
+const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
 // 加载首页数据
 const loadHomeData = () => {
@@ -119,6 +186,7 @@ const navigateToLink = (link?: string) => {
 // 组件挂载时加载数据
 onMounted(() => {
     loadHomeData()
+    checkAnnouncements()
 })
 </script>
 
@@ -456,5 +524,64 @@ onMounted(() => {
     .coaches-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* 公告弹窗样式 */
+.announcement-content {
+    padding: 10px 0;
+}
+
+.announcement-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.announcement-time {
+    font-size: 13px;
+    color: #909399;
+    margin-bottom: 15px;
+}
+
+.announcement-text {
+    font-size: 15px;
+    color: #606266;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.announcement-missed {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: #fdf6ec;
+    border-radius: 6px;
+    color: #e6a23c;
+    font-size: 14px;
+}
+
+.announcement-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.announcement-icon {
+    width: 24px;
+    height: 24px;
+}
+
+:deep(.announcement-dialog .el-dialog__header) {
+    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
+    margin-right: 0;
+    padding: 15px 20px;
+}
+
+:deep(.announcement-dialog .el-dialog__headerbtn .el-dialog__close) {
+    color: white;
 }
 </style>

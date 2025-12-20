@@ -46,8 +46,9 @@
               </div>
 
               <div class="search-box">
-                <el-input v-model="searchKeyword" placeholder="搜索教练姓名" prefix-icon="Search" clearable></el-input>
+                <el-input v-model="searchKeyword" placeholder="搜索教练姓名" prefix-icon="Search" clearable @keyup.enter="loadCoaches"></el-input>
               </div>
+              <el-button @click="resetFilters">重置</el-button>
             </div>
           </div>
         </section>
@@ -353,11 +354,37 @@ const loadSpecialties = () => {
   coachStore.fetchSpecialties()
 }
 
-// 监听筛选条件变化，重新加载数据
-watch([activeSpecialty, selectedGender, selectedAgeRange, searchKeyword], () => {
+// 防抖定时器
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+// 监听下拉筛选条件变化，立即加载
+watch([activeSpecialty, selectedGender, selectedAgeRange], () => {
   currentPage.value = 1
   loadCoaches()
 })
+
+// 监听搜索关键词变化，添加防抖（500ms）
+watch(searchKeyword, () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadCoaches()
+  }, 500)
+})
+
+// 重置所有筛选条件
+const resetFilters = () => {
+  activeSpecialty.value = ''
+  selectedGender.value = undefined
+  selectedAgeRange.value = ''
+  minAge.value = undefined
+  maxAge.value = undefined
+  searchKeyword.value = ''
+  currentPage.value = 1
+  loadCoaches()
+}
 
 // 监听页码变化，重新加载数据
 watch(currentPage, () => {
