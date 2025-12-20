@@ -209,13 +209,21 @@ const handleRegister = async () => {
         // 使用认证状态管理的注册方法
         const result = await authStore.register({
           username: registerForm.userAccount,
-          email: `${registerForm.userAccount}@example.com`,
-          password: registerForm.userPassword
+          password: registerForm.userPassword,
+          checkPassword: registerForm.checkPassword
         })
 
         if (result.success) {
-          ElMessage.success({ message: '注册成功', duration: 1500 })
-          router.push('/')
+          ElMessage.success({ message: '注册成功，请登录', duration: 2000 })
+          // 注册成功后切换到登录界面
+          isLogin.value = true
+          // 清空注册表单
+          registerForm.userAccount = ''
+          registerForm.userPassword = ''
+          registerForm.checkPassword = ''
+          if (registerFormRef.value) {
+            registerFormRef.value.clearValidate()
+          }
         } else {
           ElMessage.error(result.error || '注册失败')
         }

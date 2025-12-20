@@ -69,20 +69,20 @@ export const useRecipeStore = defineStore('recipe', () => {
       recipes.value = records.map(item => ({
         ...item,
         // 适配字段映射
-        image: item.coverImage || 'https://via.placeholder.com/300x200?text=No+Image', // 映射 image
-        description: item.content ? item.content.substring(0, 100) + '...' : '', // 简略描述
-        category: item.tags ? item.tags.split(',')[0] : '未分类', // 提取第一个标签作为分类
+        image: item.coverImage || 'https://via.placeholder.com/300x200?text=No+Image',
+        description: item.content ? item.content.substring(0, 100) + '...' : '',
+        category: item.tags ? item.tags.split(',')[0] : '未分类',
 
-        // 填充 Mock 数据（因为后端没返回这些字段）
-        calories: Math.floor(Math.random() * 500 + 200),
-        protein: Math.floor(Math.random() * 30 + 10),
-        carbs: Math.floor(Math.random() * 50 + 20),
-        fat: Math.floor(Math.random() * 20 + 5),
-        prepTime: 10,
-        cookTime: 20,
-        servings: 1,
-        difficulty: ['easy', 'medium', 'hard'][Math.floor(Math.random() * 3)]
-      })) as unknown as Recipe[] // 强制类型转换，实际应用中应该更新类型定义
+        // 使用后端返回的真实数据，如果没有则使用默认值
+        calories: item.calories ?? 0,
+        protein: item.protein ?? 0,
+        carbs: item.carbs ?? 0,
+        fat: item.fat ?? 0,
+        prepTime: item.prepTime ?? 0,
+        cookTime: item.cookTime ?? 0,
+        servings: item.servings ?? 1,
+        difficulty: item.difficulty ?? 'medium'
+      })) as unknown as Recipe[]
 
       total.value = response.total || 0
     } catch (err) {

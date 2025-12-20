@@ -4,21 +4,27 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ldr.gymlink.ai.aiService.RecipeNutritionAnalyzer;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.manager.CosManager;
 import com.ldr.gymlink.mapper.RecipeMapper;
 import com.ldr.gymlink.model.dto.recipe.AddRecipeRequest;
+import com.ldr.gymlink.model.dto.recipe.NutritionAnalysisResult;
 import com.ldr.gymlink.model.dto.recipe.RecipeQueryPageRequest;
 import com.ldr.gymlink.model.dto.recipe.UpdateRecipeRequest;
 import com.ldr.gymlink.model.entity.Recipe;
 import com.ldr.gymlink.model.vo.RecipeVo;
 import com.ldr.gymlink.service.RecipeService;
 import com.luciad.imageio.webp.WebPWriteParam;
+import dev.langchain4j.community.model.dashscope.QwenChatModel;
+import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -49,6 +55,12 @@ public class RecipeServiceImpl extends ServiceImpl<RecipeMapper, Recipe>
     @Resource
     private CosManager cosManager;
 
+    @Resource
+    private QwenChatModel qwenChatModel;
+
+    @Resource
+    private ObjectMapper objectMapper;
+
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
     private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
             "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
@@ -62,9 +74,99 @@ public class RecipeServiceImpl extends ServiceImpl<RecipeMapper, Recipe>
         if (!save) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
+        
+        // 异步调用 AI 分析营养信息
+        analyzeAndUpdateNutritionAsync(recipe.getId(), recipe.getTitle(), recipe.getContent());
+        
         RecipeVo recipeVo = new RecipeVo();
         BeanUtils.copyProperties(recipe, recipeVo);
         return recipeVo;
+    }
+
+    /**
+     * 异步分析并更新食谱营养信息
+     */
+    @Async
+    public void analyzeAndUpdateNutritionAsync(Long recipeId, String title, String content) {
+        try {
+            log.info("开始AI营养分析: recipeId={}", recipeId);
+            NutritionAnalysisResult result = analyzeNutrition(title, content);
+            if (result != null) {
+                Recipe recipe = new Recipe();
+                recipe.setId(recipeId);
+                recipe.setCalories(result.getCalories());
+                recipe.setProtein(result.getProtein());
+                recipe.setCarbs(result.getCarbs());
+                recipe.setFat(result.getFat());
+                recipe.setPrepTime(result.getPrepTime());
+                recipe.setCookTime(result.getCookTime());
+                recipe.setServings(result.getServings());
+                recipe.setDifficulty(result.getDifficulty());
+                this.updateById(recipe);
+                log.info("AI营养分析完成: recipeId={}, calories={}, protein={}", 
+                        recipeId, result.getCalories(), result.getProtein());
+            }
+        } catch (Exception e) {
+            log.error("AI营养分析失败: recipeId={}", recipeId, e);
+        }
+    }
+
+    /**
+     * 调用 AI 分析食谱营养信息
+     */
+    private NutritionAnalysisResult analyzeNutrition(String title, String content) {
+        try {
+            RecipeNutritionAnalyzer analyzer = AiServices.builder(RecipeNutritionAnalyzer.class)
+                    .chatModel(qwenChatModel)
+                    .build();
+            
+            String recipeInfo = String.format("食谱标题：%s\n食谱内容：%s", title, content);
+            String jsonResult = analyzer.analyzeNutrition(recipeInfo);
+            
+            log.debug("AI营养分析原始结果: {}", jsonResult);
+            
+            // 清理可能的 markdown 代码块标记
+            jsonResult = cleanJsonResponse(jsonResult);
+            
+            return objectMapper.readValue(jsonResult, NutritionAnalysisResult.class);
+        } catch (Exception e) {
+            log.error("解析AI营养分析结果失败", e);
+            return getDefaultNutritionResult();
+        }
+    }
+
+    /**
+     * 清理 AI 返回的 JSON（去除可能的 markdown 代码块）
+     */
+    private String cleanJsonResponse(String response) {
+        if (response == null) return "{}";
+        response = response.trim();
+        // 去除 ```json 和 ``` 标记
+        if (response.startsWith("```json")) {
+            response = response.substring(7);
+        } else if (response.startsWith("```")) {
+            response = response.substring(3);
+        }
+        if (response.endsWith("```")) {
+            response = response.substring(0, response.length() - 3);
+        }
+        return response.trim();
+    }
+
+    /**
+     * 获取默认营养分析结果（当 AI 分析失败时使用）
+     */
+    private NutritionAnalysisResult getDefaultNutritionResult() {
+        NutritionAnalysisResult result = new NutritionAnalysisResult();
+        result.setCalories(300);
+        result.setProtein(20);
+        result.setCarbs(30);
+        result.setFat(10);
+        result.setPrepTime(15);
+        result.setCookTime(20);
+        result.setServings(1);
+        result.setDifficulty("medium");
+        return result;
     }
 
     @Override

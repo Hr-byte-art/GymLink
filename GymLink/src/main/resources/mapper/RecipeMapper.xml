@@ -12,11 +12,21 @@
             <result property="tags" column="tags" jdbcType="VARCHAR"/>
             <result property="adminId" column="admin_id" jdbcType="BIGINT"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="calories" column="calories" jdbcType="INTEGER"/>
+            <result property="protein" column="protein" jdbcType="INTEGER"/>
+            <result property="carbs" column="carbs" jdbcType="INTEGER"/>
+            <result property="fat" column="fat" jdbcType="INTEGER"/>
+            <result property="prepTime" column="prep_time" jdbcType="INTEGER"/>
+            <result property="cookTime" column="cook_time" jdbcType="INTEGER"/>
+            <result property="servings" column="servings" jdbcType="INTEGER"/>
+            <result property="difficulty" column="difficulty" jdbcType="VARCHAR"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id,title,cover_image,
         content,tags,admin_id,
-        create_time
+        create_time,calories,protein,
+        carbs,fat,prep_time,
+        cook_time,servings,difficulty
     </sql>
 </mapper>

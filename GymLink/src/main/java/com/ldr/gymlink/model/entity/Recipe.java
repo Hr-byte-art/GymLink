@@ -57,6 +57,54 @@ public class Recipe implements Serializable {
     @TableField(value = "create_time")
     private Date createTime;
 
+    /**
+     * 热量(千卡)
+     */
+    @TableField(value = "calories")
+    private Integer calories;
+
+    /**
+     * 蛋白质(克)
+     */
+    @TableField(value = "protein")
+    private Integer protein;
+
+    /**
+     * 碳水化合物(克)
+     */
+    @TableField(value = "carbs")
+    private Integer carbs;
+
+    /**
+     * 脂肪(克)
+     */
+    @TableField(value = "fat")
+    private Integer fat;
+
+    /**
+     * 准备时间(分钟)
+     */
+    @TableField(value = "prep_time")
+    private Integer prepTime;
+
+    /**
+     * 烹饪时间(分钟)
+     */
+    @TableField(value = "cook_time")
+    private Integer cookTime;
+
+    /**
+     * 份数
+     */
+    @TableField(value = "servings")
+    private Integer servings;
+
+    /**
+     * 难度(easy/medium/hard)
+     */
+    @TableField(value = "difficulty")
+    private String difficulty;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

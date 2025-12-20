@@ -86,10 +86,17 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 保存用户信息和token
       user.value = userData
-      token.value = response.token || 'mock-jwt-token'
 
-      // 将token保存到localStorage
-      localStorage.setItem('token', token.value)
+      // 检查后端是否返回了token
+      if (!response.token) {
+        console.warn('后端未返回token，使用session认证')
+      }
+      token.value = response.token || ''
+
+      // 将token保存到localStorage（如果有的话）
+      if (token.value) {
+        localStorage.setItem('token', token.value)
+      }
 
       // 如果选择记住我，可以在这里保存额外的信息
       if (credentials.rememberMe) {
@@ -106,33 +113,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 注册方法
-  const register = async (userData: { username: string; email: string; password: string }) => {
+  const register = async (userData: { username: string; password: string; checkPassword: string }) => {
     try {
-      // 这里应该是实际的API调用
-      // const response = await api.post('/auth/register', userData)
+      // 调用真实的后端注册接口
+      const response = await request.post('/user/userRegister', null, {
+        params: {
+          userAccount: userData.username,
+          userPassword: userData.password,
+          checkPassword: userData.checkPassword
+        }
+      })
 
-      // 模拟注册成功
-      const mockUser: User = {
-        id: Date.now(),
-        username: userData.username,
-        email: userData.email,
-        avatar: '/avatar-placeholder.svg',
-        role: 'user'
-      }
-
-      const mockToken = 'mock-jwt-token'
-
-      // 保存用户信息和token
-      user.value = mockUser
-      token.value = mockToken
-
-      // 将token保存到localStorage
-      localStorage.setItem('token', mockToken)
-
-      return { success: true, user: mockUser }
-    } catch (error) {
+      // 注册成功，返回用户ID（不自动登录）
+      return { success: true, userId: response }
+    } catch (error: any) {
       console.error('注册失败:', error)
-      return { success: false, error: '注册失败，请稍后再试' }
+      return { success: false, error: error.message || '注册失败，请稍后再试' }
     }
   }
 
