@@ -110,3 +110,16 @@ export const getRecipeTagNames = (codes: string): string => {
     if (!codes) return '-'
     return codes.split(',').map(code => getRecipeTagName(code.trim())).join(', ')
 }
+
+// 性别编码映射：1-男 2-女 3-未知
+export const genderMap: Record<number, string> = {
+    1: '男',
+    2: '女',
+    3: '未知'
+}
+
+// 获取性别名称
+export const getGenderName = (code: number | undefined | null): string => {
+    if (code === undefined || code === null) return '-'
+    return genderMap[code] || '未知'
+}

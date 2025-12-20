@@ -39,7 +39,7 @@
             <div class="coach-basic-meta">
               <div class="basic-meta-item">
                 <img src="/gender.svg" alt="性别" class="icon-svg" />
-                <span>{{ coachStore.coachDetail.gender === 1 ? '男' : '女' }}</span>
+                <span>{{ getGenderName(coachStore.coachDetail.gender) }}</span>
               </div>
               <div class="basic-meta-item">
                 <img src="/age.svg" alt="年龄" class="icon-svg" />
@@ -243,7 +243,7 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 
 import AppLayout from '@/components/AppLayout.vue'
-import { getCoachSpecialtyName } from '@/constants/categories'
+import { getCoachSpecialtyName, getGenderName } from '@/constants/categories'
 
 // 使用路由和教练状态管理
 const route = useRoute()

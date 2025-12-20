@@ -39,7 +39,7 @@
           <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="name" label="姓名" width="100" />
           <el-table-column label="性别" width="80">
-            <template #default="{ row }">{{ row.gender === 1 ? '男' : '女' }}</template>
+            <template #default="{ row }">{{ getGenderName(row.gender) }}</template>
           </el-table-column>
           <el-table-column prop="phone" label="手机号" width="130" />
           <el-table-column prop="height" label="身高(cm)" width="100" />
@@ -106,6 +106,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
+import { getGenderName } from '@/constants/categories'
 
 const loading = ref(false)
 const submitLoading = ref(false)

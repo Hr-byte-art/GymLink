@@ -89,7 +89,7 @@
                   <div class="coach-meta">
                     <div class="meta-item">
                       <img src="/gender.svg" alt="性别" class="icon-svg icon-gender" />
-                      <span>{{ coach.gender === 1 ? '男' : '女' }}</span>
+                      <span>{{ getGenderName(coach.gender) }}</span>
                     </div>
                     <div class="meta-item">
                       <img src="/age.svg" alt="年龄" class="icon-svg icon-age" />
@@ -157,7 +157,7 @@ import { bookCoach as bookCoachApi } from '@/api/coach'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
-import { coachSpecialtyOptions, getCoachSpecialtyName } from '@/constants/categories'
+import { coachSpecialtyOptions, getCoachSpecialtyName, getGenderName } from '@/constants/categories'
 
 // 使用路由和教练状态管理
 const router = useRouter()

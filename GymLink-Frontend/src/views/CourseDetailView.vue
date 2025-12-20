@@ -177,7 +177,7 @@
           <h3 class="coach-dialog-name">{{ coachInfo.name }}</h3>
         </div>
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="性别">{{ coachInfo.gender === 1 ? '男' : '女' }}</el-descriptions-item>
+          <el-descriptions-item label="性别">{{ getGenderName(coachInfo.gender) }}</el-descriptions-item>
           <el-descriptions-item label="年龄">{{ coachInfo.age }}岁</el-descriptions-item>
           <el-descriptions-item label="联系电话">
             <el-link type="primary" :href="'tel:' + coachInfo.phone">{{ coachInfo.phone }}</el-link>
@@ -200,7 +200,7 @@ import { ArrowLeft, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
 import request from '@/utils/request'
-import { getCourseTypeName, getCoachSpecialtyName } from '@/constants/categories'
+import { getCourseTypeName, getCoachSpecialtyName, getGenderName } from '@/constants/categories'
 import { useAuthStore } from '@/stores/auth'
 import { purchaseCourse, getPurchasedCourseIds } from '@/api/student'
 import { getCoachDetail, type Coach } from '@/api/coach'
