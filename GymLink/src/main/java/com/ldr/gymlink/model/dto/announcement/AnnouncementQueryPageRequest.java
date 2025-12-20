@@ -25,5 +25,10 @@ public class AnnouncementQueryPageRequest extends PageRequest implements Seriali
      */
     private Long adminId;
 
+    /**
+     * 时间范围（天数）：7=7天内, 15=半个月内, 30=一个月内, 90=一季度内, 365=一年内
+     */
+    private Integer timeRange;
+
     private static final long serialVersionUID = 1L;
 }

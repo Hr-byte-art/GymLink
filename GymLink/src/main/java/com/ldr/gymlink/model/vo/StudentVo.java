@@ -19,7 +19,7 @@ public class StudentVo implements Serializable {
     /**
      * 主键ID
      */
-    private Integer id;
+    private Long id;
 
     /**
      * 账号

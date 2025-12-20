@@ -7,6 +7,7 @@ import com.ldr.gymlink.model.dto.announcement.AddAnnouncementRequest;
 import com.ldr.gymlink.model.dto.announcement.AnnouncementQueryPageRequest;
 import com.ldr.gymlink.model.dto.announcement.UpdateAnnouncementRequest;
 import com.ldr.gymlink.model.vo.AnnouncementVo;
+import com.ldr.gymlink.model.vo.UnreadAnnouncementVo;
 
 /**
  * @author 木子宸
@@ -55,4 +56,20 @@ public interface AnnouncementService extends IService<Announcement> {
      * @return 公告信息
      */
     AnnouncementVo getAnnouncementById(Long id);
+
+    /**
+     * 获取用户未读的最新公告（含未读数量）
+     *
+     * @param userId 用户ID
+     * @return 未读公告信息，如果没有则返回null
+     */
+    UnreadAnnouncementVo getUnreadAnnouncement(Long userId);
+
+    /**
+     * 标记公告为已读
+     *
+     * @param userId         用户ID
+     * @param announcementId 公告ID
+     */
+    void markAnnouncementAsRead(Long userId, Long announcementId);
 }

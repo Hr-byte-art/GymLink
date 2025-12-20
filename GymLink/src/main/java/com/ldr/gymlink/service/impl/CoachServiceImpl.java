@@ -25,6 +25,8 @@ import com.ldr.gymlink.service.CoachService;
 import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.service.UserService;
 import com.ldr.gymlink.utils.ThrowUtils;
+import com.ldr.gymlink.mq.message.AppointmentMessage;
+import com.ldr.gymlink.mq.producer.AppointmentMessageProducer;
 import com.luciad.imageio.webp.WebPWriteParam;
 import jakarta.annotation.Resource;
 
@@ -72,6 +74,9 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
 
     @Resource
     private CosManager cosManager;
+
+    @Resource
+    private AppointmentMessageProducer appointmentMessageProducer;
 
     /**
      * 允许的图片格式
@@ -227,7 +232,8 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         }
 
         // 检查学员在该时间段是否已有预约
-        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> studentConflictWrapper = new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
+        LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment> studentConflictWrapper =
+                new LambdaQueryWrapper<com.ldr.gymlink.model.entity.CoachAppointment>()
                 .eq(com.ldr.gymlink.model.entity.CoachAppointment::getStudentId, studentId)
                 .in(com.ldr.gymlink.model.entity.CoachAppointment::getStatus, 0, 1)
                 .and(w -> w
@@ -257,7 +263,31 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         coachAppointment.setMessage(bookingCoachRequest.getMessage());
         coachAppointment.setStatus(0); // 待确认
         coachAppointment.setCreateTime(new Date());
-        return coachAppointmentService.save(coachAppointment);
+        boolean saved = coachAppointmentService.save(coachAppointment);
+
+        // 发送MQ消息通知教练
+        if (saved) {
+            try {
+                Student student = studentService.getById(studentId);
+                // 通过 User 表获取教练和学员的 userId
+                Long coachUserId = getUserIdByAssociatedId(coachId, UserRoleEnum.COACH.getValue());
+                Long studentUserId = getUserIdByAssociatedId(studentId, UserRoleEnum.STUDENT.getValue());
+                AppointmentMessage message = AppointmentMessage.builder()
+                        .type(AppointmentMessage.TYPE_NEW_APPOINTMENT)
+                        .appointmentId(coachAppointment.getId())
+                        .receiverUserId(coachUserId)
+                        .senderUserId(studentUserId)
+                        .senderName(student != null ? student.getName() : "学员")
+                        .appointTime(appointTime)
+                        .endTime(endTime)
+                        .message(bookingCoachRequest.getMessage())
+                        .build();
+                appointmentMessageProducer.sendAppointmentNotification(message);
+            } catch (Exception e) {
+                log.error("发送预约通知失败", e);
+            }
+        }
+        return saved;
     }
 
     @Override
@@ -287,7 +317,30 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         }
 
         appointment.setStatus(1); // 已确认
-        return coachAppointmentService.updateById(appointment);
+        boolean updated = coachAppointmentService.updateById(appointment);
+
+        // 发送MQ消息通知学员
+        if (updated) {
+            try {
+                Coach coach = this.getById(appointment.getCoachId());
+                // 通过 User 表获取教练和学员的 userId
+                Long coachUserId = getUserIdByAssociatedId(appointment.getCoachId(), UserRoleEnum.COACH.getValue());
+                Long studentUserId = getUserIdByAssociatedId(appointment.getStudentId(), UserRoleEnum.STUDENT.getValue());
+                AppointmentMessage message = AppointmentMessage.builder()
+                        .type(AppointmentMessage.TYPE_APPOINTMENT_CONFIRMED)
+                        .appointmentId(appointmentId)
+                        .receiverUserId(studentUserId)
+                        .senderUserId(coachUserId)
+                        .senderName(coach != null ? coach.getName() : "教练")
+                        .appointTime(appointment.getAppointTime())
+                        .endTime(appointment.getEndTime())
+                        .build();
+                appointmentMessageProducer.sendAppointmentNotification(message);
+            } catch (Exception e) {
+                log.error("发送预约确认通知失败", e);
+            }
+        }
+        return updated;
     }
 
     @Override
@@ -302,7 +355,30 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         }
 
         appointment.setStatus(2); // 已拒绝
-        return coachAppointmentService.updateById(appointment);
+        boolean updated = coachAppointmentService.updateById(appointment);
+
+        // 发送MQ消息通知学员
+        if (updated) {
+            try {
+                Coach coach = this.getById(appointment.getCoachId());
+                // 通过 User 表获取教练和学员的 userId
+                Long coachUserId = getUserIdByAssociatedId(appointment.getCoachId(), UserRoleEnum.COACH.getValue());
+                Long studentUserId = getUserIdByAssociatedId(appointment.getStudentId(), UserRoleEnum.STUDENT.getValue());
+                AppointmentMessage message = AppointmentMessage.builder()
+                        .type(AppointmentMessage.TYPE_APPOINTMENT_REJECTED)
+                        .appointmentId(appointmentId)
+                        .receiverUserId(studentUserId)
+                        .senderUserId(coachUserId)
+                        .senderName(coach != null ? coach.getName() : "教练")
+                        .appointTime(appointment.getAppointTime())
+                        .endTime(appointment.getEndTime())
+                        .build();
+                appointmentMessageProducer.sendAppointmentNotification(message);
+            } catch (Exception e) {
+                log.error("发送预约拒绝通知失败", e);
+            }
+        }
+        return updated;
     }
 
     @Override
@@ -732,5 +808,22 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach>
         vo.setAgeDistribution(ageDistribution);
 
         return vo;
+    }
+
+    /**
+     * 通过关联ID和角色获取用户ID
+     * @param associatedId 关联的教练ID或学员ID
+     * @param role 角色（coach 或 student）
+     * @return 用户ID
+     */
+    private Long getUserIdByAssociatedId(Long associatedId, String role) {
+        if (associatedId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getAssociatedUserId, associatedId)
+                .eq(User::getRole, role);
+        User user = userService.getOne(queryWrapper);
+        return user != null ? user.getId() : null;
     }
 }

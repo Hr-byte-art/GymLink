@@ -7,7 +7,10 @@ import com.ldr.gymlink.model.dto.announcement.AddAnnouncementRequest;
 import com.ldr.gymlink.model.dto.announcement.AnnouncementQueryPageRequest;
 import com.ldr.gymlink.model.dto.announcement.UpdateAnnouncementRequest;
 import com.ldr.gymlink.model.vo.AnnouncementVo;
+import com.ldr.gymlink.model.vo.UnreadAnnouncementVo;
+import com.ldr.gymlink.model.vo.UserVo;
 import com.ldr.gymlink.service.AnnouncementService;
+import com.ldr.gymlink.service.UserService;
 import com.ldr.gymlink.utils.ResultUtils;
 import com.ldr.gymlink.utils.ThrowUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,9 +31,15 @@ public class AnnouncementController {
     @Resource
     private AnnouncementService announcementService;
 
+    @Resource
+    private UserService userService;
+
     @PostMapping("/addAnnouncement")
     @Operation(summary = "添加公告")
     public BaseResponse<AnnouncementVo> addAnnouncement(@RequestBody AddAnnouncementRequest addAnnouncementRequest) {
+        // 自动获取当前登录用户ID作为adminId
+        UserVo loginUser = userService.getLoginUser();
+        addAnnouncementRequest.setAdminId(loginUser.getId());
         AnnouncementVo announcementVo = announcementService.addAnnouncement(addAnnouncementRequest);
         return ResultUtils.success(announcementVo);
     }
@@ -65,5 +74,19 @@ public class AnnouncementController {
     public BaseResponse<AnnouncementVo> getAnnouncementById(@RequestParam Long announcementId) {
         AnnouncementVo announcementVo = announcementService.getAnnouncementById(announcementId);
         return ResultUtils.success(announcementVo);
+    }
+
+    @GetMapping("/getUnreadAnnouncement")
+    @Operation(summary = "获取用户未读公告")
+    public BaseResponse<UnreadAnnouncementVo> getUnreadAnnouncement(@RequestParam Long userId) {
+        UnreadAnnouncementVo result = announcementService.getUnreadAnnouncement(userId);
+        return ResultUtils.success(result);
+    }
+
+    @PostMapping("/markAsRead")
+    @Operation(summary = "标记公告为已读")
+    public BaseResponse<Boolean> markAsRead(@RequestParam Long userId, @RequestParam Long announcementId) {
+        announcementService.markAnnouncementAsRead(userId, announcementId);
+        return ResultUtils.success(true);
     }
 }

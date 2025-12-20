@@ -62,4 +62,11 @@ public class CourseReviewController {
         stats.put("courseCount", courseReviewService.getCoachCourseCount(coachId));
         return ResultUtils.success(stats);
     }
+
+    @GetMapping("/courseStats")
+    @Operation(summary = "获取课程评价统计")
+    public BaseResponse<Map<String, Object>> getCourseReviewStats(@RequestParam Long courseId) {
+        Map<String, Object> stats = courseReviewService.getCourseReviewStats(courseId);
+        return ResultUtils.success(stats);
+    }
 }

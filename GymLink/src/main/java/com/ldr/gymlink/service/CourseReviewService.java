@@ -71,4 +71,12 @@ public interface CourseReviewService extends IService<CourseReview> {
      * @return 课程数量
      */
     Integer getCoachCourseCount(Long coachId);
+
+    /**
+     * 获取课程的评价统计
+     *
+     * @param courseId 课程ID
+     * @return 统计数据（avgRating, reviewCount, ratingDistribution）
+     */
+    Map<String, Object> getCourseReviewStats(Long courseId);
 }

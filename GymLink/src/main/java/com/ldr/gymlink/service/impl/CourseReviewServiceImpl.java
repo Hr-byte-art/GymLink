@@ -288,6 +288,41 @@ public class CourseReviewServiceImpl extends ServiceImpl<CourseReviewMapper, Cou
         return Math.toIntExact(courseMapper.selectCount(queryWrapper));
     }
 
+    @Override
+    public Map<String, Object> getCourseReviewStats(Long courseId) {
+        Map<String, Object> stats = new HashMap<>();
+
+        // 查询该课程的所有评价
+        LambdaQueryWrapper<CourseReview> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CourseReview::getCourseId, courseId)
+                .eq(CourseReview::getReviewType, 1); // 只统计课程评价
+        List<CourseReview> reviews = this.list(queryWrapper);
+
+        if (reviews.isEmpty()) {
+            stats.put("avgRating", 0.0);
+            stats.put("reviewCount", 0);
+            stats.put("ratingDistribution", new HashMap<Integer, Long>());
+            return stats;
+        }
+
+        // 计算平均评分
+        double avgRating = reviews.stream()
+                .mapToInt(CourseReview::getRating)
+                .average()
+                .orElse(0.0);
+        // 保留一位小数
+        avgRating = BigDecimal.valueOf(avgRating).setScale(1, RoundingMode.HALF_UP).doubleValue();
+
+        // 评分分布
+        Map<Integer, Long> ratingDistribution = reviews.stream()
+                .collect(Collectors.groupingBy(CourseReview::getRating, Collectors.counting()));
+
+        stats.put("avgRating", avgRating);
+        stats.put("reviewCount", reviews.size());
+        stats.put("ratingDistribution", ratingDistribution);
+        return stats;
+    }
+
     /**
      * 转换为VO
      */

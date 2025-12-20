@@ -77,6 +77,12 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Resource
     private com.ldr.gymlink.mapper.CoachMapper coachMapper;
 
+    @Resource
+    private com.ldr.gymlink.mq.producer.RefundMessageProducer refundMessageProducer;
+
+    @Resource
+    private com.ldr.gymlink.mq.producer.CourseOrderMessageProducer courseOrderMessageProducer;
+
 
     @Override
     public StudentVo getStudentByUserId(Long userId) {
@@ -241,6 +247,26 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         if (!save) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "课程订单保存失败，请稍后重试");
         }
+
+        // 发送MQ消息通知教练
+        try {
+            Long coachUserId = getUserIdByCoachId(course.getCoachId());
+            com.ldr.gymlink.mq.message.CourseOrderMessage message = com.ldr.gymlink.mq.message.CourseOrderMessage.builder()
+                    .type(com.ldr.gymlink.mq.message.CourseOrderMessage.TYPE_NEW_ORDER)
+                    .orderId(courseOrder.getId())
+                    .courseId(courseId)
+                    .courseName(course.getName())
+                    .coachId(course.getCoachId())
+                    .coachUserId(coachUserId)
+                    .studentId(studentId)
+                    .studentName(student.getName())
+                    .price(course.getPrice())
+                    .build();
+            courseOrderMessageProducer.sendCourseOrderNotification(message);
+        } catch (Exception e) {
+            log.error("发送课程订单通知失败", e);
+        }
+
         return true;
     }
 
@@ -488,6 +514,23 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         boolean updateOrder = courseOrderService.updateById(order);
         ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "申请退款失败");
 
+        // 发送MQ消息通知管理员
+        try {
+            Student student = this.getById(order.getStudentId());
+            Course course = courseService.getById(order.getCourseId());
+            com.ldr.gymlink.mq.message.RefundMessage message = com.ldr.gymlink.mq.message.RefundMessage.builder()
+                    .type(com.ldr.gymlink.mq.message.RefundMessage.TYPE_REFUND_APPLY)
+                    .orderId(orderId)
+                    .studentId(order.getStudentId())
+                    .studentName(student != null ? student.getName() : "学员")
+                    .courseName(course != null ? course.getName() : "课程")
+                    .refundAmount(order.getPrice())
+                    .build();
+            refundMessageProducer.sendRefundNotification(message);
+        } catch (Exception e) {
+            log.error("发送退款申请通知失败", e);
+        }
+
         return true;
     }
 
@@ -516,6 +559,24 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         boolean updateOrder = courseOrderService.updateById(order);
         ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "退款失败，更新订单状态失败");
 
+        // 发送MQ消息通知学员
+        try {
+            Course course = courseService.getById(order.getCourseId());
+            Long studentUserId = getUserIdByStudentId(order.getStudentId());
+            com.ldr.gymlink.mq.message.RefundMessage message = com.ldr.gymlink.mq.message.RefundMessage.builder()
+                    .type(com.ldr.gymlink.mq.message.RefundMessage.TYPE_REFUND_APPROVED)
+                    .orderId(orderId)
+                    .studentId(order.getStudentId())
+                    .studentUserId(studentUserId)
+                    .studentName(student.getName())
+                    .courseName(course != null ? course.getName() : "课程")
+                    .refundAmount(refundAmount)
+                    .build();
+            refundMessageProducer.sendRefundNotification(message);
+        } catch (Exception e) {
+            log.error("发送退款通过通知失败", e);
+        }
+
         return true;
     }
 
@@ -532,6 +593,25 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         order.setStatus(1);
         boolean updateOrder = courseOrderService.updateById(order);
         ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "操作失败");
+
+        // 发送MQ消息通知学员
+        try {
+            Student student = this.getById(order.getStudentId());
+            Course course = courseService.getById(order.getCourseId());
+            Long studentUserId = getUserIdByStudentId(order.getStudentId());
+            com.ldr.gymlink.mq.message.RefundMessage message = com.ldr.gymlink.mq.message.RefundMessage.builder()
+                    .type(com.ldr.gymlink.mq.message.RefundMessage.TYPE_REFUND_REJECTED)
+                    .orderId(orderId)
+                    .studentId(order.getStudentId())
+                    .studentUserId(studentUserId)
+                    .studentName(student != null ? student.getName() : "学员")
+                    .courseName(course != null ? course.getName() : "课程")
+                    .refundAmount(order.getPrice())
+                    .build();
+            refundMessageProducer.sendRefundNotification(message);
+        } catch (Exception e) {
+            log.error("发送退款拒绝通知失败", e);
+        }
 
         return true;
     }
@@ -597,5 +677,33 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
 
         voPage.setRecords(voList);
         return voPage;
+    }
+
+    /**
+     * 通过学员ID获取用户ID
+     */
+    private Long getUserIdByStudentId(Long studentId) {
+        if (studentId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getAssociatedUserId, studentId)
+                .eq(User::getRole, UserRoleEnum.STUDENT.getValue());
+        User user = userService.getOne(queryWrapper);
+        return user != null ? user.getId() : null;
+    }
+
+    /**
+     * 通过教练ID获取用户ID
+     */
+    private Long getUserIdByCoachId(Long coachId) {
+        if (coachId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getAssociatedUserId, coachId)
+                .eq(User::getRole, UserRoleEnum.COACH.getValue());
+        User user = userService.getOne(queryWrapper);
+        return user != null ? user.getId() : null;
     }
 }
