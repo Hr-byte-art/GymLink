@@ -25,7 +25,7 @@
 
       <div class="profile-content">
         <div class="profile-sidebar">
-          <el-menu :default-active="activeMenu" class="profile-menu" @select="handleMenuSelect">
+          <el-menu ref="profileMenuRef" :default-active="activeMenu" class="profile-menu" @select="handleMenuSelect">
             <el-menu-item index="basic">
               <span>基本信息</span>
             </el-menu-item>
@@ -497,7 +497,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -516,6 +516,7 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const activeMenu = ref('basic')
+const profileMenuRef = ref()
 const appointmentTab = ref('coach')
 const favoriteTab = ref('course')
 const studentFormRef = ref()
@@ -1256,10 +1257,12 @@ const getAppointmentStatusText = (status: number) => {
 }
 
 // 处理 URL query 参数切换 tab
-const handleQueryTab = () => {
+const handleQueryTab = async () => {
   const tab = route.query.tab as string
   if (tab) {
     activeMenu.value = tab
+    // 等待 DOM 更新后再加载数据
+    await nextTick()
     // 根据 tab 加载对应数据
     if (tab === 'appointments') {
       loadCoachAppointments()
