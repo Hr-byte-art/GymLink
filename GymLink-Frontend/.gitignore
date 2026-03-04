@@ -17,3 +17,5 @@ dist/
 # IDE
 .vscode/tasks.json
 .vscode/launch.json
+
+AGENTS.md
