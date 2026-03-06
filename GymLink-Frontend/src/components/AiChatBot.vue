@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="ai-chatbot">
     <!-- 悬浮按钮 -->
     <div class="chat-trigger" @click="toggleChat" :class="{ active: isOpen }">
-      <img src="/AI.png" alt="AI助手" class="ai-avatar" />
+      <img src="/AI.png" alt="AI鍔╂墜" class="ai-avatar" />
       <span class="pulse" v-if="!isOpen"></span>
     </div>
 
@@ -34,7 +34,7 @@
               class="message-avatar"
             />
             <div class="message-content">
-              <!-- 如果是正在流式输出的消息（最后一条且内容为空），显示loading动画 -->
+              <!-- 如果是流式返回中的最后一条空消息，显示 loading 动画 -->
               <div 
                 v-if="msg.role === 'assistant' && isLoading && index === messages.length - 1 && !msg.content" 
                 class="message-bubble typing"
@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onUnmounted } from 'vue'
 import { Close, Promotion } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { chatStream } from '@/api/ai'
@@ -98,7 +98,7 @@ const userAvatar = computed(() => {
   return authStore.user?.avatar || '/avatar-placeholder.svg'
 })
 
-// 用户ID
+// 用户 ID
 const userId = computed(() => {
   return authStore.user?.id || 'guest'
 })
@@ -110,12 +110,12 @@ const toggleChat = () => {
     // 首次打开，添加欢迎消息
     messages.value.push({
       role: 'assistant',
-      content: '你好！我是小健，你的AI健身助手 💪\n\n我可以帮你：\n• 推荐适合的健身课程\n• 解答器材使用问题\n• 提供饮食建议\n• 指导系统使用\n\n有什么可以帮你的吗？'
+      content: '你好！我是小健，你的 AI 健身助手 💪\n\n我可以帮你：\n• 推荐适合你的健身课程\n• 解答器材使用问题\n• 提供饮食建议\n• 指导系统功能使用\n\n有什么我可以帮你的吗？'
     })
   }
 }
 
-// 用于存储关闭流的函数
+// 用于保存关闭流式请求的方法
 let closeStream: (() => void) | null = null
 
 // 发送消息（流式）
@@ -131,7 +131,7 @@ const sendMessage = async () => {
   inputMessage.value = ''
   isLoading.value = true
 
-  // 添加一个空的助手消息，用于流式填充
+  // 添加一条空的助手消息用于流式填充
   const assistantMessageIndex = messages.value.length
   messages.value.push({
     role: 'assistant',
@@ -148,14 +148,18 @@ const sendMessage = async () => {
     message,
     // onMessage: 收到流式片段
     (text: string) => {
-      messages.value[assistantMessageIndex].content += text
+      const assistantMessage = messages.value[assistantMessageIndex]
+      if (assistantMessage) {
+        assistantMessage.content += text
+      }
       scrollToBottom()
     },
     // onError: 发生错误
     (error: Error) => {
       console.error('AI 对话失败:', error)
-      if (!messages.value[assistantMessageIndex].content) {
-        messages.value[assistantMessageIndex].content = '抱歉，我暂时无法回复，请稍后再试 😅'
+      const assistantMessage = messages.value[assistantMessageIndex]
+      if (assistantMessage && !assistantMessage.content) {
+        assistantMessage.content = '抱歉，我暂时无法回复，请稍后再试 😅'
       }
       isLoading.value = false
     },
@@ -179,6 +183,13 @@ const scrollToBottom = () => {
 const formatMessage = (content: string) => {
   return content.replace(/\n/g, '<br>')
 }
+
+onUnmounted(() => {
+  if (closeStream) {
+    closeStream()
+    closeStream = null
+  }
+})
 </script>
 
 <style scoped>

@@ -18,7 +18,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <el-button @click="resetSearch">閲嶇疆</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -49,7 +49,7 @@
               <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
+          <el-table-column label="鎿嶄綔" width="180" fixed="right">
             <template #default="{ row }">
               <template v-if="row.status === 3">
                 <el-button size="small" type="success" @click="handleApprove(row)">通过</el-button>
@@ -102,13 +102,13 @@ const pendingCount = computed(() => {
 })
 
 const getStatusType = (status: number) => {
-  const map: Record<number, string> = { 1: 'success', 2: 'info', 3: 'warning' }
+  const map: Record<number, string> = { 1: '已支付', 2: '已退款', 3: '退款申请中' }
   return map[status] || 'info'
 }
 
 const getStatusText = (status: number) => {
   const map: Record<number, string> = { 1: '已支付', 2: '已退款', 3: '退款申请中' }
-  return map[status] || '未知'
+  return map[status] || '鏈煡'
 }
 
 const formatDate = (dateStr: string) => {
@@ -128,7 +128,7 @@ const loadData = async () => {
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (error) {
-    console.error('加载退款订单失败:', error)
+    console.error('加载退款订单失败?', error)
   } finally {
     loading.value = false
   }
@@ -149,16 +149,16 @@ const resetSearch = () => {
 const handleApprove = async (row: RefundOrder) => {
   try {
     await ElMessageBox.confirm(
-      `确定通过该退款申请吗？将退还 ¥${row.price} 到学员 ${row.studentName} 的账户余额。`,
+      `确定通过该退款申请吗？将退款 ¥${row.price} 到学员 ${row.studentName} 的账户余额。`,
       '审核通过',
       { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
     await request.get('/student/approveRefund', { params: { orderId: row.orderId } })
     ElMessage.success('退款已通过，金额已返还到学员账户')
     loadData()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      // 错误已在拦截器处理
+
     }
   }
 }
@@ -166,16 +166,16 @@ const handleApprove = async (row: RefundOrder) => {
 const handleReject = async (row: RefundOrder) => {
   try {
     await ElMessageBox.confirm(
-      `确定拒绝该退款申请吗？订单将恢复为已支付状态。`,
+      '确定拒绝该退款申请吗？订单将恢复为已支付状态。',
       '拒绝退款',
       { confirmButtonText: '确定拒绝', cancelButtonText: '取消', type: 'warning' }
     )
     await request.get('/student/rejectRefund', { params: { orderId: row.orderId } })
     ElMessage.success('已拒绝退款申请')
     loadData()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      // 错误已在拦截器处理
+
     }
   }
 }
@@ -222,3 +222,5 @@ onMounted(() => {
   font-weight: bold;
 }
 </style>
+
+

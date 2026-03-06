@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <!-- 页面头部 -->
     <div class="page-header">
@@ -24,13 +24,13 @@
               力量训练器材
             </div>
             <div class="filter-tab" :class="{ active: activeCategory === '3' }" @click="setActiveCategory('3')">
-              功能性训练器材
+              功能性训练器械
             </div>
             <div class="filter-tab" :class="{ active: activeCategory === '4' }" @click="setActiveCategory('4')">
               小型健身器械
             </div>
             <div class="filter-tab" :class="{ active: activeCategory === '5' }" @click="setActiveCategory('5')">
-              康复与辅助器材
+              康复与辅助器械
             </div>
             <div class="filter-tab" :class="{ active: activeCategory === '6' }" @click="setActiveCategory('6')">
               其他辅助设备
@@ -74,12 +74,12 @@
         </div>
       </section>
 
-      <!-- 加载状态 -->
+      <!-- 加载状态-->
       <div v-if="equipmentStore.loading" class="loading-container">
         <el-loading :loading="true" text="加载中..."></el-loading>
       </div>
 
-      <!-- 错误状态 -->
+      <!-- 错误状态-->
       <div v-else-if="equipmentStore.error" class="error-container">
         <el-result icon="warning" title="加载失败" :sub-title="equipmentStore.error">
           <template #extra>
@@ -91,7 +91,7 @@
       <!-- 器材列表区域 -->
       <section v-else class="equipment-section">
         <div class="section-container">
-          <!-- 无数据状态 -->
+          <!-- 无数据状态-->
           <div v-if="!equipmentStore.hasEquipment" class="empty-container">
             <el-empty description="暂无器材数据"></el-empty>
           </div>
@@ -102,7 +102,7 @@
               @click="viewEquipmentDetail(equipment.id)">
               <div class="equipment-image">
                 <img :src="equipment.image" :alt="equipment.name" />
-                <div class="equipment-category">{{ equipment.category }}</div>
+                <div class="equipment-category">{{ equipment.location }}</div>
                 <div class="equipment-status" :class="'status-' + equipment.status">
                   {{ getStatusText(equipment.status) }}
                 </div>
@@ -116,21 +116,12 @@
                     <i class="icon-location"></i>
                     <span>{{ equipment.location }}</span>
                   </div>
-                  <div class="info-item" v-if="equipment.rating">
-                    <i class="icon-rating"></i>
-                    <span>{{ equipment.rating.toFixed(1) }}</span>
-                    <span class="review-count">({{ equipment.reviewCount || 0 }})</span>
-                  </div>
-                  <div class="info-item" v-if="equipment.usageCount">
-                    <i class="icon-usage"></i>
-                    <span>使用 {{ equipment.usageCount }} 次</span>
-                  </div>
                 </div>
                 <div class="equipment-footer">
-                  <div class="equipment-price" v-if="equipment.price">
-                    <span class="price-label">预约费</span>
-                    <span class="price-value">¥{{ equipment.price }}</span>
-                    <span class="price-unit">/小时</span>
+                  <div class="equipment-price">
+                    <span class="price-label">总数量</span>
+                    <span class="price-value">{{ equipment.totalCount }}</span>
+                    <span class="price-unit">台</span>
                   </div>
                   <div class="equipment-actions">
                     <el-button type="primary" class="reserve-btn" :disabled="equipment.status !== 1"
@@ -259,14 +250,14 @@ const currentPage = ref(1)
 const pageSize = ref(12)
 
 // 子分类数据
-const subCategories = {
+const subCategories: Record<string, Array<{ value: string; label: string }>> = {
   '1': [
     { value: '1-1', label: '跑步机' },
     { value: '1-2', label: '椭圆机' },
     { value: '1-3', label: '动感单车' },
     { value: '1-4', label: '划船机' },
     { value: '1-5', label: '健身车' },
-    { value: '1-6', label: '楼梯机' },
+    { value: '1-6', label: '登楼机' },
     { value: '1-7', label: '体适能运动机' }
   ],
   '2': [
@@ -289,7 +280,7 @@ const setActiveCategory = (category: string) => {
   currentPage.value = 1
 }
 
-// 设置活动子类别
+// 设置活动子类
 const setActiveSubCategory = (subCategory: string) => {
   activeSubCategory.value = subCategory
   currentPage.value = 1
@@ -339,7 +330,8 @@ const reserveEquipment = (equipment: { id: number; name: string }) => {
 
 // 提交预约
 const submitReservation = async () => {
-  if (!reservationFormRef.value || !currentEquipment.value) return
+  const selectedEquipment = currentEquipment.value
+  if (!reservationFormRef.value || !selectedEquipment) return
 
   await reservationFormRef.value.validate(async (valid) => {
     if (!valid) return
@@ -356,13 +348,13 @@ const submitReservation = async () => {
       const endDate = new Date(startDate.getTime() + reservationForm.duration * 60 * 1000)
 
       await reserveEquipmentApi({
-        equipmentId: currentEquipment.value.id,
+        equipmentId: selectedEquipment.id,
         studentId: Number(studentId),
         startTime: startDate.toISOString(),
         endTime: endDate.toISOString()
       })
 
-      ElMessage.success('预约成功！')
+      ElMessage.success('预约成功')
       reservationDialogVisible.value = false
     } catch {
       // 错误已在 request 拦截器中处理，这里不重复显示
@@ -376,9 +368,9 @@ const submitReservation = async () => {
 const mainCategoryLabels: { [key: string]: string } = {
   '1': '有氧健身器材',
   '2': '力量训练器材',
-  '3': '功能性训练器材',
+  '3': '功能性训练器械',
   '4': '小型健身器械',
-  '5': '康复与辅助器材',
+  '5': '康复与辅助器械',
   '6': '其他辅助设备',
   '7': '商用专用器材',
   '8': '家用专用器材'
@@ -391,7 +383,7 @@ const subCategoryLabelMap: { [key: string]: string } = {
   '1-3': '动感单车',
   '1-4': '划船机',
   '1-5': '健身车',
-  '1-6': '楼梯机',
+  '1-6': '登楼机',
   '1-7': '体适能运动机',
   '2-1': '固定器械',
   '2-2': '自由重量器材',
@@ -401,18 +393,20 @@ const subCategoryLabelMap: { [key: string]: string } = {
 // 加载器材数据
 const loadEquipment = () => {
   // 构建查询参数，与后端 EquipmentQueryPageRequest 对应
-  const params: any = {
+  const params: Record<string, string | number> = {
     pageNum: currentPage.value,
     pageSize: pageSize.value
   }
 
-  // 添加类别筛选（后端字段是 type）
+  // 添加类别筛选（后端字段type）
   if (activeCategory.value !== 'all') {
     // 如果有子分类选中，使用子分类；否则使用主分类
-    if (activeSubCategory.value && subCategoryLabelMap[activeSubCategory.value]) {
-      params.type = subCategoryLabelMap[activeSubCategory.value]
-    } else {
-      params.type = mainCategoryLabels[activeCategory.value]
+    const subCategoryLabel = subCategoryLabelMap[activeSubCategory.value]
+    const mainCategoryLabel = mainCategoryLabels[activeCategory.value]
+    if (activeSubCategory.value && subCategoryLabel) {
+      params.type = subCategoryLabel
+    } else if (mainCategoryLabel) {
+      params.type = mainCategoryLabel
     }
   }
 
@@ -454,115 +448,111 @@ onMounted(() => {
 
 <style scoped>
 .equipment-container {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --soft: #f8fafc;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-/* 页面头部样式 */
 .page-header {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  color: white;
-  padding: 80px 0 60px;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.2), transparent 42%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 48%, #334155 100%);
+  color: #f8fafc;
   text-align: center;
+  padding: 88px 0 70px;
 }
 
 .header-content {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
 .page-title {
-  font-size: 42px;
-  font-weight: 700;
-  margin-bottom: 20px;
+  margin: 0;
+  font-size: clamp(34px, 5vw, 50px);
+  font-weight: 800;
 }
 
 .page-subtitle {
+  margin: 14px auto 0;
+  max-width: 700px;
+  color: #e2e8f0;
   font-size: 18px;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 600px;
-  margin: 0 auto;
+  line-height: 1.7;
 }
 
-/* 主要内容样式 */
-.main-content {
-  flex: 1;
-}
-
-/* 筛选区域样式 */
 .filter-section {
-  background: #f8f9fa;
-  padding: 30px 0;
-  border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 74px;
+  z-index: 90;
+  border-bottom: 1px solid var(--line);
+  background: rgba(248, 250, 252, 0.95);
+  backdrop-filter: blur(10px);
 }
 
-.filter-container {
-  max-width: 1200px;
+.filter-container,
+.section-container {
+  max-width: 1240px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
-.filter-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+.filter-container {
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
+.filter-tabs,
 .sub-filter-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 15px;
+}
+
+.filter-tabs { margin-bottom: 12px; }
+.sub-filter-tabs { margin-bottom: 12px; }
+
+.filter-tab {
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+  border-color: #fdba74;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.filter-tab.active {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
 .sub-filter-tabs .filter-tab {
-  background: #e9ecef;
   font-size: 12px;
-  padding: 6px 12px;
-}
-
-.filter-tab {
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: white;
-  color: #333;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e0e0e0;
-}
-
-.filter-tab:hover {
-  background: #f5f5f5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.filter-tab.active {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  color: white;
-  border-color: transparent;
-}
-
-.filter-tab:hover {
-  background: #f0f2f5;
-}
-
-.filter-tab.active {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  color: white;
+  padding: 5px 12px;
+  background: #f8fafc;
 }
 
 .filter-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
   align-items: center;
+  gap: 12px;
 }
 
 .status-filter,
@@ -572,66 +562,71 @@ onMounted(() => {
 }
 
 .filter-label {
-  margin-right: 8px;
-  font-weight: 500;
-  color: #555;
+  margin-right: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
 }
 
-/* 增加下拉框宽度以改善可读性 */
-.status-filter :deep(.el-select) {
-  width: 200px;
+.status-filter :deep(.el-select) { width: 150px; }
+.search-box { flex: 1; min-width: 220px; }
+
+.filter-options :deep(.el-input__wrapper),
+.filter-options :deep(.el-select__wrapper) {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
 }
 
-.search-box {
-  flex: 1;
-  min-width: 250px;
+.filter-options :deep(.el-input__wrapper.is-focus),
+.filter-options :deep(.el-select__wrapper.is-focused) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
 }
 
-/* 加载和错误状态样式 */
+.main-content {
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
 .loading-container,
 .error-container,
 .empty-container {
+  min-height: 300px;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
 }
 
-/* 器材区域样式 */
 .equipment-section {
-  padding: 60px 0;
-}
-
-.section-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+  padding: 40px 0 72px;
 }
 
 .equipment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 30px;
-  margin-bottom: 50px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+  margin-bottom: 42px;
 }
 
 .equipment-card {
-  background: white;
-  border-radius: 12px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
 }
 
 .equipment-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
+  border-color: rgba(249, 115, 22, 0.42);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.14);
 }
 
 .equipment-image {
   position: relative;
-  height: 200px;
+  height: 210px;
   overflow: hidden;
 }
 
@@ -639,62 +634,56 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.25s ease;
 }
 
 .equipment-card:hover .equipment-image img {
-  transform: scale(1.05);
+  transform: scale(1.04);
+}
+
+.equipment-category,
+.equipment-status {
+  position: absolute;
+  top: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #fff;
 }
 
 .equipment-category {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  left: 14px;
+  background: rgba(2, 6, 23, 0.66);
 }
 
 .equipment-status {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  right: 14px;
 }
 
 .equipment-status.status-1 {
-  background: #67c23a;
-  color: white;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
 .equipment-status.status-2 {
-  background: #f56c6c;
-  color: white;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
 .equipment-content {
-  padding: 25px;
+  padding: 20px;
 }
 
 .equipment-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 15px;
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 800;
 }
 
-
-
 .equipment-description {
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 20px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.65;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -702,33 +691,41 @@ onMounted(() => {
 }
 
 .equipment-info {
-  display: flex;
-  flex-direction: column;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  color: #666;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .info-item i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   margin-right: 8px;
-  color: #67c23a;
 }
 
 .review-count {
-  color: #999;
   margin-left: 5px;
+  color: #94a3b8;
 }
 
 .equipment-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
 }
 
 .equipment-price {
@@ -736,123 +733,64 @@ onMounted(() => {
   align-items: baseline;
 }
 
-.price-label {
-  font-size: 14px;
-  color: #666;
-  margin-right: 5px;
+.price-label,
+.price-unit {
+  font-size: 13px;
+  color: #64748b;
 }
 
 .price-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f56c6c;
-}
-
-.price-unit {
-  font-size: 14px;
-  color: #666;
-  margin-left: 2px;
+  margin: 0 4px;
+  color: #b91c1c;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .equipment-actions {
-  display: flex;
-  gap: 10px;
   margin-left: auto;
 }
 
-.equipment-actions .reserve-btn {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+.reserve-btn {
   border: none;
-  padding: 8px 20px;
-  font-weight: 500;
-  font-size: 16px;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
-.equipment-actions .reserve-btn:hover {
-  background: linear-gradient(135deg, #85ce61 0%, #67c23a 100%);
+.reserve-btn:disabled {
+  background: #cbd5e1;
 }
 
-.equipment-actions .reserve-btn:disabled {
-  background: #c0c4cc;
-}
-
-/* 分页样式 */
 .pagination-container {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
 }
 
-/* 图标样式 */
 .icon-location {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
   background: url('/position.svg') no-repeat center center;
-  background-size: contain;
+  background-size: 14px;
 }
 
 .icon-rating::before {
-  content: '⭐';
+  content: '★';
+  color: #f59e0b;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .icon-usage::before {
-  content: '📊';
+  content: '';
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #22c55e;
+  border-right-color: transparent;
+  box-sizing: border-box;
 }
 
-/* 响应式设计 */
-@media (max-width: 992px) {
-  .equipment-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .page-title {
-    font-size: 32px;
-  }
-
-  .filter-tabs {
-    flex-wrap: wrap;
-    overflow-x: hidden;
-  }
-
-  .filter-tab {
-    padding: 6px 12px;
-    font-size: 13px;
-  }
-
-  .sub-filter-tabs .filter-tab {
-    padding: 4px 10px;
-    font-size: 12px;
-  }
-
-  .filter-options {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-box {
-    min-width: auto;
-  }
-
-  .equipment-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .equipment-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-
-  .equipment-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
-
-/* 预约时长按钮样式 */
 .duration-radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -871,5 +809,62 @@ onMounted(() => {
 .duration-radio-group .el-radio-button:first-child .el-radio-button__inner,
 .duration-radio-group .el-radio-button:last-child .el-radio-button__inner {
   border-radius: 6px !important;
+}
+
+@media (max-width: 1024px) {
+  .filter-section { position: static; }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    padding: 66px 0 54px;
+  }
+
+  .page-subtitle {
+    font-size: 16px;
+  }
+
+  .filter-options {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .status-filter,
+  .location-filter {
+    justify-content: space-between;
+  }
+
+  .status-filter :deep(.el-select),
+  .location-filter :deep(.el-input) {
+    width: 68%;
+  }
+
+  .search-box {
+    min-width: auto;
+  }
+
+  .equipment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reserve-btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .equipment-card,
+  .equipment-image img {
+    transition: none;
+  }
+
+  .equipment-card:hover {
+    transform: none;
+  }
 }
 </style>

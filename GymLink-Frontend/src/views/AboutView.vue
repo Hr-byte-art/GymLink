@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="about-view">
       <div class="container">
@@ -208,160 +208,178 @@ const submitContact = () => {
 
 <style scoped>
 .about-view {
+  --primary: #f97316;
+  --primary-strong: #c2410c;
+  --ink: #1f2937;
+  --muted: #64748b;
+  --line: #f4e7d8;
   min-height: 100vh;
-  background-color: #f8f9fa;
-  padding: 60px 0;
+  padding: 52px 0 70px;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(251, 146, 60, 0.2) 0%, rgba(251, 146, 60, 0) 32%),
+    radial-gradient(circle at 94% 2%, rgba(251, 191, 36, 0.14) 0%, rgba(251, 191, 36, 0) 30%),
+    linear-gradient(180deg, #fffaf5 0%, #ffffff 45%);
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1220px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: 60px;
+  margin-bottom: 32px;
 }
 
 .page-title {
-  font-size: 48px;
+  margin: 0 0 10px;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: clamp(40px, 6vw, 62px);
   font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 15px;
+  letter-spacing: 0.4px;
+  color: #2a1f12;
 }
 
 .page-subtitle {
-  font-size: 20px;
-  color: #7f8c8d;
-  margin: 0;
+  margin: 0 auto;
+  max-width: 560px;
+  font-size: 18px;
+  color: var(--muted);
 }
 
-/* 公司简介 */
-.company-intro {
-  background: white;
-  border-radius: 15px;
-  padding: 60px;
-  margin-bottom: 60px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+.company-intro,
+.core-values,
+.team-section,
+.advantages-section,
+.contact-section {
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #ffffff 0%, #fffbf7 100%);
+  box-shadow: 0 12px 30px rgba(248, 146, 43, 0.08);
+  padding: 30px;
+  margin-bottom: 22px;
 }
 
 .intro-content {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 40px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
   align-items: center;
 }
 
 .intro-text h2 {
-  font-size: 32px;
-  color: #2c3e50;
-  margin-bottom: 25px;
+  margin: 0 0 14px;
+  font-size: 31px;
+  color: #2a1f12;
 }
 
 .intro-text p {
-  font-size: 16px;
-  line-height: 1.8;
-  color: #555;
-  margin-bottom: 20px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.9;
+  color: #4b5563;
+}
+
+.intro-image {
+  text-align: center;
 }
 
 .intro-image img {
   width: 100%;
-  height: auto;
-  border-radius: 10px;
-}
-
-/* 核心价值观 */
-.core-values {
-  background: white;
-  border-radius: 15px;
-  padding: 60px;
-  margin-bottom: 60px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+  max-width: 210px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 16px;
 }
 
 .section-title {
-  font-size: 36px;
-  color: #2c3e50;
+  margin: 0 0 22px;
+  padding-bottom: 10px;
+  font-size: 30px;
+  color: #2a1f12;
   text-align: center;
-  margin-bottom: 50px;
   position: relative;
 }
 
 .section-title::after {
-  content: '';
+  content: "";
   position: absolute;
-  bottom: -10px;
   left: 50%;
+  bottom: 0;
   transform: translateX(-50%);
-  width: 80px;
+  width: 74px;
   height: 4px;
-  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-  border-radius: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary) 0%, #fdba74 100%);
 }
 
-.values-grid {
+.values-grid,
+.team-grid,
+.advantages-content {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 30px;
+  gap: 14px;
 }
 
-.value-card {
+.values-grid,
+.team-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.advantages-content {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.value-card,
+.team-member,
+.advantage-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffaf5;
+  padding: 16px;
   text-align: center;
-  padding: 30px 20px;
-  border-radius: 10px;
-  background: #f8f9fa;
-  transition: transform 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.value-card:hover {
-  transform: translateY(-5px);
+.value-card:hover,
+.team-member:hover,
+.advantage-item:hover {
+  transform: translateY(-3px);
+  border-color: #fdba74;
+  box-shadow: 0 14px 24px rgba(249, 115, 22, 0.14);
 }
 
 .value-icon {
-  font-size: 48px;
-  margin-bottom: 20px;
+  font-size: 34px;
+  margin-bottom: 10px;
 }
 
-.value-card h3 {
-  font-size: 20px;
-  color: #2c3e50;
-  margin-bottom: 15px;
+.value-card h3,
+.team-member h3,
+.advantage-text h3 {
+  margin: 0 0 7px;
+  font-size: 19px;
+  color: #2a1f12;
 }
 
-.value-card p {
+.value-card p,
+.member-desc,
+.advantage-text p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.75;
   font-size: 14px;
-  color: #7f8c8d;
-  line-height: 1.6;
-}
-
-/* 团队介绍 */
-.team-section {
-  background: white;
-  border-radius: 15px;
-  padding: 60px;
-  margin-bottom: 60px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-}
-
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 40px;
-}
-
-.team-member {
-  text-align: center;
 }
 
 .member-avatar {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 20px;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 10px;
   border-radius: 50%;
   overflow: hidden;
-  border: 4px solid #f0f2f5;
+  border: 3px solid #fed7aa;
+  background: #fff;
 }
 
 .member-avatar img {
@@ -370,153 +388,112 @@ const submitContact = () => {
   object-fit: cover;
 }
 
-.team-member h3 {
-  font-size: 20px;
-  color: #2c3e50;
-  margin-bottom: 5px;
-}
-
 .member-title {
-  font-size: 16px;
-  color: #409eff;
-  margin-bottom: 10px;
-}
-
-.member-desc {
+  margin: 0 0 7px;
+  color: var(--primary-strong);
+  font-weight: 700;
   font-size: 14px;
-  color: #7f8c8d;
-  line-height: 1.6;
-}
-
-/* 服务优势 */
-.advantages-section {
-  background: white;
-  border-radius: 15px;
-  padding: 60px;
-  margin-bottom: 60px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-}
-
-.advantages-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 40px;
-}
-
-.advantage-item {
-  text-align: center;
-  padding: 20px;
 }
 
 .advantage-number {
-  font-size: 48px;
-  font-weight: 700;
-  color: #409eff;
-  margin-bottom: 15px;
-}
-
-.advantage-text h3 {
-  font-size: 18px;
-  color: #2c3e50;
-  margin-bottom: 10px;
-}
-
-.advantage-text p {
-  font-size: 14px;
-  color: #7f8c8d;
-}
-
-/* 联系我们 */
-.contact-section {
-  background: white;
-  border-radius: 15px;
-  padding: 60px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+  font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 8px;
 }
 
 .contact-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
 }
 
 .contact-info {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
+  display: grid;
+  gap: 12px;
 }
 
 .contact-item {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffaf5;
+  padding: 12px;
 }
 
 .contact-icon {
-  font-size: 24px;
-  width: 50px;
-  height: 50px;
-  background: #f0f2f5;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-size: 20px;
+  background: #ffedd5;
 }
 
 .contact-text h3 {
-  font-size: 18px;
-  color: #2c3e50;
-  margin-bottom: 5px;
+  margin: 0 0 2px;
+  font-size: 16px;
+  color: #2a1f12;
 }
 
 .contact-text p {
-  font-size: 16px;
-  color: #7f8c8d;
   margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.contact-form {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
 }
 
 .contact-form h3 {
-  font-size: 24px;
-  color: #2c3e50;
-  margin-bottom: 30px;
+  margin: 0 0 10px;
+  font-size: 22px;
+  color: #2a1f12;
+}
+
+.contact-form :deep(.el-form-item__label) {
+  color: #334155;
+  font-weight: 600;
+}
+
+.contact-form :deep(.el-input__wrapper),
+.contact-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
+}
+
+.contact-form :deep(.el-input__wrapper.is-focus),
+.contact-form :deep(.el-textarea__inner:focus) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
 }
 
 .submit-btn {
   width: 100%;
-  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
   border: none;
-  padding: 12px 30px;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 10px;
+  padding: 11px 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
 }
 
 .submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(64, 158, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(249, 115, 22, 0.3);
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .about-view {
-    padding: 40px 0;
-  }
-
-  .page-title {
-    font-size: 36px;
-  }
-
-  .page-subtitle {
-    font-size: 18px;
-  }
-
-  .company-intro,
-  .core-values,
-  .team-section,
-  .advantages-section,
-  .contact-section {
-    padding: 40px 30px;
-  }
-
+@media (max-width: 992px) {
   .intro-content {
     grid-template-columns: 1fr;
     text-align: center;
@@ -524,18 +501,38 @@ const submitContact = () => {
 
   .intro-image {
     order: -1;
-    margin-bottom: 30px;
-  }
-
-  .values-grid,
-  .team-grid,
-  .advantages-content {
-    grid-template-columns: 1fr;
   }
 
   .contact-content {
     grid-template-columns: 1fr;
-    gap: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .about-view {
+    padding: 30px 0 44px;
+  }
+
+  .container {
+    padding: 0 14px;
+  }
+
+  .company-intro,
+  .core-values,
+  .team-section,
+  .advantages-section,
+  .contact-section {
+    border-radius: 16px;
+    padding: 16px 14px;
+    margin-bottom: 14px;
+  }
+
+  .section-title {
+    font-size: 25px;
+  }
+
+  .page-subtitle {
+    font-size: 16px;
   }
 }
 </style>

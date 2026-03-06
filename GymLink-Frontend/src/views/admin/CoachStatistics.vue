@@ -42,7 +42,7 @@
               <div class="stat-icon" style="background: #E6A23C;"><el-icon :size="24"><Calendar /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.todayAppointmentCount || 0 }}</div>
-                <div class="stat-label">今日预约</div>
+                <div class="stat-label">今日棰勭害</div>
               </div>
             </div>
           </el-card>
@@ -114,6 +114,12 @@ import request from '@/utils/request'
 import * as echarts from 'echarts'
 import { getCoachSpecialtyName } from '@/constants/categories'
 
+type SpecialtyStat = { specialty: string; count: number }
+type DailyTrendItem = { date: string; count: number }
+type HotCoachItem = { coachName: string; appointmentCount: number }
+type AgeDistributionItem = { ageRange: string; count: number }
+
+
 const statistics = reactive({
   totalCoach: 0,
   maleCount: 0,
@@ -123,10 +129,10 @@ const statistics = reactive({
   monthAppointmentCount: 0,
   pendingAppointmentCount: 0,
   confirmedAppointmentCount: 0,
-  specialtyStatistics: [] as any[],
-  dailyAppointmentTrend: [] as any[],
-  hotCoachRank: [] as any[],
-  ageDistribution: [] as any[]
+  specialtyStatistics: [] as SpecialtyStat[],
+  dailyAppointmentTrend: [] as DailyTrendItem[],
+  hotCoachRank: [] as HotCoachItem[],
+  ageDistribution: [] as AgeDistributionItem[]
 })
 
 const trendChartRef = ref<HTMLElement>()
@@ -208,7 +214,7 @@ const initCharts = () => {
       xAxis: { type: 'category', data: names, axisLabel: { rotate: 30, interval: 0 } },
       yAxis: { type: 'value', minInterval: 1 },
       series: [{
-        name: '预约次数',
+        name: '棰勭害次数',
         type: 'bar',
         data: values,
         itemStyle: {
@@ -281,3 +287,5 @@ onUnmounted(() => {
 .chart-card { height: 400px; }
 .chart-container { width: 100%; height: 320px; }
 </style>
+
+

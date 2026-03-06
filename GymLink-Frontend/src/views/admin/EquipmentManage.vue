@@ -11,7 +11,7 @@
           </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="searchForm.status" placeholder="请选择" clearable>
-              <el-option label="正常" :value="1" />
+              <el-option label="姝ｅ父" :value="1" />
               <el-option label="维护中" :value="2" />
             </el-select>
           </el-form-item>
@@ -28,7 +28,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <el-button @click="resetSearch">閲嶇疆</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -68,7 +68,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="鎿嶄綔" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -132,7 +132,7 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="form.status" placeholder="请选择">
-            <el-option label="正常" :value="1" />
+            <el-option label="姝ｅ父" :value="1" />
             <el-option label="维护中" :value="2" />
           </el-select>
         </el-form-item>
@@ -166,10 +166,23 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
 import { equipmentTypeOptions, getEquipmentTypeName } from '@/constants/categories'
 
+type EquipmentRecord = {
+  id: number | string
+  name?: string
+  image?: string
+  location?: string
+  totalCount?: number
+  status?: number
+  description?: string
+  type?: string
+  createTime?: string
+  [key: string]: unknown
+}
+
 const loading = ref(false)
 const submitLoading = ref(false)
 const imageUploading = ref(false)
-const tableData = ref<any[]>([])
+const tableData = ref<EquipmentRecord[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
@@ -200,7 +213,6 @@ const form = reactive({
 // 使用统一的器材类别选项
 const categoryOptions = equipmentTypeOptions
 
-// 级联选择器属性
 const cascaderProps = {
   expandTrigger: 'hover' as const,
   multiple: false
@@ -227,7 +239,7 @@ const loadData = async () => {
       location: searchForm.location || undefined,
       status: searchForm.status || undefined,
       type: searchForm.type || undefined
-    })
+    }) as { records?: EquipmentRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) {
@@ -240,7 +252,7 @@ const loadData = async () => {
 // 类型筛选变化
 const handleTypeFilterChange = (value: string[]) => {
   if (value && value.length > 0) {
-    searchForm.type = value[value.length - 1]
+    searchForm.type = value[value.length - 1] || ""
   } else {
     searchForm.type = ''
   }
@@ -274,7 +286,7 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = (row: EquipmentRecord) => {
   isEdit.value = true
   dialogTitle.value = '编辑器材'
   // 将 type 字符串转换为级联选择器数组格式
@@ -289,11 +301,11 @@ const handleEdit = (row: any) => {
 const parseTypeToArray = (type: string): string[] => {
   if (!type) return []
   if (type.includes('-')) {
-    // 如 "1-1" -> ["1", "1-1"]
-    const mainType = type.split('-')[0]
+    // 例如 "1-1" -> ["1", "1-1"]
+    const mainType = type.split('-')[0] || ''
     return [mainType, type]
   }
-  // 如 "3" -> ["3"]
+  // 例如 "3" -> ["3"]
   return [type]
 }
 
@@ -301,13 +313,13 @@ const parseTypeToArray = (type: string): string[] => {
 const handleTypeChange = (value: string[]) => {
   if (value && value.length > 0) {
     // 取最后一个值作为 type
-    form.type = value[value.length - 1]
+    form.type = value[value.length - 1] || ""
   } else {
     form.type = ''
   }
 }
 
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: EquipmentRecord) => {
   try {
     await ElMessageBox.confirm('确定要删除该器材吗？', '提示', { type: 'warning' })
     await request.post('/equipment/deleteEquipment', null, { params: { id: row.id } })
@@ -359,7 +371,7 @@ const handleImageChange = async (event: Event) => {
     // 上传成功，保存URL
     form.image = imageUrl
     imageTimestamp.value = Date.now()
-    // 清除本地预览
+    // 娓呴櫎鏈湴棰勮
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''

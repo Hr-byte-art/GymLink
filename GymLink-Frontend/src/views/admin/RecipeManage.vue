@@ -30,7 +30,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <el-button @click="resetSearch">閲嶇疆</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -57,11 +57,11 @@
           <el-table-column label="标签" width="200">
             <template #default="{ row }">{{ getRecipeTagNames(row.tags) }}</template>
           </el-table-column>
-          <el-table-column prop="content" label="内容" show-overflow-tooltip />
+          <el-table-column prop="content" label="鍐呭" show-overflow-tooltip />
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="鎿嶄綔" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -133,7 +133,7 @@
             </el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="内容" prop="content">
+        <el-form-item label="鍐呭" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="6" placeholder="请输入内容" />
         </el-form-item>
       </el-form>
@@ -152,10 +152,21 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
 import { recipeTagOptions, getRecipeTagNames } from '@/constants/categories'
 
+type RecipeRecord = {
+  id: number | string
+  title?: string
+  coverImage?: string
+  tags?: string
+  content?: string
+  adminId?: number
+  createTime?: string
+  [key: string]: unknown
+}
+
 const loading = ref(false)
 const submitLoading = ref(false)
 const imageUploading = ref(false)
-const tableData = ref<any[]>([])
+const tableData = ref<RecipeRecord[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
@@ -163,7 +174,7 @@ const imageInputRef = ref<HTMLInputElement>()
 const imageTimestamp = ref(Date.now())
 const previewImageUrl = ref('')
 
-// 使用统一的菜谱标签数据
+// 使用统一的勮彍璋辨爣绛炬暟鎹
 const recipeCategories = recipeTagOptions
 
 const searchForm = reactive({ title: '', tags: [] as string[] })
@@ -195,7 +206,7 @@ const loadData = async () => {
       pageSize: pagination.pageSize,
       title: searchForm.title || undefined,
       tags: tagsStr
-    })
+    }) as { records?: RecipeRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) {
@@ -223,7 +234,7 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = (row: RecipeRecord) => {
   isEdit.value = true
   dialogTitle.value = '编辑菜谱'
   // 将标签字符串转换为数组
@@ -234,7 +245,7 @@ const handleEdit = (row: any) => {
   dialogVisible.value = true
 }
 
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: RecipeRecord) => {
   try {
     await ElMessageBox.confirm('确定要删除该菜谱吗？', '提示', { type: 'warning' })
     await request.post('/recipe/deleteRecipe', null, { params: { id: row.id } })
@@ -283,7 +294,7 @@ const handleImageChange = async (event: Event) => {
     // 上传成功，保存URL
     form.coverImage = imageUrl
     imageTimestamp.value = Date.now()
-    // 清除本地预览
+    // 娓呴櫎鏈湴棰勮
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''
@@ -422,3 +433,4 @@ onMounted(() => loadData())
   color: #909399;
 }
 </style>
+

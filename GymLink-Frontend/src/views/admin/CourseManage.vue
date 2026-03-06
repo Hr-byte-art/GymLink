@@ -6,11 +6,11 @@
           <el-form-item label="课程名称">
             <el-input v-model="searchForm.name" placeholder="请输入课程名称" clearable />
           </el-form-item>
-          <el-form-item label="难度">
+          <el-form-item label="闅惧害">
             <el-select v-model="searchForm.difficulty" placeholder="请选择" clearable>
               <el-option label="初级" value="初级" />
               <el-option label="中级" value="中级" />
-              <el-option label="高级" value="高级" />
+              <el-option label="楂樼骇" value="楂樼骇" />
             </el-select>
           </el-form-item>
           <el-form-item label="分类">
@@ -29,7 +29,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <el-button @click="resetSearch">閲嶇疆</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -58,11 +58,11 @@
               {{ row.coachName || `ID: ${row.coachId}` }}
             </template>
           </el-table-column>
-          <el-table-column prop="price" label="价格" width="100">
+          <el-table-column prop="price" label="浠锋牸" width="100">
             <template #default="{ row }">¥{{ row.price }}</template>
           </el-table-column>
           <el-table-column prop="duration" label="时长(分钟)" width="100" />
-          <el-table-column prop="difficulty" label="难度" width="80" />
+          <el-table-column prop="difficulty" label="闅惧害" width="80" />
           <el-table-column label="分类" width="140">
             <template #default="{ row }">{{ getCourseTypeName(row.type) }}</template>
           </el-table-column>
@@ -70,7 +70,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="鎿嶄綔" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -108,13 +108,13 @@
             <el-option
               v-for="coach in coachOptions"
               :key="coach.id"
-              :label="`${coach.name} - ${getCoachSpecialtyName(coach.specialty) || '综合'}`"
+              :label="`${coach.name} - ${getCoachSpecialtyName(coach.specialty || '') || '综合'}`"
               :value="coach.id"
             >
               <div class="coach-option">
                 <span class="coach-name">{{ coach.name }}</span>
                 <span class="coach-specialty">{{
-                  getCoachSpecialtyName(coach.specialty) || '综合'
+                  getCoachSpecialtyName(coach.specialty || '') || '综合'
                 }}</span>
               </div>
             </el-option>
@@ -152,17 +152,17 @@
             </div>
           </div>
         </el-form-item>
-        <el-form-item label="价格" prop="price">
+        <el-form-item label="浠锋牸" prop="price">
           <el-input-number v-model="form.price" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="时长(分钟)">
           <el-input-number v-model="form.duration" :min="1" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="难度">
+        <el-form-item label="闅惧害">
           <el-select v-model="form.difficulty" placeholder="请选择" style="width: 100%">
             <el-option label="初级" value="初级" />
             <el-option label="中级" value="中级" />
-            <el-option label="高级" value="高级" />
+            <el-option label="楂樼骇" value="楂樼骇" />
           </el-select>
         </el-form-item>
         <el-form-item label="分类">
@@ -198,20 +198,41 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
 import { courseTypeOptions, getCourseTypeName, getCoachSpecialtyName } from '@/constants/categories'
 
+type CourseRecord = {
+  id: number | string
+  name?: string
+  coachId?: number | string | null
+  coachName?: string
+  image?: string
+  price?: number
+  duration?: number
+  difficulty?: string
+  type?: string
+  description?: string
+  createTime?: string
+  [key: string]: unknown
+}
+
+type CoachOption = {
+  id: number | string
+  name?: string
+  specialty?: string
+  [key: string]: unknown
+}
+
 const loading = ref(false)
 const submitLoading = ref(false)
 const imageUploading = ref(false)
 const coachSearchLoading = ref(false)
-const tableData = ref<any[]>([])
+const tableData = ref<CourseRecord[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
 const imageInputRef = ref<HTMLInputElement>()
 const imageTimestamp = ref(Date.now())
-const coachOptions = ref<any[]>([])
+const coachOptions = ref<CoachOption[]>([])
 const previewImageUrl = ref('') // 上传中的本地预览URL
 
-// 使用统一的课程分类数据
 const courseTypes = courseTypeOptions
 
 const searchForm = reactive({ name: '', difficulty: '', type: '' })
@@ -249,7 +270,7 @@ const searchCoaches = async (query: string) => {
       pageNum: 1,
       pageSize: 20,
       name: query
-    })
+    }) as { records?: CoachOption[] }
     coachOptions.value = res.records || []
   } catch (e) {
     console.error('搜索教练失败:', e)
@@ -264,15 +285,15 @@ const loadAllCoaches = async () => {
   try {
     const res = await request.post('/coach/ListCoach', {
       pageNum: 1,
-      pageSize: 20 // 后端限制每页最多20条
-    })
+      pageSize: 20 // 后端限制每页最大20条
+    }) as { records?: CoachOption[] }
     coachOptions.value = res.records || []
   } catch (e) {
     console.error('加载教练列表失败:', e)
   }
 }
 
-const loadData = async (params?: any) => {
+const loadData = async (params?: Record<string, unknown>) => {
   loading.value = true
   try {
     const res = await request.post('/course/listCourse', {
@@ -282,7 +303,7 @@ const loadData = async (params?: any) => {
       difficulty: searchForm.difficulty || undefined,
       type: searchForm.type || undefined,
       ...params
-    })
+    }) as { records?: CourseRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) {
@@ -322,7 +343,7 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = (row: CourseRecord) => {
   isEdit.value = true
   dialogTitle.value = '编辑课程'
   // 确保所有字段都正确复制
@@ -343,7 +364,7 @@ const handleEdit = (row: any) => {
   dialogVisible.value = true
 }
 
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: CourseRecord) => {
   try {
     await ElMessageBox.confirm('确定要删除该课程吗？', '提示', { type: 'warning' })
     await request.post('/course/deleteCourse', null, { params: { id: row.id } })
@@ -436,7 +457,7 @@ const handleSubmit = async () => {
       await request.post('/course/addCourse', {
         name: form.name,
         coachId: form.coachId,
-        image: form.image, // 图片URL已在选择时上传获得
+        image: form.image, // 图片 URL 已在选择时上传获得
         price: form.price,
         duration: form.duration,
         difficulty: form.difficulty,

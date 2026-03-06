@@ -1,99 +1,108 @@
-<template>
-  <div class="auth-container">
-    <div class="auth-box">
-      <!-- Left side - Brand -->
-      <div class="brand-section">
+﻿<template>
+  <main class="auth-page" aria-label="GymLink authentication">
+    <section class="auth-shell">
+      <aside class="brand-panel">
+        <div class="brand-overlay"></div>
         <div class="brand-content">
-          <div class="logo">
-            <img src="/logo.png" alt="GymLink" class="logo-icon" />
-            <h1 class="brand-name">GymLink</h1>
-          </div>
-          <p class="brand-slogan">智能健身管理平台</p>
-          <div class="brand-features">
-            <div class="feature-item">专业教练团队</div>
-            <div class="feature-item">智能课程安排</div>
-            <div class="feature-item">健康数据追踪</div>
-          </div>
+          <img src="/logo.png" alt="GymLink" class="logo" />
+          <h1>GymLink</h1>
+          <p class="brand-subtitle">Smart training and gym life management</p>
+          <ul class="brand-points">
+            <li>Personalized training plans</li>
+            <li>Course booking and coach management</li>
+            <li>Equipment and progress tracking</li>
+          </ul>
         </div>
-      </div>
+      </aside>
 
-      <!-- Right side - Auth Form -->
-      <div class="form-section">
-        <div class="form-content">
-          <!-- Login Form -->
+      <section class="form-panel">
+        <div class="form-card">
+          <header class="form-header">
+            <h2>{{ isLogin ? 'Welcome Back' : 'Create Account' }}</h2>
+            <p>{{ isLogin ? 'Sign in to continue your fitness journey' : 'Join GymLink and start training smarter' }}</p>
+          </header>
+
           <div v-show="isLogin" class="form-wrapper">
-            <h2 class="form-title">欢迎登录</h2>
-            <p class="form-subtitle">请输入您的账号信息</p>
-
             <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="auth-form">
               <el-form-item prop="userAccount">
-                <el-input v-model="loginForm.userAccount" placeholder="用户名" :prefix-icon="User" size="large" />
+                <el-input v-model="loginForm.userAccount" placeholder="Username" :prefix-icon="User" size="large" />
               </el-form-item>
               <el-form-item prop="password">
-                <el-input v-model="loginForm.password" type="password" placeholder="密码" :prefix-icon="Lock"
-                  show-password size="large" @keyup.enter="handleLogin" />
+                <el-input
+                  v-model="loginForm.password"
+                  type="password"
+                  placeholder="Password"
+                  :prefix-icon="Lock"
+                  show-password
+                  size="large"
+                  @keyup.enter="handleLogin"
+                />
               </el-form-item>
-
               <el-form-item prop="role">
-                <el-radio-group v-model="loginForm.role" class="role-radio-group">
-                  <el-radio value="user">用户</el-radio>
-                  <el-radio value="coach">教练</el-radio>
-                  <el-radio value="admin">管理员</el-radio>
+                <el-radio-group v-model="loginForm.role" class="role-radio-group" aria-label="role select">
+                  <el-radio value="user">User</el-radio>
+                  <el-radio value="coach">Coach</el-radio>
+                  <el-radio value="admin">Admin</el-radio>
                 </el-radio-group>
               </el-form-item>
-
               <el-form-item>
-                <el-checkbox v-model="loginForm.rememberMe" class="remember-me">
-                  记住我
-                </el-checkbox>
+                <el-checkbox v-model="loginForm.rememberMe" class="remember-me">Remember me</el-checkbox>
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" class="auth-btn" @click="handleLogin" :loading="loading" size="large">
-                  登录
+                <el-button type="primary" class="submit-btn" @click="handleLogin" :loading="loading" size="large">
+                  Sign In
                 </el-button>
               </el-form-item>
             </el-form>
 
-            <div class="form-footer">
-              <span>还没有账号？</span>
-              <a href="javascript:;" @click="isLogin = false" class="link">立即注册</a>
-            </div>
+            <footer class="form-footer">
+              <span>No account yet?</span>
+              <a href="javascript:;" @click="isLogin = false" class="switch-link">Create one</a>
+            </footer>
           </div>
 
-          <!-- Register Form -->
           <div v-show="!isLogin" class="form-wrapper">
-            <h2 class="form-title">欢迎注册</h2>
-            <p class="form-subtitle">创建您的账号开始健身</p>
-
             <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" class="auth-form">
               <el-form-item prop="userAccount">
-                <el-input v-model="registerForm.userAccount" placeholder="用户名（至少4个字符）" :prefix-icon="User"
-                  size="large" />
+                <el-input v-model="registerForm.userAccount" placeholder="Username (4+ chars)" :prefix-icon="User" size="large" />
               </el-form-item>
               <el-form-item prop="userPassword">
-                <el-input v-model="registerForm.userPassword" type="password" placeholder="密码（至少8个字符）"
-                  :prefix-icon="Lock" show-password size="large" />
+                <el-input
+                  v-model="registerForm.userPassword"
+                  type="password"
+                  placeholder="Password (8+ chars)"
+                  :prefix-icon="Lock"
+                  show-password
+                  size="large"
+                />
               </el-form-item>
               <el-form-item prop="checkPassword">
-                <el-input v-model="registerForm.checkPassword" type="password" placeholder="确认密码" :prefix-icon="Lock"
-                  show-password size="large" @keyup.enter="handleRegister" />
+                <el-input
+                  v-model="registerForm.checkPassword"
+                  type="password"
+                  placeholder="Confirm password"
+                  :prefix-icon="Lock"
+                  show-password
+                  size="large"
+                  @keyup.enter="handleRegister"
+                />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" class="auth-btn" @click="handleRegister" :loading="loading" size="large">
-                  注册
+                <el-button type="primary" class="submit-btn" @click="handleRegister" :loading="loading" size="large">
+                  Register
                 </el-button>
               </el-form-item>
             </el-form>
 
-            <div class="form-footer">
-              <span>已有账号？</span>
-              <a href="javascript:;" @click="isLogin = true" class="link">立即登录</a>
-            </div>
+            <footer class="form-footer">
+              <span>Already have an account?</span>
+              <a href="javascript:;" @click="isLogin = true" class="switch-link">Sign in</a>
+            </footer>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+      </section>
+    </section>
+  </main>
 </template>
 
 <script setup lang="ts">
@@ -134,7 +143,7 @@ const registerForm = reactive({
   checkPassword: ''
 })
 
-const validatePass2 = (rule: any, value: any, callback: any) => {
+const validatePass2 = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
   if (value === '') {
     callback(new Error('请再次输入密码'))
   } else if (value !== registerForm.userPassword) {
@@ -163,9 +172,6 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        // 调试日志：打印表单数据
-        console.log('AuthView - 表单数据:', loginForm)
-
         // 使用认证状态管理的登录方法
         const result = await authStore.login({
           username: loginForm.userAccount,
@@ -266,365 +272,234 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap');
 
-.auth-container {
-  position: relative;
+.auth-page {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --success: #22c55e;
+  --ink: #0f172a;
+  --muted: #475569;
   min-height: 100vh;
-  width: 100vw;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: url('/background.jpg') no-repeat center center;
-  background-size: cover;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(249, 115, 22, 0.24), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(34, 197, 94, 0.18), transparent 45%),
+    #020617;
 }
 
-/* 背景遮罩层，增强对比度 */
-.auth-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.35) 100%);
-  z-index: 1;
-}
-
-.auth-box {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  width: 1100px;
-  max-width: 95%;
+.auth-shell {
+  width: min(1120px, 100%);
   min-height: 680px;
-  border-radius: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 40px 90px rgba(2, 6, 23, 0.45);
+  background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Left Brand Section */
-.brand-section {
-  flex: 1;
-  background: linear-gradient(135deg, rgba(49, 81, 228, 0.1) 0%, rgba(88, 153, 209, 0.1) 100%);
-  backdrop-filter: blur(15px);
-  border-right: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 60px 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.brand-panel {
   position: relative;
+  display: flex;
+  align-items: flex-end;
+  background-image: url('/auth-fitness-bg-placeholder.png');
+  background-size: cover;
+  background-position: center;
 }
 
-/* 添加背景纹理效果 */
-.brand-section::before {
-  content: '';
+.brand-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: url('/background.jpg') center/cover;
-  opacity: 0.1;
-  z-index: -1;
+  inset: 0;
+  background: linear-gradient(20deg, rgba(2, 6, 23, 0.88) 0%, rgba(2, 6, 23, 0.46) 60%, rgba(2, 6, 23, 0.3) 100%);
 }
 
 .brand-content {
-  text-align: center;
-  color: white;
+  position: relative;
   z-index: 1;
+  padding: 44px;
+  color: #f8fafc;
+  font-family: 'Barlow', sans-serif;
 }
 
 .logo {
-  margin-bottom: 30px;
+  width: 128px;
+  height: auto;
+  margin-bottom: 16px;
 }
 
-.logo-icon {
-  font-size: 56px;
-  width: 200px;
-  margin-bottom: 15px;
-  filter: drop-shadow(0 10px 30px rgba(255, 255, 255, 0.3));
-  animation: logoFloat 3s ease-in-out infinite;
-  object-fit: contain;
-}
-
-@keyframes logoFloat {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-15px);
-  }
-}
-
-.brand-name {
-  font-size: 48px;
-  font-weight: 700;
-  font-family: 'Dancing Script', cursive;
+.brand-content h1 {
   margin: 0;
-  background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
-  letter-spacing: 2px;
-}
-
-.brand-slogan {
-  font-size: 20px;
-  margin: 15px 0 50px;
-  opacity: 0.95;
-  font-weight: 300;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 52px;
+  font-weight: 700;
   letter-spacing: 1px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
-.brand-features {
-  text-align: center;
-  max-width: 280px;
-  margin: 0 auto;
+.brand-subtitle {
+  margin: 10px 0 24px;
+  font-size: 18px;
+  color: #cbd5e1;
 }
 
-.feature-item {
-  margin: 18px 0;
-  font-size: 17px;
-  opacity: 0.92;
-  padding-left: 0;
-  font-weight: 400;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.brand-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
 }
 
-/* Right Form Section */
-.form-section {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(10px);
-  padding: 50px 50px;
+.brand-points li {
+  padding: 10px 12px;
+  border: 1px solid rgba(203, 213, 225, 0.24);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.form-panel {
+  background: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 34px;
 }
 
-.form-content {
+.form-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 390px;
 }
 
-/* Form wrapper for smooth transition */
+.form-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.form-header p {
+  margin: 10px 0 24px;
+  color: var(--muted);
+}
+
 .form-wrapper {
-  animation: fadeIn 0.3s ease;
+  animation: cardIn 0.28s ease;
 }
 
-@keyframes fadeIn {
+.auth-form :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.auth-form :deep(.el-input__wrapper) {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.auth-form :deep(.el-input__wrapper:hover) {
+  border-color: #94a3b8;
+}
+
+.auth-form :deep(.el-input__wrapper.is-focus) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18);
+}
+
+.role-radio-group {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.role-radio-group :deep(.el-radio__input.is-checked .el-radio__inner) {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.role-radio-group :deep(.el-radio__input.is-checked + .el-radio__label) {
+  color: var(--primary-dark);
+}
+
+.submit-btn {
+  width: 100%;
+  min-height: 46px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.28);
+}
+
+.form-footer {
+  margin-top: 4px;
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.switch-link {
+  color: var(--primary-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.switch-link:hover {
+  text-decoration: underline;
+}
+
+@keyframes cardIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-.form-title {
-  font-size: 36px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 10px 0;
-  letter-spacing: 1px;
-}
-
-.form-subtitle {
-  font-size: 15px;
-  color: #7f8c8d;
-  margin: 0 0 45px 0;
-  font-weight: 400;
-}
-
-.auth-form {
-  margin-bottom: 0;
-}
-
-.auth-form :deep(.el-form-item) {
-  margin-bottom: 22px;
-}
-
-.auth-form :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  padding: 13px 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.auth-form :deep(.el-input__inner) {
-  font-size: 16px;
-}
-
-.auth-form :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.15);
-  border-color: rgba(102, 126, 234, 0.3);
-}
-
-.auth-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 4px 18px rgba(102, 126, 234, 0.25);
-  border-color: rgba(102, 126, 234, 0.5);
-}
-
-.auth-form :deep(.el-input__prefix) {
-  color: #667eea;
-}
-
-.auth-btn {
-  width: 100%;
-  border-radius: 10px;
-  height: 50px;
-  font-size: 17px;
-  font-weight: 600;
-  background: linear-gradient(135deg, rgba(81, 155, 214, 0.84) 0%, #587fe4 100%);
-  border: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-  letter-spacing: 1px;
-}
-
-.auth-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 28px rgba(102, 126, 234, 0.45);
-}
-
-.auth-btn:active {
-  transform: translateY(-1px);
-}
-
-.form-footer {
-  text-align: center;
-  font-size: 15px;
-  color: #7f8c8d;
-  margin-top: 20px;
-}
-
-.form-footer .link {
-  color: #667eea;
-  text-decoration: none;
-  margin-left: 8px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.form-footer .link:hover {
-  color: #764ba2;
-  text-decoration: underline;
-}
-
-.remember-me {
-  margin-bottom: 12px;
-}
-
-.remember-me :deep(.el-checkbox__label) {
-  color: #7f8c8d;
-  font-size: 14px;
-}
-
-.remember-me :deep(.el-checkbox__inner) {
-  border-color: rgba(102, 126, 234, 0.3);
-}
-
-.remember-me :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  background-color: #667eea;
-  border-color: #667eea;
-}
-
-.role-radio-group {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-}
-
-.role-radio-group :deep(.el-radio) {
-  margin-right: 0;
-}
-
-.role-radio-group :deep(.el-radio__input.is-checked .el-radio__inner) {
-  border-color: #667eea;
-  background: #667eea;
-}
-
-.role-radio-group :deep(.el-radio__label) {
-  color: #7f8c8d;
-}
-
-.role-radio-group :deep(.el-radio__input.is-checked + .el-radio__label) {
-  color: #667eea;
-}
-
-/* Responsive */
-@media (max-width: 1200px) {
-  .auth-box {
-    width: 950px;
+@media (max-width: 980px) {
+  .auth-page {
+    padding: 14px;
   }
 
-}
-
-@media (max-width: 968px) {
-  .auth-box {
-    flex-direction: column;
-    width: 100%;
-    max-width: 500px;
+  .auth-shell {
+    grid-template-columns: 1fr;
     min-height: auto;
   }
 
-  .brand-section {
-    width: 100%;
-    padding: 50px 30px;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    min-height: 350px;
+  .brand-panel {
+    min-height: 280px;
   }
 
-  .form-section {
-    width: 100%;
-    padding: 40px 30px;
+  .brand-content {
+    padding: 26px;
   }
 
-  .brand-slogan {
-    font-size: 18px;
-    margin-bottom: 40px;
+  .brand-content h1 {
+    font-size: 40px;
   }
 }
 
-@media (max-width: 480px) {
-  .auth-box {
-    max-width: 95%;
-  }
-
-  .brand-section {
-    padding: 40px 25px;
-    min-height: 300px;
-  }
-
-  .form-section {
-    padding: 35px 25px;
-  }
-
-  .brand-slogan {
-    font-size: 16px;
-  }
-
-  .form-title {
-    font-size: 26px;
-  }
-
-  .tab-item {
-    font-size: 14px;
-    padding: 10px 15px;
+@media (prefers-reduced-motion: reduce) {
+  .form-wrapper,
+  .submit-btn {
+    animation: none;
+    transition: none;
   }
 }
 </style>

@@ -1,59 +1,41 @@
-<template>
+﻿<template>
   <header class="navbar">
     <div class="navbar-container">
-      <div class="navbar-brand">
-        <router-link to="/" class="brand-link">
-          <img src="/logo.png" alt="GymLink" class="logo" />
-          <span class="brand-name">GymLink</span>
-        </router-link>
-      </div>
+      <router-link to="/" class="brand-link" aria-label="GymLink Home">
+        <img src="/logo.png" alt="GymLink" class="logo" />
+        <span class="brand-name">GymLink</span>
+      </router-link>
 
-      <nav class="navbar-menu">
+      <nav class="navbar-menu" aria-label="Main navigation">
         <ul class="menu-list">
-          <li class="menu-item">
-            <router-link to="/" class="menu-link">首页</router-link>
-          </li>
-          <li class="menu-item">
-            <router-link to="/courses" class="menu-link">课程</router-link>
-          </li>
-          <li class="menu-item">
-            <router-link to="/coaches" class="menu-link">教练</router-link>
-          </li>
-          <li class="menu-item">
-            <router-link to="/equipment" class="menu-link">设施</router-link>
-          </li>
-          <li class="menu-item">
-            <router-link to="/recipes" class="menu-link">健身食谱</router-link>
-          </li>
-          <li class="menu-item">
-            <router-link to="/posts" class="menu-link">经验分享</router-link>
-          </li>
-          <li class="menu-item">
-            <router-link to="/about" class="menu-link">关于我们</router-link>
-          </li>
+          <li><router-link to="/" class="menu-link">首页</router-link></li>
+          <li><router-link to="/courses" class="menu-link">课程</router-link></li>
+          <li><router-link to="/coaches" class="menu-link">教练</router-link></li>
+          <li><router-link to="/equipment" class="menu-link">器材</router-link></li>
+          <li><router-link to="/recipes" class="menu-link">饮食计划</router-link></li>
+          <li><router-link to="/posts" class="menu-link">社区</router-link></li>
+          <li><router-link to="/about" class="menu-link">关于我们</router-link></li>
         </ul>
       </nav>
 
       <div class="navbar-actions">
-        <!-- 未登录状态显示登录/注册按钮 -->
-        <router-link v-if="!isAuthenticated" to="/auth" class="auth-btn">登录/注册</router-link>
+        <router-link v-if="!isAuthenticated" to="/auth" class="auth-btn">登录 / 注册</router-link>
 
-        <!-- 已登录状态显示通知和用户信息 -->
         <template v-else>
           <NotificationBell />
           <div class="user-info">
-          <div class="user-avatar">
-            <img :src="user?.avatar || '/avatar-placeholder.svg'" alt="用户头像" />
-          </div>
-          <div class="user-dropdown">
-            <span class="username">{{ displayName }}</span>
-            <div class="dropdown-menu">
-              <router-link to="/profile" class="dropdown-item">个人中心</router-link>
-              <div class="dropdown-divider"></div>
-              <a href="#" class="dropdown-item" @click.prevent="handleLogout">退出登录</a>
+            <div class="user-avatar">
+              <img :src="user?.avatar || '/avatar-placeholder.svg'" alt="用户头像" />
+            </div>
+            <div class="user-dropdown">
+              <span class="username">{{ displayName }}</span>
+              <div class="dropdown-menu">
+                <router-link to="/profile" class="dropdown-item">个人中心</router-link>
+                <div class="dropdown-divider"></div>
+                <a href="#" class="dropdown-item" @click.prevent="handleLogout">退出登录</a>
+              </div>
             </div>
           </div>
-        </div>
         </template>
       </div>
     </div>
@@ -69,12 +51,10 @@ import NotificationBell from '@/components/NotificationBell.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// 计算属性
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const user = computed(() => authStore.user)
 const displayName = computed(() => authStore.displayName)
 
-// 方法
 const handleLogout = () => {
   authStore.logout()
   router.push('/')
@@ -83,46 +63,43 @@ const handleLogout = () => {
 
 <style scoped>
 .navbar {
-  background-color: #fff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
-  transition: all 0.3s ease;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
 }
 
 .navbar-container {
-  max-width: 1200px;
+  max-width: 1240px;
+  height: 74px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  height: 70px;
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
+  gap: 16px;
 }
 
 .brand-link {
   display: flex;
   align-items: center;
+  gap: 10px;
   text-decoration: none;
-  color: #333;
-  transition: all 0.3s ease;
 }
 
 .logo {
+  width: 40px;
   height: 40px;
-  margin-right: 10px;
+  object-fit: contain;
 }
 
 .brand-name {
   font-size: 24px;
-  font-weight: bold;
-  color: #4a6cf7;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 0.3px;
 }
 
 .navbar-menu {
@@ -132,72 +109,65 @@ const handleLogout = () => {
 }
 
 .menu-list {
-  display: flex;
   list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 20px;
   margin: 0;
   padding: 0;
 }
 
-.menu-item {
-  margin: 0 15px;
-}
-
 .menu-link {
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-  padding: 8px 0;
   position: relative;
-  transition: color 0.3s ease;
+  text-decoration: none;
+  color: #334155;
+  font-weight: 600;
+  padding: 8px 0;
+  transition: color 0.2s ease;
 }
 
 .menu-link::after {
   content: '';
   position: absolute;
-  bottom: 0;
   left: 0;
+  bottom: -2px;
   width: 0;
   height: 2px;
-  background-color: #4a6cf7;
-  transition: width 0.3s ease;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  transition: width 0.2s ease;
 }
 
-.menu-link:hover {
-  color: #4a6cf7;
+.menu-link:hover,
+.menu-link.router-link-active {
+  color: #c2410c;
 }
 
 .menu-link:hover::after,
-.router-link-active::after {
+.menu-link.router-link-active::after {
   width: 100%;
-}
-
-.router-link-active {
-  color: #4a6cf7;
 }
 
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 
 .auth-btn {
-  background-color: #4a6cf7;
-  color: white;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 20px;
-  font-weight: 500;
   text-decoration: none;
-  transition: all 0.3s ease;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .auth-btn:hover {
-  background-color: #3a5ce5;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
 }
 
-/* 用户信息样式 */
 .user-info {
   display: flex;
   align-items: center;
@@ -205,13 +175,12 @@ const handleLogout = () => {
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   overflow: hidden;
-  margin-right: 10px;
-  border: 2px solid #4a6cf7;
-  cursor: pointer;
+  border: 2px solid rgba(249, 115, 22, 0.45);
+  margin-right: 8px;
 }
 
 .user-avatar img {
@@ -225,37 +194,36 @@ const handleLogout = () => {
 }
 
 .username {
-  font-weight: 500;
-  color: #333;
+  font-weight: 700;
+  color: #334155;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
 }
 
 .username::after {
   content: '';
-  display: inline-block;
   width: 0;
   height: 0;
-  margin-left: 5px;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-top: 4px solid #333;
+  border-top: 5px solid #475569;
 }
 
 .dropdown-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 10px);
   right: 0;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 150px;
-  z-index: 1000;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.15);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px);
-  transition: all 0.3s ease;
+  transform: translateY(6px);
+  transition: all 0.2s ease;
 }
 
 .user-dropdown:hover .dropdown-menu {
@@ -266,60 +234,28 @@ const handleLogout = () => {
 
 .dropdown-item {
   display: block;
-  padding: 10px 15px;
-  color: #333;
+  padding: 10px 14px;
   text-decoration: none;
-  transition: background-color 0.2s;
-}
-
-.dropdown-item:first-child {
-  border-radius: 8px 8px 0 0;
-}
-
-.dropdown-item:last-child {
-  border-radius: 0 0 8px 8px;
+  color: #334155;
+  font-weight: 500;
 }
 
 .dropdown-item:hover {
-  background-color: #f5f5f5;
+  background: #f8fafc;
 }
 
 .dropdown-divider {
   height: 1px;
-  background-color: #eee;
-  margin: 5px 0;
+  background: #e2e8f0;
 }
 
-/* 响应式设计 */
-@media (max-width: 968px) {
-  .navbar-container {
-    padding: 0 15px;
-  }
-
-  .menu-item {
-    margin: 0 10px;
-  }
-
-  .brand-name {
-    font-size: 20px;
-  }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 920px) {
   .navbar-menu {
     display: none;
   }
 
-  .navbar-container {
-    justify-content: space-between;
-  }
-
   .brand-name {
-    font-size: 18px;
-  }
-
-  .logo {
-    height: 30px;
+    font-size: 20px;
   }
 }
 </style>

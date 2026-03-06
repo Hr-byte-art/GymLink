@@ -110,7 +110,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { DataAnalysis, User, Avatar, Reading, SetUp, Food, Document, DataLine, TrendCharts, Histogram, Wallet, Bell } from '@element-plus/icons-vue'
+import { User, Avatar, Reading, SetUp, Food, Document, DataLine, TrendCharts, Histogram, Wallet, Bell } from '@element-plus/icons-vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 
 const route = useRoute()

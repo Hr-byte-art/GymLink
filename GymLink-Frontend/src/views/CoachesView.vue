@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="coaches-container">
 
@@ -53,12 +53,12 @@
           </div>
         </section>
 
-        <!-- 加载状态 -->
+        <!-- 加载状态-->
         <div v-if="coachStore.loading" class="loading-container">
           <el-loading :loading="true" text="加载中..."></el-loading>
         </div>
 
-        <!-- 错误状态 -->
+        <!-- 错误状态-->
         <div v-else-if="coachStore.error" class="error-container">
           <el-result icon="warning" title="加载失败" :sub-title="coachStore.error">
             <template #extra>
@@ -70,7 +70,7 @@
         <!-- 教练列表区域 -->
         <section v-else class="coaches-section">
           <div class="section-container">
-            <!-- 无数据状态 -->
+            <!-- 无数据状态-->
             <div v-if="!coachStore.hasCoaches" class="empty-container">
               <el-empty description="暂无教练数据"></el-empty>
             </div>
@@ -154,6 +154,7 @@ import { useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
 import { useAuthStore } from '@/stores/auth'
 import { bookCoach as bookCoachApi } from '@/api/coach'
+import type { Coach, CoachQueryParams } from '@/api/coach'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
@@ -168,7 +169,7 @@ const authStore = useAuthStore()
 const bookingDialogVisible = ref(false)
 const bookingLoading = ref(false)
 const bookingFormRef = ref<FormInstance>()
-const selectedCoach = ref<any>(null)
+const selectedCoach = ref<Coach | null>(null)
 const bookingForm = reactive({
   coachName: '',
   appointTime: null as Date | null,
@@ -256,7 +257,7 @@ const viewCoachDetail = (id: string | number) => {
 }
 
 // 预约教练
-const bookCoach = (coach: any) => {
+const bookCoach = (coach: Coach) => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录后再预约教练')
     router.push({ name: 'auth', query: { redirect: '/coaches' } })
@@ -268,7 +269,7 @@ const bookCoach = (coach: any) => {
     return
   }
 
-  // 保存选中的教练并打开对话框
+// 保存选中的教练并打开对话框
   selectedCoach.value = coach
   bookingForm.coachName = coach.name
   bookingForm.appointTime = null
@@ -279,7 +280,8 @@ const bookCoach = (coach: any) => {
 
 // 提交预约
 const submitBooking = async () => {
-  if (!bookingFormRef.value || !selectedCoach.value) return
+  const currentSelectedCoach = selectedCoach.value
+  if (!bookingFormRef.value || !currentSelectedCoach) return
 
   await bookingFormRef.value.validate(async (valid) => {
     if (!valid) return
@@ -297,7 +299,7 @@ const submitBooking = async () => {
       const endTime = new Date(appointTime.getTime() + bookingForm.duration * 60 * 1000)
 
       await bookCoachApi({
-        coachId: selectedCoach.value.id,
+        coachId: currentSelectedCoach.id,
         studentId: studentId,
         appointTime: appointTime.toISOString(),
         endTime: endTime.toISOString(),
@@ -306,8 +308,8 @@ const submitBooking = async () => {
 
       ElMessage.success('预约成功！请等待教练确认')
       bookingDialogVisible.value = false
-    } catch (error: any) {
-      ElMessage.error(error.message || '预约失败，请稍后重试')
+    } catch (error: unknown) {
+      ElMessage.error(error instanceof Error ? error.message : '预约失败，请稍后重试')
     } finally {
       bookingLoading.value = false
     }
@@ -317,7 +319,7 @@ const submitBooking = async () => {
 // 加载教练数据
 const loadCoaches = () => {
   // 构建查询参数，与后端 CoachQueryPageRequest 对应
-  const params: any = {
+  const params: Record<string, string | number> = {
     pageNum: currentPage.value,
     pageSize: pageSize.value
   }
@@ -346,7 +348,7 @@ const loadCoaches = () => {
   }
 
   // 调用API获取教练数据
-  coachStore.fetchCoaches(params)
+  coachStore.fetchCoaches(params as unknown as CoachQueryParams)
 }
 
 // 加载教练专长
@@ -400,67 +402,71 @@ onMounted(() => {
 
 <style scoped>
 .coaches-container {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --soft: #f8fafc;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-/* 页面头部样式 */
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 80px 0 60px;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(249, 115, 22, 0.2), transparent 40%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 48%, #334155 100%);
+  color: #f8fafc;
   text-align: center;
+  padding: 88px 0 70px;
 }
 
 .header-content {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
 .page-title {
-  font-size: 42px;
-  font-weight: 700;
-  margin-bottom: 20px;
+  margin: 0;
+  font-size: clamp(34px, 5vw, 50px);
+  font-weight: 800;
 }
 
 .page-subtitle {
+  margin: 14px auto 0;
+  max-width: 700px;
+  color: #e2e8f0;
   font-size: 18px;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 600px;
-  margin: 0 auto;
+  line-height: 1.7;
 }
 
-/* 主要内容样式 */
-.main-content {
-  flex: 1;
-}
-
-/* 筛选区域样式 */
 .filter-section {
-  background: #f8f9fa;
-  padding: 30px 0;
-  border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 74px;
+  z-index: 90;
+  border-bottom: 1px solid var(--line);
+  background: rgba(248, 250, 252, 0.95);
+  backdrop-filter: blur(10px);
 }
 
-.filter-container {
-  max-width: 1200px;
+.filter-container,
+.section-container {
+  max-width: 1240px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
-.filter-dropdown {
-  position: relative;
-  width: 300px;
+.filter-container {
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .filter-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
   align-items: center;
+  gap: 12px;
 }
 
 .gender-filter,
@@ -470,76 +476,81 @@ onMounted(() => {
   align-items: center;
 }
 
-/* 增加下拉框宽度以改善可读性 */
-.gender-filter :deep(.el-select) {
-  width: 120px;
-}
-
-.specialty-filter :deep(.el-select) {
-  width: 200px;
-}
-
-.age-filter :deep(.el-select) {
-  width: 140px;
-}
-
 .filter-label {
-  margin-right: 8px;
-  font-weight: 500;
-  color: #555;
+  margin-right: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
 }
 
-.search-box {
-  flex: 1;
-  min-width: 250px;
+.specialty-filter :deep(.el-select) { width: 220px; }
+.gender-filter :deep(.el-select) { width: 120px; }
+.age-filter :deep(.el-select) { width: 140px; }
+.search-box { flex: 1; min-width: 220px; }
+
+.filter-options :deep(.el-input__wrapper),
+.filter-options :deep(.el-select__wrapper) {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
 }
 
-/* 加载和错误状态样式 */
+.filter-options :deep(.el-input__wrapper.is-focus),
+.filter-options :deep(.el-select__wrapper.is-focused) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
+}
+
+.filter-options > .el-button {
+  border-radius: 10px;
+  min-height: 40px;
+  border-color: #fdba74;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
+.main-content {
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
 .loading-container,
 .error-container,
 .empty-container {
+  min-height: 300px;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
 }
 
-/* 教练区域样式 */
 .coaches-section {
-  padding: 60px 0;
-}
-
-.section-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+  padding: 40px 0 72px;
 }
 
 .coaches-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-  margin-bottom: 50px;
+  gap: 22px;
+  margin-bottom: 42px;
 }
 
 .coach-card {
-  background: white;
-  border-radius: 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
-  border: 1px solid #f0f0f0;
 }
 
 .coach-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-  border-color: #409eff;
+  transform: translateY(-5px);
+  border-color: rgba(249, 115, 22, 0.42);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.14);
 }
 
 .coach-avatar {
-  height: 220px;
+  height: 230px;
   overflow: hidden;
   position: relative;
 }
@@ -547,100 +558,95 @@ onMounted(() => {
 .coach-avatar::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.1));
+  inset: auto 0 0;
+  height: 84px;
+  background: linear-gradient(transparent, rgba(2, 6, 23, 0.3));
 }
 
 .coach-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s ease;
+  transition: transform 0.25s ease;
 }
 
-.coach-card:hover .coach-avatar img {
-  transform: scale(1.08);
-}
+.coach-card:hover .coach-avatar img { transform: scale(1.04); }
 
 .coach-info {
-  padding: 20px 24px 24px;
+  padding: 20px;
 }
 
 .coach-name {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 6px;
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .coach-specialty {
-  color: #409eff;
-  font-weight: 500;
-  font-size: 14px;
-  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 10px;
   padding: 4px 10px;
-  background: #ecf5ff;
-  border-radius: 4px;
-  display: inline-block;
+  border-radius: 999px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .coach-description {
-  color: #666;
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 16px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  min-height: 44px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 44px;
 }
 
 .coach-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
+  color: #64748b;
   font-size: 13px;
-  color: #555;
 }
 
 .meta-item .icon-svg {
-  margin-right: 6px;
-  opacity: 0.7;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
 }
 
 .coach-footer {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
   display: flex;
   justify-content: flex-end;
-  align-items: center;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
 }
 
 .book-btn {
-  background: #409eff;
   border: none;
-  padding: 8px 20px;
-  font-weight: 500;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
-.book-btn:hover {
-  background: #66b1ff;
-}
-
-/* 预约时长按钮样式 */
 .duration-radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -661,53 +667,58 @@ onMounted(() => {
   border-radius: 6px !important;
 }
 
-/* 分页样式 */
 .pagination-container {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
 }
 
-/* 图标样式 */
 .icon-svg {
-  width: 16px;
-  height: 16px;
   vertical-align: middle;
 }
 
-/* 响应式设计 */
-@media (max-width: 992px) {
-  .coaches-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  }
+@media (max-width: 1024px) {
+  .filter-section { position: static; }
 }
 
 @media (max-width: 768px) {
-  .page-title {
-    font-size: 32px;
-  }
+  .page-header { padding: 66px 0 54px; }
+
+  .page-subtitle { font-size: 16px; }
 
   .filter-options {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .search-box {
-    min-width: auto;
+  .specialty-filter,
+  .gender-filter,
+  .age-filter {
+    justify-content: space-between;
   }
+
+  .specialty-filter :deep(.el-select),
+  .gender-filter :deep(.el-select),
+  .age-filter :deep(.el-select) {
+    width: 68%;
+  }
+
+  .search-box { min-width: auto; }
 
   .coaches-grid {
     grid-template-columns: 1fr;
   }
 
-  .coach-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
+  .book-btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-card,
+  .coach-avatar img {
+    transition: none;
   }
 
-  .book-btn {
-    width: 100%;
+  .coach-card:hover {
+    transform: none;
   }
 }
 </style>

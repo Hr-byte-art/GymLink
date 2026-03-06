@@ -1,122 +1,138 @@
-<template>
-    <AppLayout>
-        <!-- 公告弹窗 -->
-        <el-dialog
-            v-model="announcementVisible"
-            width="500px"
-            :close-on-click-modal="false"
-            class="announcement-dialog"
-        >
-            <template #header>
-                <div class="announcement-header">
-                    <img src="/announcement.svg" alt="公告" class="announcement-icon" />
-                    <span>系统公告</span>
+﻿<template>
+  <AppLayout>
+    <el-dialog
+      v-model="announcementVisible"
+      width="520px"
+      :close-on-click-modal="false"
+      class="announcement-dialog"
+    >
+      <template #header>
+        <div class="announcement-header">
+          <img src="/announcement.svg" alt="announcement" class="announcement-icon" />
+          <span>System Announcement</span>
+        </div>
+      </template>
+      <div v-if="currentAnnouncement" class="announcement-content">
+        <h3 class="announcement-title">{{ currentAnnouncement.title }}</h3>
+        <div class="announcement-time">{{ formatDate(currentAnnouncement.createTime) }}</div>
+        <div class="announcement-text">{{ currentAnnouncement.content }}</div>
+        <div v-if="missedCount > 0" class="announcement-missed">
+          You still have {{ missedCount }} unread announcements.
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="closeAnnouncement">OK</el-button>
+      </template>
+    </el-dialog>
+
+    <main class="main-content">
+      <div v-if="homeStore.loading" class="loading-container">
+        <el-loading :loading="true" text="Loading..."></el-loading>
+      </div>
+
+      <div v-else-if="homeStore.error" class="error-container">
+        <el-result icon="warning" title="Load failed" :sub-title="homeStore.error">
+          <template #extra>
+            <el-button type="primary" @click="loadHomeData">Retry</el-button>
+          </template>
+        </el-result>
+      </div>
+
+      <template v-else>
+        <section class="hero-section">
+          <el-carousel v-if="homeStore.hasCarouselItems" :interval="5000" arrow="always" height="560px" class="hero-carousel">
+            <el-carousel-item v-for="item in homeStore.carouselItems" :key="item.id">
+              <article class="hero-slide" :style="getHeroStyle(item.image)">
+                <div class="hero-overlay"></div>
+                <div class="hero-content">
+                  <span class="hero-kicker">GymLink Member App</span>
+                  <h1>{{ item.title }}</h1>
+                  <p>{{ item.description }}</p>
+                  <div class="hero-actions">
+                    <el-button type="primary" class="hero-btn" @click="navigateToLink(item.link)">Explore</el-button>
+                    <el-button class="hero-btn ghost" @click="router.push('/courses')">Browse Courses</el-button>
+                  </div>
                 </div>
-            </template>
-            <div v-if="currentAnnouncement" class="announcement-content">
-                <h3 class="announcement-title">{{ currentAnnouncement.title }}</h3>
-                <div class="announcement-time">{{ formatDate(currentAnnouncement.createTime) }}</div>
-                <div class="announcement-text">{{ currentAnnouncement.content }}</div>
-                <div v-if="missedCount > 0" class="announcement-missed">
-                    💡 您还有 {{ missedCount }} 条公告错过了，记得查看哦~
+              </article>
+            </el-carousel-item>
+          </el-carousel>
+
+          <article v-else class="hero-slide fallback" :style="getHeroStyle(undefined)">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+              <span class="hero-kicker">GymLink Member App</span>
+              <h1>Train Smarter, Stay Consistent</h1>
+              <p>Discover courses, coaches, equipment, and nutrition plans in one place.</p>
+              <div class="hero-actions">
+                <el-button type="primary" class="hero-btn" @click="router.push('/courses')">Start Now</el-button>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section v-if="homeStore.hasFeatures" class="features-section">
+          <div class="section-container">
+            <div class="section-head">
+              <h2>What You Can Do</h2>
+              <p>Everything a member needs in one place</p>
+            </div>
+            <div class="features-grid">
+              <article class="feature-card" v-for="feature in homeStore.features" :key="feature.id">
+                <div class="feature-icon-wrap">
+                  <img :src="feature.icon" :alt="feature.title" class="feature-icon" />
                 </div>
+                <h3>{{ feature.title }}</h3>
+                <p>{{ feature.description }}</p>
+              </article>
             </div>
-            <template #footer>
-                <el-button type="primary" @click="closeAnnouncement">我知道了</el-button>
-            </template>
-        </el-dialog>
+          </div>
+        </section>
 
-        <!-- 主要内容区域 -->
-        <main class="main-content">
-            <!-- 加载状态 -->
-            <div v-if="homeStore.loading" class="loading-container">
-                <el-loading :loading="true" text="加载中..."></el-loading>
+        <section v-if="homeStore.hasCourses" class="courses-section">
+          <div class="section-container">
+            <div class="section-head">
+              <h2>Popular Courses</h2>
+              <p>Pick one and reserve your next training session</p>
             </div>
-
-            <!-- 错误状态 -->
-            <div v-else-if="homeStore.error" class="error-container">
-                <el-result icon="warning" title="加载失败" :sub-title="homeStore.error">
-                    <template #extra>
-                        <el-button type="primary" @click="loadHomeData">重新加载</el-button>
-                    </template>
-                </el-result>
+            <div class="courses-grid">
+              <article class="course-card" v-for="course in homeStore.courses" :key="course.id" @click="viewCourseDetail(course.id)">
+                <div class="course-image">
+                  <img :src="course.image" :alt="course.name" />
+                </div>
+                <div class="course-content">
+                  <h3>{{ course.name }}</h3>
+                  <p class="course-instructor">Coach ID: {{ course.coachId }}</p>
+                  <div class="course-meta">
+                    <span>{{ course.duration }} 分钟</span>
+                    <span class="course-chip">{{ course.difficulty }}</span>
+                  </div>
+                </div>
+              </article>
             </div>
+          </div>
+        </section>
 
-            <!-- 正常内容 -->
-            <template v-else>
-                <!-- 轮播图区域 -->
-                <section v-if="homeStore.hasCarouselItems" class="hero-section">
-                    <el-carousel :interval="5000" arrow="always" height="500px">
-                        <el-carousel-item v-for="item in homeStore.carouselItems" :key="item.id">
-                            <div class="carousel-item" :style="{ backgroundImage: `url(${item.image})` }">
-                                <div class="carousel-content">
-                                    <h2>{{ item.title }}</h2>
-                                    <p>{{ item.description }}</p>
-                                    <el-button type="primary" class="carousel-btn"
-                                        @click="navigateToLink(item.link)">了解更多</el-button>
-                                </div>
-                            </div>
-                        </el-carousel-item>
-                    </el-carousel>
-                </section>
-
-                <!-- 特色服务区域 -->
-                <section v-if="homeStore.hasFeatures" class="features-section">
-                    <div class="section-container">
-                        <h2 class="section-title">我们的特色服务</h2>
-                        <div class="features-grid">
-                            <div class="feature-card" v-for="feature in homeStore.features" :key="feature.id">
-                                <div class="feature-icon">
-                                    <img :src="feature.icon" :alt="feature.title" />
-                                </div>
-                                <h3 class="feature-title">{{ feature.title }}</h3>
-                                <p class="feature-description">{{ feature.description }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 课程推荐区域 -->
-                <section v-if="homeStore.hasCourses" class="courses-section">
-                    <div class="section-container">
-                        <h2 class="section-title">热门课程</h2>
-                        <div class="courses-grid">
-                            <div class="course-card" v-for="course in homeStore.courses" :key="course.id">
-                                <div class="course-image">
-                                    <img :src="course.image" :alt="course.title" />
-                                </div>
-                                <div class="course-content">
-                                    <h3 class="course-title">{{ course.title }}</h3>
-                                    <p class="course-instructor">教练: {{ course.instructor }}</p>
-                                    <div class="course-meta">
-                                        <span class="course-time">{{ course.time }}</span>
-                                        <span class="course-difficulty">{{ course.difficulty }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 教练团队区域 -->
-                <section v-if="homeStore.hasCoaches" class="coaches-section">
-                    <div class="section-container">
-                        <h2 class="section-title">专业教练团队</h2>
-                        <div class="coaches-grid">
-                            <div class="coach-card" v-for="coach in homeStore.coaches" :key="coach.id">
-                                <div class="coach-avatar">
-                                    <img :src="coach.avatar" :alt="coach.name" />
-                                </div>
-                                <h3 class="coach-name">{{ coach.name }}</h3>
-                                <p class="coach-specialty">{{ getCoachSpecialtyName(coach.specialty) }}</p>
-                                <p class="coach-description">{{ coach.description }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </template>
-        </main>
-    </AppLayout>
+        <section v-if="homeStore.hasCoaches" class="coaches-section">
+          <div class="section-container">
+            <div class="section-head">
+              <h2>Professional Coaches</h2>
+              <p>Work with specialists and improve faster</p>
+            </div>
+            <div class="coaches-grid">
+              <article class="coach-card" v-for="coach in homeStore.coaches" :key="coach.id" @click="viewCoachDetail(coach.id)">
+                <div class="coach-avatar">
+                  <img :src="coach.avatar" :alt="coach.name" />
+                </div>
+                <h3>{{ coach.name }}</h3>
+                <p class="coach-specialty">{{ getCoachSpecialtyName(coach.specialty) }}</p>
+                <p class="coach-description">{{ coach.intro }}</p>
+              </article>
+            </div>
+          </div>
+        </section>
+      </template>
+    </main>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -128,460 +144,448 @@ import AppLayout from '@/components/AppLayout.vue'
 import { getCoachSpecialtyName } from '@/constants/categories'
 import { getUnreadAnnouncement, markAnnouncementAsRead, type Announcement } from '@/api/announcement'
 
-// 使用路由和首页状态管理
 const router = useRouter()
 const homeStore = useHomeStore()
 const authStore = useAuthStore()
 
-// 公告相关
 const announcementVisible = ref(false)
 const currentAnnouncement = ref<Announcement | null>(null)
 const missedCount = ref(0)
 
-// 检查并显示未读公告（使用Redis）
+const getAuthUserId = (): number | null => {
+  const rawId = authStore.user?.id
+  if (rawId === undefined || rawId === null) return null
+  const userId = Number(rawId)
+  return Number.isFinite(userId) ? userId : null
+}
+
 const checkAnnouncements = async () => {
-    // 只有登录用户才检查公告
-    if (!authStore.isAuthenticated || !authStore.user?.id) {
-        return
+  const userId = getAuthUserId()
+  if (!authStore.isAuthenticated || userId === null) {
+    return
+  }
+  try {
+    const result = await getUnreadAnnouncement(userId)
+    if (result && result.announcement) {
+      currentAnnouncement.value = result.announcement
+      missedCount.value = result.missedCount || 0
+      announcementVisible.value = true
     }
-    try {
-        const result = await getUnreadAnnouncement(authStore.user.id)
-        if (result && result.announcement) {
-            currentAnnouncement.value = result.announcement
-            missedCount.value = result.missedCount || 0
-            announcementVisible.value = true
-        }
-    } catch (e) {
-        console.error('获取公告失败:', e)
-    }
+  } catch (e) {
+    console.error('获取公告失败:', e)
+  }
 }
 
-// 关闭公告弹窗
 const closeAnnouncement = async () => {
-    if (currentAnnouncement.value && authStore.user?.id) {
-        try {
-            await markAnnouncementAsRead(authStore.user.id, currentAnnouncement.value.id)
-        } catch (e) {
-            console.error('标记已读失败:', e)
-        }
+  const userId = getAuthUserId()
+  if (currentAnnouncement.value && userId !== null) {
+    try {
+      await markAnnouncementAsRead(userId, currentAnnouncement.value.id)
+    } catch (e) {
+      console.error('标记已读失败:', e)
     }
-    announcementVisible.value = false
+  }
+  announcementVisible.value = false
 }
 
-// 格式化日期
 const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
-// 加载首页数据
 const loadHomeData = () => {
-    homeStore.fetchHomeData()
+  homeStore.fetchHomeData()
 }
 
-// 导航到链接
 const navigateToLink = (link?: string) => {
-    if (link) {
-        router.push(link)
-    }
+  if (link) {
+    router.push(link)
+  }
 }
 
-// 组件挂载时加载数据
+const viewCourseDetail = (id: number | string | undefined) => {
+  if (id !== undefined && id !== null) {
+    router.push(`/courses/${id}`)
+  }
+}
+
+const viewCoachDetail = (id: number | string | undefined) => {
+  if (id !== undefined && id !== null) {
+    router.push(`/coaches/${id}`)
+  }
+}
+
+const getHeroStyle = (image?: string) => ({
+  backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.28) 100%), url(${image || '/home-hero-fallback.png'})`
+})
+
 onMounted(() => {
-    loadHomeData()
-    checkAnnouncements()
+  loadHomeData()
+  checkAnnouncements()
 })
 </script>
 
 <style scoped>
-/* 加载和错误状态样式 */
+.main-content {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --ink: #0f172a;
+  --muted: #475569;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --line: #e2e8f0;
+}
+
 .loading-container,
 .error-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 300px;
+  min-height: 320px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.home {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-/* 主要内容样式 */
-.main-content {
-    flex: 1;
-}
-
-/* 轮播图样式 */
 .hero-section {
-    margin-bottom: 50px;
+  padding: 24px 18px 0;
 }
 
-.carousel-item {
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    position: relative;
+.hero-carousel,
+.hero-slide {
+  border-radius: 24px;
+  overflow: hidden;
 }
 
-.carousel-content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    color: white;
-    padding: 0 20px;
-    text-align: center;
+.hero-slide {
+  min-height: 560px;
+  position: relative;
+  background-size: cover;
+  background-position: center;
 }
 
-.carousel-content h2 {
-    font-size: 48px;
-    margin-bottom: 20px;
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    width: 600px;
-    max-width: 100%;
-    text-align: center;
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(249, 115, 22, 0.28), transparent 45%);
 }
 
-.carousel-content p {
-    font-size: 20px;
-    width: 600px;
-    max-width: 100%;
-    margin-bottom: 30px;
-    line-height: 1.6;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    text-align: center;
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  padding: 120px 68px;
+  color: #f8fafc;
 }
 
-.carousel-btn {
-    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-    border: none;
-    padding: 12px 30px;
-    font-size: 18px;
-    font-weight: 600;
-    width: auto;
-    max-width: 100%;
-    text-align: center;
+.hero-kicker {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.46);
+  border: 1px solid rgba(226, 232, 240, 0.35);
+  margin-bottom: 18px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
 }
 
-/* 移动端样式 */
-@media (max-width: 768px) {
-    .carousel-content {
-        align-items: center;
-        text-align: center;
-        padding: 0 20px;
-    }
-
-    .carousel-content h2 {
-        font-size: 36px;
-        text-align: center;
-    }
-
-    .carousel-content p {
-        font-size: 18px;
-        text-align: center;
-    }
+.hero-content h1 {
+  margin: 0;
+  font-size: clamp(34px, 4.2vw, 54px);
+  line-height: 1.08;
 }
 
-/* Element Plus轮播图样式覆盖 */
-:deep(.el-carousel) {
-    overflow: hidden;
+.hero-content p {
+  margin: 16px 0 30px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #e2e8f0;
 }
 
-:deep(.el-carousel__container) {
-    height: 100%;
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-:deep(.el-carousel__item) {
-    overflow: hidden;
+.hero-btn {
+  min-width: 136px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
-/* 通用区域样式 */
+.hero-btn.ghost {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #ffffff;
+}
+
 .section-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-.section-title {
-    text-align: center;
-    font-size: 36px;
-    font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 50px;
-    position: relative;
+.section-head {
+  text-align: center;
+  margin-bottom: 34px;
 }
 
-/* 通用区域样式 */
-.section-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
+.section-head h2 {
+  margin: 0;
+  font-size: clamp(30px, 3vw, 40px);
+  color: var(--ink);
 }
 
-.section-title {
-    text-align: center;
-    font-size: 36px;
-    font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 50px;
-    position: relative;
+.section-head p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 16px;
 }
 
-.section-title::after {
-    content: '';
-    display: block;
-    width: 80px;
-    height: 4px;
-    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-    margin: 15px auto 0;
-    border-radius: 2px;
+.features-section,
+.courses-section,
+.coaches-section {
+  padding: 84px 0;
 }
 
-/* 特色服务样式 */
-.features-section {
-    padding: 80px 0;
-    background: #f8f9fa;
+.features-section,
+.coaches-section {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(249, 115, 22, 0.08), transparent 32%),
+    var(--surface-soft);
+}
+
+.features-grid,
+.courses-grid,
+.coaches-grid {
+  display: grid;
+  gap: 22px;
 }
 
 .features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 30px;
-}
-
-.feature-card {
-    background: white;
-    border-radius: 10px;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-}
-
-
-/* 课程样式 */
-.courses-section {
-    padding: 80px 0;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .courses-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 30px;
-}
-
-.course-card {
-    background: white;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-}
-
-.course-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-}
-
-.course-image {
-    height: 200px;
-    overflow: hidden;
-}
-
-.course-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.course-card:hover .course-image img {
-    transform: scale(1.05);
-}
-
-.course-content {
-    padding: 20px;
-}
-
-.course-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 10px;
-}
-
-.course-instructor {
-    color: #7f8c8d;
-    margin-bottom: 15px;
-}
-
-.course-meta {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
-.course-time,
-.course-difficulty {
-    font-size: 14px;
-    color: #7f8c8d;
-}
-
-.course-difficulty {
-    background: #f0f2f5;
-    padding: 2px 8px;
-    border-radius: 4px;
-}
-
-
-
-/* 教练样式 */
-.coaches-section {
-    padding: 80px 0;
-    background: #f8f9fa;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .coaches-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.feature-card,
+.course-card,
+.coach-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.feature-card:hover,
+.course-card:hover,
+.coach-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+  border-color: rgba(249, 115, 22, 0.42);
+}
+
+.feature-card {
+  padding: 26px;
+}
+
+.feature-icon-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.16) 0%, rgba(34, 197, 94, 0.16) 100%);
+  display: grid;
+  place-items: center;
+}
+
+.feature-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.feature-card h3,
+.course-content h3,
+.coach-card h3 {
+  margin: 16px 0 10px;
+  color: var(--ink);
+  font-size: 22px;
+}
+
+.feature-card p,
+.coach-description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.course-card,
+.coach-card {
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.course-image {
+  height: 220px;
+}
+
+.course-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-content {
+  padding: 22px;
+}
+
+.course-instructor {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.course-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+}
+
+.course-chip {
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.36);
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .coach-card {
-    background: white;
-    border-radius: 10px;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-}
-
-.coach-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  padding: 26px;
+  text-align: center;
 }
 
 .coach-avatar {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
-    overflow: hidden;
+  width: 110px;
+  height: 110px;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(249, 115, 22, 0.26);
 }
 
 .coach-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.coach-name {
-    font-size: 20px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 5px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .coach-specialty {
-    color: #409eff;
-    font-weight: 500;
-    margin-bottom: 15px;
+  color: #c2410c;
+  font-weight: 700;
+  margin: 0 0 10px;
 }
 
-.coach-description {
-    color: #7f8c8d;
-    line-height: 1.6;
-    margin-bottom: 20px;
-}
-
-
-
-/* 响应式设计 */
-@media (max-width: 992px) {
-    .carousel-content h2 {
-        font-size: 36px;
-    }
-
-    .carousel-content p {
-        font-size: 16px;
-    }
-}
-
-@media (max-width: 768px) {
-    .section-title {
-        font-size: 28px;
-    }
-
-    .features-grid,
-    .courses-grid,
-    .coaches-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* 公告弹窗样式 */
 .announcement-content {
-    padding: 10px 0;
+  padding: 8px 0;
 }
 
 .announcement-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 10px;
+  margin: 0 0 8px;
+  color: var(--ink);
 }
 
 .announcement-time {
-    font-size: 13px;
-    color: #909399;
-    margin-bottom: 15px;
+  color: #94a3b8;
+  font-size: 13px;
+  margin-bottom: 12px;
 }
 
 .announcement-text {
-    font-size: 15px;
-    color: #606266;
-    line-height: 1.8;
-    white-space: pre-wrap;
-    word-break: break-word;
+  color: var(--muted);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .announcement-missed {
-    margin-top: 15px;
-    padding: 10px 15px;
-    background: #fdf6ec;
-    border-radius: 6px;
-    color: #e6a23c;
-    font-size: 14px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
 }
 
 .announcement-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: white;
-    font-size: 18px;
-    font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .announcement-icon {
-    width: 24px;
-    height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 :deep(.announcement-dialog .el-dialog__header) {
-    background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-    margin-right: 0;
-    padding: 15px 20px;
+  margin-right: 0;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, var(--primary) 0%, #fb923c 100%);
 }
 
 :deep(.announcement-dialog .el-dialog__headerbtn .el-dialog__close) {
-    color: white;
+  color: #fff;
+}
+
+@media (max-width: 860px) {
+  .hero-section {
+    padding: 12px 12px 0;
+  }
+
+  .hero-slide {
+    min-height: 460px;
+  }
+
+  .hero-content {
+    padding: 80px 24px;
+  }
+
+  .hero-content p {
+    font-size: 16px;
+  }
+
+  .features-section,
+  .courses-section,
+  .coaches-section {
+    padding: 56px 0;
+  }
+
+  .features-grid,
+  .courses-grid,
+  .coaches-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-card,
+  .course-card,
+  .coach-card {
+    transition: none;
+  }
+
+  .feature-card:hover,
+  .course-card:hover,
+  .coach-card:hover {
+    transform: none;
+  }
 }
 </style>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="post-detail-view">
       <div class="container">
@@ -168,24 +168,51 @@ import { ElMessage } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
 import request from '@/utils/request'
 
+interface PostDetail {
+  id: number | string
+  title: string
+  content: string
+  userId?: number | string
+  userName?: string
+  userAvatar?: string
+  userRole?: number
+  createTime: string
+  likeCount?: number
+  viewCount?: number
+  userReactionType?: number | null
+}
+
+interface CommentNode {
+  id: number | string
+  userId?: number | string
+  userName?: string
+  userAvatar?: string
+  userRole?: number
+  content: string
+  createTime: string
+  likeCount?: number
+  isLiked?: boolean
+  replies?: CommentNode[]
+}
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 // 帖子数据
-const post = ref<any>(null)
+const post = ref<PostDetail | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const userReaction = ref<number | null>(null) // 1=点赞 2=不喜欢
 
 // 评论数据
-const comments = ref<any[]>([])
+const comments = ref<CommentNode[]>([])
 const commentsLoading = ref(false)
 const newComment = ref('')
 const submitting = ref(false)
-const replyingTo = ref<number | null>(null)
+const replyingTo = ref<number | string | null>(null)
 const replyContent = ref('')
-const replyToUser = ref<any>(null)
+const replyToUser = ref<CommentNode | null>(null)
 
 // 返回上一页
 const goBack = () => {
@@ -205,29 +232,17 @@ const loadPost = async () => {
   try {
     const res = await request.get('/experience/getExperienceById', {
       params: { id: postId }
-    })
+    }) as PostDetail
     post.value = res
     // 使用后端返回的用户反应状态
-    userReaction.value = res.userReactionType
+    userReaction.value = res.userReactionType ?? null
     // 加载评论
     loadComments()
-  } catch (e: any) {
-    error.value = e.message || '加载失败'
-    console.error('加载帖子详情失败:', e)
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : '加载失败'
+    console.error('加载帖子详情失败:', err)
   } finally {
     loading.value = false
-  }
-}
-
-// 加载用户对帖子的反应状态
-const loadUserReaction = async () => {
-  try {
-    const res = await request.get('/experience/getCurrentUserReaction', {
-      params: { experienceId: post.value.id, userId: authStore.user?.id }
-    })
-    userReaction.value = res
-  } catch (e) {
-    // 忽略错误
   }
 }
 
@@ -239,33 +254,34 @@ const handleReaction = async (reaction: number) => {
   }
   if (!post.value) return
 
+  const currentPost = post.value
   try {
     const userId = authStore.user?.id
     // 确保 likeCount 是数字类型
-    const currentLikeCount = Number(post.value.likeCount) || 0
+    const currentLikeCount = Number(currentPost.likeCount) || 0
     
     if (userReaction.value === reaction) {
       // 取消反应
-      await request.post('/experience/cancel', { experienceId: post.value.id, userId })
+      await request.post('/experience/cancel', { experienceId: currentPost.id, userId })
       if (reaction === 1) {
-        post.value.likeCount = Math.max(0, currentLikeCount - 1)
+        currentPost.likeCount = Math.max(0, currentLikeCount - 1)
       }
       userReaction.value = null
       ElMessage.info('已取消')
     } else {
       // 添加反应
-      await request.post('/experience/userReaction', { experienceId: post.value.id, reaction, userId })
+      await request.post('/experience/userReaction', { experienceId: currentPost.id, reaction, userId })
       // 如果之前是点赞，现在改成不喜欢，点赞数-1
       if (userReaction.value === 1 && reaction === 0) {
-        post.value.likeCount = Math.max(0, currentLikeCount - 1)
+        currentPost.likeCount = Math.max(0, currentLikeCount - 1)
       } else if (reaction === 1 && userReaction.value !== 1) {
         // 新增点赞
-        post.value.likeCount = currentLikeCount + 1
+        currentPost.likeCount = currentLikeCount + 1
       }
       userReaction.value = reaction
       ElMessage.success(reaction === 1 ? '点赞成功' : '已标记不喜欢')
     }
-  } catch (e) {
+  } catch {
     ElMessage.error('操作失败')
   }
 }
@@ -277,10 +293,10 @@ const loadComments = async () => {
   try {
     const res = await request.get('/comment/getCommentTree', {
       params: { experienceId: post.value.id }
-    })
+    }) as CommentNode[]
     comments.value = res || []
-  } catch (e) {
-    console.error('加载评论失败:', e)
+  } catch (error) {
+    console.error('加载评论失败:', error)
   } finally {
     commentsLoading.value = false
   }
@@ -303,19 +319,21 @@ const submitComment = async () => {
   }
   if (!newComment.value.trim()) return
 
+  const currentPost = post.value
+  if (!currentPost) return
   submitting.value = true
   try {
     const userRole = authStore.user?.role === 'coach' ? 1 : 2
     await request.post('/comment/addComment', {
       content: newComment.value,
-      experienceId: post.value.id,
+      experienceId: currentPost.id,
       userId: authStore.user?.id,
       userRole
     })
     ElMessage.success('评论成功')
     newComment.value = ''
     loadComments()
-  } catch (e) {
+  } catch {
     ElMessage.error('评论失败')
   } finally {
     submitting.value = false
@@ -323,7 +341,7 @@ const submitComment = async () => {
 }
 
 // 显示回复输入框
-const showReplyInput = (comment: any, reply?: any) => {
+const showReplyInput = (comment: CommentNode, reply?: CommentNode) => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录')
     return
@@ -341,15 +359,17 @@ const cancelReply = () => {
 }
 
 // 提交回复
-const submitReply = async (parentComment: any) => {
+const submitReply = async (parentComment: CommentNode) => {
   if (!replyContent.value.trim()) return
 
+  const currentPost = post.value
+  if (!currentPost) return
   submitting.value = true
   try {
     const userRole = authStore.user?.role === 'coach' ? 1 : 2
     await request.post('/comment/addComment', {
       content: replyContent.value,
-      experienceId: post.value.id,
+      experienceId: currentPost.id,
       userId: authStore.user?.id,
       userRole,
       parentId: parentComment.id,
@@ -358,7 +378,7 @@ const submitReply = async (parentComment: any) => {
     ElMessage.success('回复成功')
     cancelReply()
     loadComments()
-  } catch (e) {
+  } catch {
     ElMessage.error('回复失败')
   } finally {
     submitting.value = false
@@ -366,7 +386,7 @@ const submitReply = async (parentComment: any) => {
 }
 
 // 评论点赞
-const handleCommentLike = async (comment: any) => {
+const handleCommentLike = async (comment: CommentNode) => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录')
     return
@@ -381,7 +401,7 @@ const handleCommentLike = async (comment: any) => {
       comment.likeCount = (comment.likeCount || 0) + 1
       comment.isLiked = true
     }
-  } catch (e) {
+  } catch {
     ElMessage.error('操作失败')
   }
 }
@@ -416,335 +436,51 @@ onMounted(() => {
 
 
 <style scoped>
-.post-detail-view {
-  padding: 2rem 0;
-  min-height: calc(100vh - 140px);
-  background-color: #f5f7fa;
-}
-
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.back-button {
-  margin-bottom: 1.5rem;
-}
-
-.loading-container,
-.error-container {
-  margin: 2rem 0;
-}
-
-.post-detail {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  margin-bottom: 1.5rem;
-}
-
-.post-header {
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.author-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.author-name {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: #2c3e50;
-}
-
-.post-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.post-time {
-  font-size: 0.875rem;
-  color: #7f8c8d;
-}
-
-.post-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 1.5rem;
-  line-height: 1.4;
-}
-
-.post-content {
-  font-size: 1rem;
-  line-height: 1.8;
-  color: #34495e;
-  margin-bottom: 2rem;
-  white-space: pre-wrap;
-}
-
-.post-actions {
-  padding-top: 1.5rem;
-  border-top: 1px solid #f0f2f5;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 2rem;
-}
-
-.action-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #909399;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-}
-
-.action-item:hover {
-  background-color: #f5f7fa;
-}
-
-.action-item.active {
-  color: #409EFF;
-  background-color: #ecf5ff;
-}
-
-.reaction-icon {
-  width: 20px;
-  height: 20px;
-  transition: filter 0.3s;
-}
-
-.reaction-icon.liked {
-  /* 红色 */
-  filter: invert(27%) sepia(95%) saturate(5000%) hue-rotate(355deg) brightness(95%) contrast(95%);
-}
-
-.reaction-icon.disliked {
-  /* 深黑色 */
-  filter: invert(0%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(0%) contrast(100%);
-}
-
-.comment-like-icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: middle;
-  margin-right: 4px;
-  transition: filter 0.3s;
-}
-
-.comment-like-icon.liked {
-  /* 红色 */
-  filter: invert(27%) sepia(95%) saturate(5000%) hue-rotate(355deg) brightness(95%) contrast(95%);
-}
-
-/* 评论区样式 */
-.comments-section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 1.5rem;
-}
-
-.comment-input-box {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.input-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.input-wrapper .el-button {
-  align-self: flex-end;
-}
-
-.comments-loading,
-.no-comments {
-  padding: 2rem 0;
-}
-
-.comments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.comment-item {
-  border-bottom: 1px solid #f0f2f5;
-  padding-bottom: 1.5rem;
-}
-
-.comment-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.comment-main {
-  display: flex;
-  gap: 1rem;
-}
-
-.comment-body {
-  flex: 1;
-}
-
-.comment-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.comment-author {
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.comment-time {
-  font-size: 0.75rem;
-  color: #909399;
-}
-
-.comment-text {
-  color: #34495e;
-  line-height: 1.6;
-  margin-bottom: 0.75rem;
-}
-
-.comment-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.action-btn {
-  font-size: 0.875rem;
-  color: #909399;
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.action-btn:hover {
-  color: #409EFF;
-}
-
-.action-btn .liked {
-  color: #409EFF;
-}
-
-.reply-input-box {
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-}
-
-.reply-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-/* 回复列表样式 */
-.replies-list {
-  margin-left: 3.5rem;
-  margin-top: 1rem;
-  padding-left: 1rem;
-  border-left: 2px solid #f0f2f5;
-}
-
-.reply-item {
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.75rem 0;
-}
-
-.reply-item:first-child {
-  padding-top: 0;
-}
-
-.reply-body {
-  flex: 1;
-}
-
-.reply-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.reply-author {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: #2c3e50;
-}
-
-.reply-time {
-  font-size: 0.75rem;
-  color: #909399;
-}
-
-.reply-text {
-  font-size: 0.875rem;
-  color: #34495e;
-  line-height: 1.5;
-  margin-bottom: 0.5rem;
-}
-
-.reply-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-@media (max-width: 768px) {
-  .post-detail,
-  .comments-section {
-    padding: 1.5rem;
-  }
-
-  .post-title {
-    font-size: 1.5rem;
-  }
-
-  .action-buttons {
-    gap: 1rem;
-  }
-
-  .replies-list {
-    margin-left: 2rem;
-  }
-}
+.post-detail-view{min-height:calc(100vh - 140px);padding:22px 0 34px;background:radial-gradient(circle at 12% 2%,rgba(255,235,206,.45) 0%,rgba(255,235,206,0) 25%),#fffaf5;}
+.container{max-width:920px;margin:0 auto;padding:0 20px;}
+.back-button{margin-bottom:14px;}
+.loading-container,.error-container{margin:18px 0;}
+.post-detail,.comments-section{background:#fff;border:1px solid #f4e8da;border-radius:18px;box-shadow:0 10px 24px rgba(248,146,43,.06);}
+.post-detail{padding:24px;margin-bottom:14px;}
+.post-header{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #f4e8da;}
+.author-info{display:flex;align-items:center;gap:12px;}
+.author-details{display:flex;flex-direction:column;gap:3px;}
+.author-name{font-size:18px;font-weight:700;color:#2a1f12;}
+.post-meta{display:flex;align-items:center;gap:10px;}
+.post-time{color:#8f7660;font-size:13px;}
+.post-title{margin:0 0 14px;font-size:34px;line-height:1.25;color:#2a1f12;}
+.post-content{margin-bottom:18px;color:#5c4532;line-height:1.9;white-space:pre-wrap;}
+.post-actions{padding-top:12px;border-top:1px solid #f4e8da;}
+.action-buttons{display:flex;flex-wrap:wrap;gap:10px;}
+.action-item{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid transparent;color:#8f7660;cursor:pointer;transition:all .2s ease;}
+.action-item:hover{background:#fff4e7;}
+.action-item.active{color:#c2410c;border-color:#fed7aa;background:#fff0df;}
+.reaction-icon{width:18px;height:18px;}
+.reaction-icon.liked,.comment-like-icon.liked{filter:invert(24%) sepia(95%) saturate(2100%) hue-rotate(354deg) brightness(97%) contrast(101%);}
+.reaction-icon.disliked{filter:invert(43%) sepia(7%) saturate(1405%) hue-rotate(347deg) brightness(97%) contrast(94%);}
+.comment-like-icon{width:13px;height:13px;margin-right:3px;vertical-align:middle;}
+.comments-section{padding:22px;}
+.section-title{margin:0 0 14px;color:#2a1f12;font-size:22px;font-weight:700;}
+.comment-input-box{display:flex;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #f4e8da;}
+.input-wrapper{flex:1;display:flex;flex-direction:column;gap:10px;}
+.input-wrapper .el-button{align-self:flex-end;}
+.comments-loading,.no-comments{padding:14px 0;}
+.comments-list{display:grid;gap:14px;}
+.comment-item{border-bottom:1px solid #f4e8da;padding-bottom:14px;}
+.comment-item:last-child{border-bottom:none;padding-bottom:0;}
+.comment-main{display:flex;gap:10px;}
+.comment-body{flex:1;}
+.comment-header{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;}
+.comment-author,.reply-author{color:#2a1f12;font-weight:700;}
+.comment-time,.reply-time{color:#8f7660;font-size:12px;}
+.comment-text,.reply-text{color:#5c4532;line-height:1.75;margin-bottom:6px;}
+.comment-actions,.reply-actions{display:flex;gap:14px;}
+.action-btn{color:#8f7660;font-size:13px;cursor:pointer;transition:color .2s ease;}
+.action-btn:hover{color:#c2410c;}
+.reply-input-box{margin-top:8px;padding:10px;border-radius:10px;background:#fff7ee;}
+.replies-list{margin-left:26px;margin-top:8px;padding-left:10px;border-left:2px solid #f4e8da;}
+.reply-item{display:flex;gap:8px;padding:8px 0;}
+.reply-body{flex:1;}
+.reply-header{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:2px;}
+@media (max-width:768px){.container{padding:0 14px;}.post-detail,.comments-section{padding:14px;border-radius:14px;}.post-title{font-size:28px;}.action-item{flex:1;justify-content:center;}.comment-input-box{align-items:flex-start;}.replies-list{margin-left:10px;}}
 </style>

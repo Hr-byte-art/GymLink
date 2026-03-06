@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <!-- 页面头部 -->
     <div class="page-header">
@@ -50,12 +50,12 @@
         </div>
       </section>
 
-      <!-- 加载状态 -->
+      <!-- 加载状态-->
       <div v-if="courseStore.loading" class="loading-container">
         <el-loading :loading="true" text="加载中..."></el-loading>
       </div>
 
-      <!-- 错误状态 -->
+      <!-- 错误状态-->
       <div v-else-if="courseStore.error" class="error-container">
         <el-result icon="warning" title="加载失败" :sub-title="courseStore.error">
           <template #extra>
@@ -67,7 +67,7 @@
       <!-- 课程列表区域 -->
       <section v-else class="courses-section">
         <div class="section-container">
-          <!-- 无数据状态 -->
+          <!-- 无数据状态-->
           <div v-if="!courseStore.hasCourses" class="empty-container">
             <el-empty description="暂无课程数据"></el-empty>
           </div>
@@ -88,9 +88,9 @@
                 <h3 class="course-title">{{ course.name }}</h3>
                 <div class="course-instructor">
                   <div class="instructor-avatar">
-                    <img :src="course.instructorAvatar || '/avatar-placeholder.svg'" :alt="course.coachName" />
+                    <img src="/avatar-placeholder.svg" :alt="course.name" />
                   </div>
-                  <span class="instructor-name">{{ course.coachName || '未知教练' }}</span>
+                  <span class="instructor-name">教练ID: {{ course.coachId }}</span>
                 </div>
                 <p class="course-description">{{ course.description }}</p>
                 <div class="course-info">
@@ -122,8 +122,8 @@
 
           <!-- 分页 -->
           <div v-if="courseStore.hasCourses" class="pagination-container">
-            <el-pagination background layout="prev, pager, next" :total="courseStore.total" :page-size="pageSize.value"
-              :current-page="currentPage.value" @current-change="handlePageChange">
+            <el-pagination background layout="prev, pager, next" :total="courseStore.total" :page-size="pageSize"
+              :current-page="currentPage" @current-change="handlePageChange">
             </el-pagination>
           </div>
         </div>
@@ -136,13 +136,13 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
-import NavBar from '@/components/NavBar.vue'
 import AppLayout from '@/components/AppLayout.vue'
 import { courseTypeOptions } from '@/constants/categories'
 import { RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { purchaseCourse, getPurchasedCourseIds } from '@/api/student'
+import type { Course, CourseQueryParams } from '@/api/course'
 
 const router = useRouter()
 const route = useRoute()
@@ -183,7 +183,7 @@ const viewCourseDetail = (id: string | number) => {
 }
 
 // 购买课程
-const handlePurchase = async (course: any) => {
+const handlePurchase = async (course: Course) => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录后再购买课程')
     router.push({ name: 'auth', query: { redirect: route.fullPath } })
@@ -205,18 +205,18 @@ const handlePurchase = async (course: any) => {
 
   try {
     await ElMessageBox.confirm(
-      `确定要购买课程「${course.name || course.title}」吗？价格：¥${course.price}`,
+      `确定要购买课程「${course.name}」吗？价格：¥${course.price}`,
       '确认购买',
       { confirmButtonText: '确定购买', cancelButtonText: '取消', type: 'info' }
     )
 
     await purchaseCourse(studentId, course.id)
-    ElMessage.success('购买成功！')
+    ElMessage.success('购买成功')
     // 刷新已购课程列表
     await loadPurchasedCourseIds()
-  } catch (e: any) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.message || '购买失败，请稍后重试')
+  } catch (error: unknown) {
+    if (error !== 'cancel') {
+      ElMessage.error(error instanceof Error ? error.message : '购买失败，请稍后重试')
     }
   }
 }
@@ -224,12 +224,12 @@ const handlePurchase = async (course: any) => {
 // 加载课程数据
 const loadCourses = () => {
   // 构建查询参数（与后端 CourseQueryPageRequest 对应）
-  const params: any = {
+  const params: Record<string, string | number> = {
     pageNum: currentPage.value,
     pageSize: pageSize.value
   }
 
-  // 添加类别筛选（后端字段是 type）
+  // 添加类别筛选（后端字段 type）
   if (activeCategory.value && activeCategory.value !== 'all') {
     params.type = activeCategory.value
   }
@@ -246,13 +246,13 @@ const loadCourses = () => {
     if (max) params.maxDuration = max
   }
 
-  // 添加关键词搜索（后端字段是 name）
+  // 添加关键词搜索（后端字段 name）
   if (searchKeyword.value) {
     params.name = searchKeyword.value
   }
 
   // 调用API获取课程数据
-  courseStore.fetchCourses(params)
+  courseStore.fetchCourses(params as unknown as CourseQueryParams)
 }
 
 // 重置筛选条件
@@ -286,33 +286,24 @@ watch(() => authStore.isAuthenticated, (newVal) => {
 
 // 加载已购课程ID列表
 const loadPurchasedCourseIds = async () => {
-  console.log('loadPurchasedCourseIds - isAuthenticated:', authStore.isAuthenticated)
-  console.log('loadPurchasedCourseIds - user:', authStore.user)
-  console.log('loadPurchasedCourseIds - role:', authStore.user?.role)
-  console.log('loadPurchasedCourseIds - associatedUserId:', authStore.user?.associatedUserId)
   
   if (!authStore.isAuthenticated) {
-    console.log('用户未登录，跳过加载已购课程')
     return
   }
   
   // 只有学员角色才加载已购课程
   const role = authStore.user?.role
   if (role !== 'student' && role !== 'user') {
-    console.log('非学员角色，跳过加载已购课程')
     return
   }
   
   const studentId = authStore.user?.associatedUserId
   if (!studentId) {
-    console.log('associatedUserId为空，跳过加载已购课程')
     return
   }
   
   try {
-    console.log('正在调用 getPurchasedCourseIds，studentId:', studentId)
     purchasedCourseIds.value = await getPurchasedCourseIds(studentId)
-    console.log('已购课程ID列表:', purchasedCourseIds.value)
   } catch (e) {
     console.error('获取已购课程列表失败:', e)
   }
@@ -331,7 +322,6 @@ onMounted(async () => {
   
   // 确保用户信息已加载
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
-    console.log('等待用户信息加载...')
     await authStore.initAuth()
   }
   
@@ -341,154 +331,161 @@ onMounted(async () => {
 // 监听 associatedUserId 变化
 watch(() => authStore.user?.associatedUserId, (newVal) => {
   if (newVal) {
-    console.log('associatedUserId 已更新:', newVal)
     loadPurchasedCourseIds()
   }
 })
 </script>
 
 <style scoped>
-.courses-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.main-content {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --soft: #f8fafc;
 }
 
-/* 页面头部样式 */
 .page-header {
-  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-  color: white;
-  padding: 80px 0 60px;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.2), transparent 40%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #334155 100%);
+  color: #f8fafc;
+  padding: 88px 0 70px;
   text-align: center;
 }
 
 .header-content {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
 .page-title {
-  font-size: 42px;
-  font-weight: 700;
-  margin-bottom: 20px;
+  margin: 0;
+  font-size: clamp(34px, 5vw, 50px);
+  font-weight: 800;
+  letter-spacing: 0.4px;
 }
 
 .page-subtitle {
+  margin: 16px auto 0;
+  max-width: 700px;
   font-size: 18px;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 600px;
-  margin: 0 auto;
+  line-height: 1.7;
+  color: #e2e8f0;
 }
 
-/* 主要内容样式 */
-.main-content {
-  flex: 1;
-}
-
-/* 筛选区域样式 */
 .filter-section {
-  background: #f8f9fa;
-  padding: 30px 0;
-  border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 74px;
+  z-index: 90;
+  background: rgba(248, 250, 252, 0.95);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+}
+
+.filter-container,
+.section-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 .filter-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .filter-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
   align-items: center;
+  gap: 12px;
 }
 
-.category-filter {
-  width: 250px;
-}
-
-.category-filter :deep(.el-select) {
-  width: 100%;
-}
-
-.difficulty-filter,
-.duration-filter {
-  display: flex;
-  align-items: center;
-}
+.category-filter { width: 220px; }
+.search-box { flex: 1; min-width: 220px; }
 
 .filter-label {
-  margin-right: 8px;
-  font-weight: 500;
-  color: #555;
+  color: var(--muted);
+  margin-right: 6px;
+  font-weight: 600;
+  font-size: 14px;
 }
 
-/* 增加下拉框宽度以改善可读性 */
-.difficulty-filter :deep(.el-select) {
-  width: 200px;
-}
-
-/* 时长筛选下拉框宽度 */
+.category-filter :deep(.el-select),
+.difficulty-filter :deep(.el-select),
 .duration-filter :deep(.el-select) {
-  width: 200px;
+  width: 180px;
 }
 
-.search-box {
-  flex: 1;
-  min-width: 250px;
+.category-filter :deep(.el-select) { width: 100%; }
+
+.filter-options :deep(.el-input__wrapper),
+.filter-options :deep(.el-select__wrapper) {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
 }
 
-/* 加载和错误状态样式 */
+.filter-options :deep(.el-input__wrapper.is-focus),
+.filter-options :deep(.el-select__wrapper.is-focused) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
+}
+
+.filter-options > .el-button {
+  border-radius: 10px;
+  min-height: 40px;
+  border-color: #fdba74;
+  color: #9a3412;
+  background: #fff7ed;
+}
+
 .loading-container,
 .error-container,
 .empty-container {
+  min-height: 300px;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
 }
 
-/* 课程区域样式 */
 .courses-section {
-  padding: 60px 0;
-}
-
-.section-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+  padding: 40px 0 72px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
 }
 
 .courses-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 30px;
-  margin-bottom: 50px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+  margin-bottom: 42px;
 }
 
 .course-card {
-  background: white;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
   cursor: pointer;
   display: flex;
   flex-direction: column;
 }
 
 .course-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
+  border-color: rgba(249, 115, 22, 0.42);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.14);
 }
 
 .course-image {
   position: relative;
-  height: 200px;
+  height: 210px;
   overflow: hidden;
 }
 
@@ -496,83 +493,65 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.25s ease;
 }
 
-.course-card:hover .course-image img {
-  transform: scale(1.05);
+.course-card:hover .course-image img { transform: scale(1.04); }
+
+.course-category,
+.course-difficulty {
+  position: absolute;
+  top: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #fff;
 }
 
 .course-category {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  left: 14px;
+  background: rgba(2, 6, 23, 0.66);
 }
 
 .course-difficulty {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.course-difficulty.初级 {
-  background: #67c23a;
-  color: white;
-}
-
-.course-difficulty.中级 {
-  background: #e6a23c;
-  color: white;
-}
-
-.course-difficulty.高级 {
-  background: #f56c6c;
-  color: white;
+  right: 14px;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
 }
 
 .purchased-tag {
   position: absolute;
-  bottom: 15px;
-  left: 15px;
-  font-size: 12px;
+  left: 14px;
+  bottom: 14px;
 }
 
 .course-content {
-  padding: 25px;
-  flex: 1;
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .course-title {
+  margin: 0 0 12px;
   font-size: 20px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 15px;
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .course-instructor {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .instructor-avatar {
   width: 30px;
   height: 30px;
+  margin-right: 8px;
   border-radius: 50%;
   overflow: hidden;
-  margin-right: 10px;
+  border: 2px solid rgba(249, 115, 22, 0.35);
 }
 
 .instructor-avatar img {
@@ -582,14 +561,15 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
 }
 
 .instructor-name {
+  color: var(--muted);
   font-size: 14px;
-  color: #666;
+  font-weight: 600;
 }
 
 .course-description {
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 20px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0 0 14px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -597,31 +577,30 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
 }
 
 .course-info {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  color: #666;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .info-item .info-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   margin-right: 8px;
-  filter: invert(45%) sepia(98%) saturate(1500%) hue-rotate(196deg) brightness(100%) contrast(96%);
 }
 
 .course-footer {
+  margin-top: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: auto;
+  gap: 10px;
 }
 
 .course-price {
@@ -629,54 +608,46 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
   align-items: baseline;
 }
 
-.price-label {
-  font-size: 14px;
-  color: #666;
-  margin-right: 5px;
+.price-label,
+.price-unit {
+  font-size: 13px;
+  color: #64748b;
 }
 
 .price-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f56c6c;
-}
-
-.price-unit {
-  font-size: 14px;
-  color: #666;
-  margin-left: 2px;
+  margin: 0 4px;
+  color: #b91c1c;
+  font-size: 22px;
+  font-weight: 800;
 }
 
 .book-btn {
-  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-  padding: 8px 20px;
-  font-weight: 500;
-  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
-/* 分页样式 */
 .pagination-container {
+  margin-top: 6px;
   display: flex;
   justify-content: center;
-  margin-top: 40px;
 }
 
-/* 响应式设计 */
-@media (max-width: 992px) {
-  .courses-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  }
+@media (max-width: 1024px) {
+  .filter-section { position: static; }
 }
 
 @media (max-width: 768px) {
-  .page-title {
-    font-size: 32px;
+  .page-header {
+    padding: 66px 0 54px;
   }
 
-  .filter-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .page-subtitle {
+    font-size: 16px;
   }
 
   .filter-options {
@@ -684,8 +655,18 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
     align-items: stretch;
   }
 
-  .search-box {
-    min-width: auto;
+  .category-filter,
+  .search-box { width: 100%; }
+
+  .difficulty-filter,
+  .duration-filter {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .difficulty-filter :deep(.el-select),
+  .duration-filter :deep(.el-select) {
+    width: 68%;
   }
 
   .courses-grid {
@@ -695,11 +676,21 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
   .course-footer {
     flex-direction: column;
     align-items: flex-start;
-    gap: 15px;
   }
 
   .book-btn {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-card,
+  .course-image img {
+    transition: none;
+  }
+
+  .course-card:hover {
+    transform: none;
   }
 }
 </style>

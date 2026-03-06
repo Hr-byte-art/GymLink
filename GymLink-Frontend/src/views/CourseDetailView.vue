@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-container">
@@ -33,7 +33,7 @@
         </div>
         <div class="course-info">
           <div class="course-category">
-            <el-tag type="primary">{{ getCourseTypeName(course.type) }}</el-tag>
+            <el-tag type="primary">{{ getCourseTypeName(course.type || '') }}</el-tag>
           </div>
           <h1 class="course-title">{{ course.name }}</h1>
           
@@ -207,11 +207,33 @@ import { getCoachDetail, type Coach } from '@/api/coach'
 import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
 import { getReviewList, getCourseReviewStats, type CourseReview, type CourseReviewStats } from '@/api/review'
 
+type CourseDetail = {
+  id: number | string
+  name?: string
+  image?: string
+  difficulty?: string
+  type?: string
+  coachId?: number | string
+  coachName?: string
+  coachAvatar?: string
+  duration?: number
+  price?: number
+  description?: string
+}
+
+const getErrorMessage = (err: unknown, fallback: string) => {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const message = (err as { message?: unknown }).message
+    if (typeof message === 'string' && message) return message
+  }
+  return fallback
+}
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const course = ref<any>(null)
+const course = ref<CourseDetail | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const purchasing = ref(false)
@@ -236,13 +258,13 @@ const reviewPageSize = 5
 const courseStats = ref<CourseReviewStats | null>(null)
 
 // 获取难度样式类
-const getDifficultyClass = (difficulty: string) => {
+const getDifficultyClass = (difficulty?: string) => {
   const map: Record<string, string> = {
     '初级': 'easy',
     '中级': 'medium',
     '高级': 'hard'
   }
-  return map[difficulty] || 'easy'
+  return map[difficulty || ''] || 'easy'
 }
 
 // 返回列表
@@ -263,11 +285,11 @@ const loadCourseDetail = async () => {
 
   try {
     const res = await request.get('/course/getCourseById', { params: { id } })
-    course.value = res
+    course.value = res?.data as CourseDetail
     // 检查是否已购买
     await checkPurchaseStatus()
-  } catch (e: any) {
-    error.value = e.message || '获取课程详情失败'
+  } catch (e: unknown) {
+    error.value = getErrorMessage(e, '获取课程详情失败')
   } finally {
     loading.value = false
   }
@@ -275,12 +297,8 @@ const loadCourseDetail = async () => {
 
 // 检查课程是否已购买
 const checkPurchaseStatus = async () => {
-  console.log('checkPurchaseStatus - isAuthenticated:', authStore.isAuthenticated)
-  console.log('checkPurchaseStatus - role:', authStore.user?.role)
-  console.log('checkPurchaseStatus - associatedUserId:', authStore.user?.associatedUserId)
   
   if (!authStore.isAuthenticated) {
-    console.log('用户未登录，跳过检查购买状态')
     isPurchased.value = false
     return
   }
@@ -288,26 +306,21 @@ const checkPurchaseStatus = async () => {
   // 只有学员角色才检查购买状态
   const role = authStore.user?.role
   if (role !== 'student' && role !== 'user') {
-    console.log('非学员角色，跳过检查购买状态')
     isPurchased.value = false
     return
   }
   
   const studentId = authStore.user?.associatedUserId
   if (!studentId || !course.value?.id) {
-    console.log('studentId或courseId为空，跳过检查购买状态')
     isPurchased.value = false
     return
   }
 
   try {
-    console.log('正在检查购买状态，studentId:', studentId, 'courseId:', course.value.id)
     const purchasedIds = await getPurchasedCourseIds(studentId)
-    console.log('已购课程ID列表:', purchasedIds)
     // 将两边都转为字符串进行比较，避免类型不匹配问题
     const courseIdStr = String(course.value.id)
     isPurchased.value = purchasedIds.some(id => String(id) === courseIdStr)
-    console.log('当前课程是否已购买:', isPurchased.value)
   } catch (e) {
     console.error('检查购买状态失败:', e)
     isPurchased.value = false
@@ -335,6 +348,11 @@ const handlePurchase = async () => {
     return
   }
 
+  if (!course.value) {
+    ElMessage.warning('课程信息不存在')
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
       `确定要购买课程「${course.value.name}」吗？价格：¥${course.value.price}`,
@@ -347,9 +365,9 @@ const handlePurchase = async () => {
     ElMessage.success('购买成功！')
     // 更新购买状态
     isPurchased.value = true
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e !== 'cancel') {
-      ElMessage.error(e.message || '购买失败，请稍后重试')
+      ElMessage.error(getErrorMessage(e, '购买失败，请稍后重试'))
     }
   } finally {
     purchasing.value = false
@@ -369,7 +387,7 @@ const showCoachDialog = async () => {
 
   try {
     coachInfo.value = await getCoachDetail(course.value.coachId)
-  } catch (e: any) {
+  } catch {
     ElMessage.error('获取教练信息失败')
   } finally {
     coachLoading.value = false
@@ -386,7 +404,7 @@ const handleToggleFavorite = async () => {
     // request.ts 响应拦截器已解包，res 直接就是 boolean
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
-  } catch (error) {
+  } catch {
     ElMessage.error('操作失败，请先登录')
   }
 }
@@ -396,7 +414,7 @@ const checkFavoriteStatus = async () => {
   try {
     const res = await checkFavorite(Number(route.params.id), FavoriteType.COURSE)
     isFavorite.value = res.data
-  } catch (error) {
+  } catch {
     // 未登录时忽略错误
   }
 }
@@ -467,7 +485,6 @@ const getRatingCount = (star: number) => {
 onMounted(async () => {
   // 确保用户信息已加载
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
-    console.log('等待用户信息加载...')
     await authStore.initAuth()
   }
   
@@ -480,7 +497,6 @@ onMounted(async () => {
 // 监听 associatedUserId 变化，重新检查购买状态
 watch(() => authStore.user?.associatedUserId, (newVal) => {
   if (newVal && course.value?.id) {
-    console.log('associatedUserId 已更新，重新检查购买状态')
     checkPurchaseStatus()
   }
 })
@@ -488,395 +504,63 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
 
 
 <style scoped>
-.loading-container,
-.error-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  padding: 40px;
-}
-
-.course-detail {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.back-button {
-  margin-bottom: 20px;
-}
-
-.course-header {
-  display: flex;
-  gap: 40px;
-  margin-bottom: 40px;
-  background: white;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.course-image {
-  position: relative;
-  flex: 0 0 400px;
-  height: 300px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.course-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.course-difficulty {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: white;
-}
-
-.course-difficulty.easy {
-  background: #67c23a;
-}
-
-.course-difficulty.medium {
-  background: #e6a23c;
-}
-
-.course-difficulty.hard {
-  background: #f56c6c;
-}
-
-.purchased-tag {
-  position: absolute;
-  bottom: 15px;
-  left: 15px;
-  font-size: 14px;
-}
-
-.purchased-btn {
-  background: #67c23a !important;
-  border-color: #67c23a !important;
-}
-
-.course-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.course-category {
-  margin-bottom: 15px;
-}
-
-.course-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 20px;
-}
-
-.coach-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 25px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.coach-detail {
-  display: flex;
-  flex-direction: column;
-}
-
-.coach-name {
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.coach-label {
-  font-size: 12px;
-  color: #909399;
-}
-
-.info-cards {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.info-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  flex: 1;
-}
-
-.info-icon {
-  width: 28px;
-  height: 28px;
-  filter: invert(45%) sepia(98%) saturate(1500%) hue-rotate(196deg) brightness(100%) contrast(96%);
-}
-
-.info-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.info-label {
-  font-size: 12px;
-  color: #909399;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: auto;
-}
-
-.book-btn {
-  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
-  border: none;
-  padding: 12px 40px;
-  font-size: 16px;
-}
-
-.course-content {
-  margin-top: 30px;
-}
-
-.detail-card {
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.description-content {
-  line-height: 1.8;
-  color: #606266;
-  white-space: pre-wrap;
-}
-
-/* 教练弹窗样式 */
-.coach-dialog-loading,
-.coach-dialog-error {
-  padding: 20px;
-}
-
-.coach-dialog-content {
-  padding: 10px 0;
-}
-
-.coach-avatar-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.coach-dialog-name {
-  margin-top: 12px;
-  font-size: 20px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-/* 评价区域样式 */
-.reviews-card {
-  margin-top: 20px;
-}
-
-.reviews-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.reviews-content {
-  min-height: 100px;
-}
-
-/* 评价统计样式 */
-.review-summary {
-  display: flex;
-  gap: 40px;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.rating-overview {
-  text-align: center;
-  min-width: 120px;
-}
-
-.rating-score {
-  font-size: 48px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 10px;
-}
-
-.rating-stars {
-  margin-bottom: 10px;
-}
-
-.rating-count {
-  color: #666;
-  font-size: 14px;
-}
-
-.rating-distribution {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rating-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bar-label {
-  width: 30px;
-  font-size: 14px;
-  color: #666;
-}
-
-.bar-container {
-  flex: 1;
-  height: 10px;
-  background: #f0f2f5;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.bar-count {
-  width: 30px;
-  text-align: right;
-  font-size: 14px;
-  color: #666;
-}
-
-/* 评价列表样式 */
-.reviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.review-item {
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 10px;
-}
-
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 15px;
-}
-
-.reviewer-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.reviewer-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  overflow: hidden;
-}
-
-.reviewer-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.reviewer-name {
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.review-rating {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 5px;
-}
-
-.review-date {
-  font-size: 13px;
-  color: #999;
-}
-
-.review-text {
-  line-height: 1.6;
-  color: #555;
-}
-
-.review-text.empty {
-  color: #c0c4cc;
-  font-style: italic;
-}
-
-.reviews-pagination {
-  display: flex;
-  justify-content: center;
-  margin-top: 30px;
-}
-
-@media (max-width: 768px) {
-  .course-header {
-    flex-direction: column;
-  }
-
-  .course-image {
-    flex: none;
-    width: 100%;
-    height: 200px;
-  }
-
-  .info-cards {
-    flex-direction: column;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  .review-header {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
+:deep(.el-card__header) { border-bottom: 1px solid #f3e9dc; }
+:deep(.el-card__body) { padding: 24px; }
+.loading-container,.error-container{display:flex;justify-content:center;align-items:center;min-height:380px;padding:32px;}
+.course-detail{max-width:1240px;margin:0 auto;padding:24px 20px 40px;}
+.back-button{margin-bottom:20px;}
+.course-header{display:flex;gap:32px;margin-bottom:26px;background:linear-gradient(170deg,#fff 0%,#fff9f3 100%);border:1px solid #f3e6d7;border-radius:24px;padding:26px;box-shadow:0 12px 30px rgba(248,146,43,.08);}
+.course-image{position:relative;flex:0 0 420px;height:300px;border-radius:18px;overflow:hidden;}
+.course-image img{width:100%;height:100%;object-fit:cover;}
+.course-difficulty{position:absolute;top:14px;right:14px;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:600;color:#fff;backdrop-filter:blur(3px);}
+.course-difficulty.easy{background:rgba(34,197,94,.88);}.course-difficulty.medium{background:rgba(245,158,11,.9);}.course-difficulty.hard{background:rgba(239,68,68,.9);}
+.purchased-tag{position:absolute;left:14px;bottom:14px;}
+.purchased-btn{background:#22c55e !important;border-color:#22c55e !important;}
+.course-info{flex:1;display:flex;flex-direction:column;}
+.course-category{margin-bottom:12px;}
+.course-title{margin:0 0 18px;font-size:34px;line-height:1.25;color:#2a1f12;}
+.coach-info{display:flex;align-items:center;gap:12px;margin-bottom:22px;padding:12px 14px;background:#fff7ee;border:1px solid #f6e6d4;border-radius:14px;}
+.coach-detail{display:flex;flex-direction:column;}
+.coach-name{color:#2a1f12;font-weight:700;}.coach-label{font-size:12px;color:#8f7660;}
+.info-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:24px;}
+.info-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:#fff;border:1px solid #f5e8da;}
+.info-icon{width:28px;height:28px;filter:invert(52%) sepia(89%) saturate(853%) hue-rotate(349deg) brightness(97%) contrast(95%);}
+.info-value{font-size:18px;font-weight:700;color:#2a1f12;}.info-label{font-size:12px;color:#8f7660;}
+.action-buttons{display:flex;flex-wrap:wrap;gap:12px;margin-top:auto;}
+.book-btn{background:linear-gradient(135deg,#f97316 0%,#fb923c 100%);border-color:transparent;color:#fff;font-weight:600;min-width:160px;}
+.course-content{margin-top:22px;}
+.detail-card{margin-bottom:16px;border-radius:20px;border:1px solid #f4e7d8;box-shadow:none;}
+.card-title{font-size:19px;font-weight:700;color:#2a1f12;}
+.description-content{line-height:1.85;color:#5c4532;white-space:pre-wrap;}
+.coach-dialog-loading,.coach-dialog-error{padding:16px;}
+.coach-dialog-content{padding:6px 0;}
+.coach-avatar-section{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:20px;}
+.coach-dialog-name{margin:0;font-size:20px;font-weight:700;color:#2a1f12;}
+.reviews-card{margin-top:18px;}
+.reviews-header{display:flex;justify-content:space-between;align-items:center;}
+.reviews-content{min-height:120px;}
+.review-summary{display:flex;gap:30px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #f4e7d8;}
+.rating-overview{min-width:132px;text-align:center;}
+.rating-score{font-size:48px;line-height:1;font-weight:800;color:#2a1f12;margin-bottom:8px;}
+.rating-stars{margin-bottom:8px;}.rating-count{font-size:13px;color:#8f7660;}
+.rating-distribution{flex:1;display:flex;flex-direction:column;gap:8px;}
+.rating-bar{display:flex;align-items:center;gap:10px;}
+.bar-label,.bar-count{width:34px;font-size:13px;color:#8f7660;}
+.bar-container{flex:1;height:10px;border-radius:999px;background:#f4eee5;overflow:hidden;}
+.bar-fill{height:100%;background:linear-gradient(90deg,#f97316 0%,#fdba74 100%);} .bar-count{text-align:right;}
+.reviews-list{display:grid;gap:14px;}
+.review-item{padding:16px;border-radius:14px;border:1px solid #f4e7d8;background:#fffaf5;}
+.review-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.reviewer-info{display:flex;align-items:center;gap:12px;}
+.reviewer-avatar{width:46px;height:46px;border-radius:50%;overflow:hidden;}
+.reviewer-avatar img{width:100%;height:100%;object-fit:cover;}
+.reviewer-name{font-weight:600;color:#2a1f12;}
+.review-rating{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.review-date{font-size:12px;color:#8f7660;}
+.review-text{line-height:1.7;color:#5c4532;}
+.review-text.empty{color:#ad947d;font-style:italic;}
+.reviews-pagination{display:flex;justify-content:center;margin-top:24px;}
+@media (max-width:992px){.course-header{flex-direction:column;gap:20px;}.course-image{width:100%;flex:none;height:250px;}.info-cards{grid-template-columns:1fr;}}
+@media (max-width:768px){.course-detail{padding:18px 14px 30px;}.course-header{border-radius:18px;padding:16px;}.course-title{font-size:28px;}.action-buttons{flex-direction:column;}.action-buttons .el-button{width:100%;}.review-summary,.review-header{flex-direction:column;}}
 </style>
+

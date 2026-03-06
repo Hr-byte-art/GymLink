@@ -20,7 +20,7 @@
               <div class="stat-icon" style="background: #67C23A;"><el-icon :size="24"><CircleCheck /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.normalCount || 0 }}</div>
-                <div class="stat-label">正常运行</div>
+                <div class="stat-label">姝ｅ父杩愯</div>
               </div>
             </div>
           </el-card>
@@ -42,7 +42,7 @@
               <div class="stat-icon" style="background: #F56C6C;"><el-icon :size="24"><Calendar /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.todayReservationCount || 0 }}</div>
-                <div class="stat-label">今日预约</div>
+                <div class="stat-label">今日棰勭害</div>
               </div>
             </div>
           </el-card>
@@ -53,7 +53,7 @@
               <div class="stat-icon" style="background: #909399;"><el-icon :size="24"><DataLine /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.weekReservationCount || 0 }}</div>
-                <div class="stat-label">本周预约</div>
+                <div class="stat-label">本周棰勭害</div>
               </div>
             </div>
           </el-card>
@@ -64,7 +64,7 @@
               <div class="stat-icon" style="background: #b37feb;"><el-icon :size="24"><TrendCharts /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.monthReservationCount || 0 }}</div>
-                <div class="stat-label">本月预约</div>
+                <div class="stat-label">本月棰勭害</div>
               </div>
             </div>
           </el-card>
@@ -87,7 +87,6 @@
         </el-col>
       </el-row>
 
-      <!-- 器材数量统计和热门器材排行 -->
       <el-row :gutter="20" class="chart-row">
         <el-col :span="12">
           <el-card class="chart-card">
@@ -114,6 +113,12 @@ import request from '@/utils/request'
 import * as echarts from 'echarts'
 import { getEquipmentTypeName } from '@/constants/categories'
 
+type EquipmentTypeStat = { type?: string; typeName?: string; count: number }
+type DailyReservationItem = { date: string; count: number }
+type HotEquipmentItem = { equipmentName: string; reservationCount: number }
+type EquipmentCountItem = { equipmentName: string; totalCount: number }
+
+
 const statistics = reactive({
   totalEquipment: 0,
   normalCount: 0,
@@ -121,10 +126,10 @@ const statistics = reactive({
   todayReservationCount: 0,
   weekReservationCount: 0,
   monthReservationCount: 0,
-  typeStatistics: [] as any[],
-  dailyReservationTrend: [] as any[],
-  hotEquipmentRank: [] as any[],
-  equipmentCountStatistics: [] as any[]
+  typeStatistics: [] as EquipmentTypeStat[],
+  dailyReservationTrend: [] as DailyReservationItem[],
+  hotEquipmentRank: [] as HotEquipmentItem[],
+  equipmentCountStatistics: [] as EquipmentCountItem[]
 })
 
 const trendChartRef = ref<HTMLElement>()
@@ -171,11 +176,11 @@ const initCharts = () => {
     })
   }
 
-  // 饼图
+  // 楗煎浘
   if (pieChartRef.value) {
     pieChart = echarts.init(pieChartRef.value)
     const pieData = statistics.typeStatistics.map(item => ({
-      name: item.typeName || getEquipmentTypeName(item.type),
+      name: item.typeName || getEquipmentTypeName(item.type || ''),
       value: item.count
     }))
     pieChart.setOption({
@@ -205,7 +210,7 @@ const initCharts = () => {
       xAxis: { type: 'category', data: names, axisLabel: { rotate: 30, interval: 0 } },
       yAxis: { type: 'value', minInterval: 1 },
       series: [{
-        name: '预约次数',
+        name: '棰勭害次数',
         type: 'bar',
         data: values,
         itemStyle: {
@@ -280,3 +285,5 @@ onUnmounted(() => {
 .chart-card { height: 400px; }
 .chart-container { width: 100%; height: 320px; }
 </style>
+
+

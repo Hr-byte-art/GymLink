@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="container">
       <!-- 返回按钮 -->
@@ -21,14 +21,14 @@
         <!-- 食谱头部 -->
         <header class="recipe-header">
           <div class="recipe-image">
-            <img :src="recipe.image" :alt="recipe.title" />
+            <img :src="recipe.coverImage" :alt="recipe.title" />
           </div>
           <div class="recipe-info">
             <div class="recipe-category">
-              <el-tag type="primary">{{ recipe.category }}</el-tag>
+              <el-tag type="primary">{{ getRecipeCategory(recipe.tags) }}</el-tag>
             </div>
             <h1 class="recipe-title">{{ recipe.title }}</h1>
-            <p class="recipe-description">{{ recipe.description }}</p>
+            <p class="recipe-description">{{ getRecipeDescription(recipe.content) }}</p>
 
             <!-- 基本信息卡片 -->
             <div class="info-cards">
@@ -39,7 +39,7 @@
                   </el-icon>
                 </div>
                 <div class="info-content">
-                  <div class="info-value">{{ recipe.prepTime + recipe.cookTime }}</div>
+                  <div class="info-value">{{ (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0) }}</div>
                   <div class="info-label">总时长(分钟)</div>
                 </div>
               </div>
@@ -98,14 +98,6 @@
               <div class="nutrition-value">{{ recipe.fat }}g</div>
               <div class="nutrition-label">脂肪</div>
             </div>
-            <div class="nutrition-card">
-              <div class="nutrition-value">{{ recipe.fiber }}g</div>
-              <div class="nutrition-label">纤维</div>
-            </div>
-          </div>
-
-          <div v-if="recipe.nutritionNotes" class="nutrition-notes">
-            <el-alert :title="recipe.nutritionNotes" type="info" :closable="false" show-icon />
           </div>
         </section>
 
@@ -113,7 +105,7 @@
         <section class="ingredients-section">
           <h2>食材清单</h2>
           <div class="ingredients-list">
-            <div v-for="(ingredient, index) in recipe.ingredients" :key="index" class="ingredient-item">
+            <div v-for="(ingredient, index) in ingredients" :key="index" class="ingredient-item">
               <div class="ingredient-checkbox">
                 <el-checkbox v-model="checkedIngredients[index]" />
               </div>
@@ -126,7 +118,7 @@
         <section class="instructions-section">
           <h2>制作步骤</h2>
           <div class="instructions-list">
-            <div v-for="(instruction, index) in recipe.instructions" :key="index" class="instruction-item">
+            <div v-for="(instruction, index) in instructions" :key="index" class="instruction-item">
               <div class="instruction-number">{{ index + 1 }}</div>
               <div class="instruction-text">{{ instruction }}</div>
             </div>
@@ -134,10 +126,10 @@
         </section>
 
         <!-- 小贴士 -->
-        <section v-if="recipe.tips && recipe.tips.length > 0" class="tips-section">
+        <section v-if="tips.length > 0" class="tips-section">
           <h2>小贴士</h2>
           <div class="tips-list">
-            <div v-for="(tip, index) in recipe.tips" :key="index" class="tip-item">
+            <div v-for="(tip, index) in tips" :key="index" class="tip-item">
               <el-icon class="tip-icon">
                 <InfoFilled />
               </el-icon>
@@ -151,7 +143,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipeStore } from '@/stores/recipe'
 import { ArrowLeft, Clock, User, Star, InfoFilled } from '@element-plus/icons-vue'
@@ -171,16 +163,41 @@ const isFavorite = ref(false)
 
 // 获取当前食谱
 const recipe = computed(() => recipeStore.recipeDetail)
+const ingredients = computed(() => {
+  if (!recipe.value?.content) return []
+  return recipe.value.content
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+})
+const instructions = computed(() => {
+  if (!recipe.value?.content) return []
+  return recipe.value.content
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(0, 10)
+})
+const tips = computed(() => [])
 
 // 监听食谱变化，初始化食材复选框状态
 const initializeCheckedIngredients = () => {
-  if (recipe.value && recipe.value.ingredients) {
-    checkedIngredients.value = new Array(recipe.value.ingredients.length).fill(false)
-  }
+  checkedIngredients.value = new Array(ingredients.value.length).fill(false)
+}
+
+const getRecipeCategory = (tags?: string) => {
+  if (!tags) return '未分类'
+  return tags.split(',')[0] || '未分类'
+}
+
+const getRecipeDescription = (content?: string) => {
+  if (!content) return '暂无描述'
+  return content.length > 120 ? `${content.slice(0, 120)}...` : content
 }
 
 // 获取难度文本
-const getDifficultyText = (difficulty: string) => {
+const getDifficultyText = (difficulty?: string) => {
   switch (difficulty) {
     case 'easy':
       return '简单'
@@ -208,7 +225,7 @@ const handleToggleFavorite = async () => {
     // request.ts 响应拦截器已解包，res 直接就是 boolean
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
-  } catch (error) {
+  } catch {
     ElMessage.error('操作失败，请先登录')
   }
 }
@@ -218,7 +235,7 @@ const checkFavoriteStatus = async () => {
   try {
     const res = await checkFavorite(Number(route.params.id), FavoriteType.RECIPE)
     isFavorite.value = res.data
-  } catch (error) {
+  } catch {
     // 未登录时忽略错误
   }
 }
@@ -237,237 +254,44 @@ watch(recipe, () => {
   initializeCheckedIngredients()
 }, { immediate: true })
 
-// 页面卸载时清除食谱详情
-onUnmounted(() => {
-  recipeStore.clearRecipeDetail()
-})
 </script>
 
 <style scoped>
-.recipe-detail-view {
-  padding: 2rem 0;
-  min-height: calc(100vh - 140px);
-}
-
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.back-button {
-  margin-bottom: 1.5rem;
-}
-
-.loading-container,
-.error-container {
-  margin: 2rem 0;
-}
-
-.recipe-detail {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.recipe-header {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .recipe-header {
-    flex-direction: row;
-  }
-
-  .recipe-image {
-    flex: 0 0 40%;
-  }
-
-  .recipe-info {
-    flex: 1;
-  }
-}
-
-.recipe-image {
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  height: 250px;
-}
-
-.recipe-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.recipe-info {
-  padding: 0 1rem;
-}
-
-.recipe-category {
-  margin-bottom: 1rem;
-}
-
-.recipe-title {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.recipe-description {
-  font-size: 1.1rem;
-  color: #7f8c8d;
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
-}
-
-.info-cards {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.recipe-actions {
-  margin-top: 1.5rem;
-}
-
-.info-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background-color: #f8f9fa;
-  padding: 1rem;
-  border-radius: 8px;
-  flex: 1;
-  min-width: 120px;
-}
-
-.info-icon {
-  color: #3498db;
-}
-
-.info-value {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.info-label {
-  font-size: 0.875rem;
-  color: #7f8c8d;
-}
-
-section {
-  padding: 2rem 1rem;
-  border-top: 1px solid #eee;
-}
-
-section h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
-  color: #2c3e50;
-}
-
-.nutrition-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.nutrition-card {
-  background-color: #f8f9fa;
-  padding: 1.5rem 1rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.nutrition-value {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #3498db;
-  margin-bottom: 0.5rem;
-}
-
-.nutrition-label {
-  font-size: 0.875rem;
-  color: #7f8c8d;
-}
-
-.nutrition-notes {
-  margin-top: 1rem;
-}
-
-.ingredients-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 0.75rem;
-}
-
-.ingredient-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-}
-
-.ingredient-text {
-  flex: 1;
-}
-
-.instructions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.instruction-item {
-  display: flex;
-  gap: 1rem;
-}
-
-.instruction-number {
-  flex: 0 0 36px;
-  height: 36px;
-  background-color: #3498db;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-}
-
-.instruction-text {
-  flex: 1;
-  line-height: 1.6;
-  padding-top: 0.25rem;
-}
-
-.tips-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.tip-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-  background-color: #fff8e1;
-  border-radius: 8px;
-  line-height: 1.6;
-}
-
-.tip-icon {
-  color: #f39c12;
-  margin-top: 0.125rem;
-}
+.container{max-width:1120px;margin:0 auto;padding:22px 20px 34px;}
+.back-button{margin-bottom:16px;}
+.loading-container,.error-container{margin:18px 0;}
+.recipe-detail{border-radius:22px;border:1px solid #f4e8da;background:#fff;box-shadow:0 10px 24px rgba(248,146,43,.06);overflow:hidden;}
+.recipe-header{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;padding:20px;background:linear-gradient(170deg,#fff 0%,#fff9f3 100%);}
+@media (min-width:900px){.recipe-header{grid-template-columns:46% 54%;gap:24px;padding:24px;}}
+.recipe-image{border-radius:16px;overflow:hidden;height:300px;}
+.recipe-image img{width:100%;height:100%;object-fit:cover;}
+.recipe-info{display:flex;flex-direction:column;}
+.recipe-category{margin-bottom:12px;}
+.recipe-title{margin:0 0 12px;font-size:34px;line-height:1.2;color:#2a1f12;}
+.recipe-description{margin:0 0 16px;color:#5c4532;line-height:1.75;}
+.info-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.info-card{display:flex;align-items:center;gap:8px;border:1px solid #f4e8da;border-radius:12px;background:#fff;padding:10px;}
+.info-icon{color:#ea580c;}
+.info-value{font-size:17px;font-weight:700;color:#2a1f12;}
+.info-label{color:#8f7660;font-size:12px;}
+.recipe-actions{margin-top:14px;}
+.recipe-actions .el-button{background:#fff7ec;border-color:#fed7aa;color:#9a3412;}
+section{padding:22px;border-top:1px solid #f4e8da;}
+section h2{margin:0 0 14px;font-size:24px;color:#2a1f12;}
+.nutrition-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;}
+.nutrition-card{text-align:center;border:1px solid #f4e8da;border-radius:12px;background:#fffaf5;padding:14px 8px;}
+.nutrition-value{color:#ea580c;font-size:24px;font-weight:800;margin-bottom:4px;}
+.nutrition-label{font-size:12px;color:#8f7660;}
+.nutrition-notes{margin-top:12px;}
+.ingredients-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;}
+.ingredient-item{display:flex;align-items:center;gap:8px;border:1px solid #f4e8da;border-radius:10px;background:#fffaf5;padding:10px;}
+.ingredient-text{color:#5c4532;}
+.instructions-list{display:grid;gap:10px;}
+.instruction-item{display:flex;gap:10px;}
+.instruction-number{width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;background:linear-gradient(135deg,#f97316 0%,#fb923c 100%);flex-shrink:0;}
+.instruction-text{color:#5c4532;line-height:1.8;padding-top:4px;}
+.tips-list{display:grid;gap:8px;}
+.tip-item{display:flex;align-items:flex-start;gap:8px;border-radius:10px;border:1px solid #fde3bf;background:#fff4e3;padding:10px;line-height:1.7;color:#5c4532;}
+.tip-icon{color:#ea580c;margin-top:2px;}
+@media (max-width:768px){.container{padding:18px 14px 28px;}.recipe-header{padding:14px;}.recipe-image{height:230px;}.recipe-title{font-size:28px;}.info-cards{grid-template-columns:1fr;}section{padding:16px 14px;}}
 </style>

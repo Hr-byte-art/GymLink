@@ -1,79 +1,55 @@
-<template>
+﻿<template>
   <footer class="footer">
     <div class="footer-container">
-      <div class="footer-content">
-        <div class="footer-section">
-          <h3 class="footer-title">关于GymLink</h3>
-          <p class="footer-text">
-            GymLink是您身边的健身专家，提供专业的健身指导、先进的健身设备和舒适的健身环境。
+      <div class="footer-grid">
+        <section class="footer-block about">
+          <h3>GymLink</h3>
+          <p>
+            GymLink 为健身房会员提供课程预约、教练管理、器材预约和健康数据追踪，
+            让训练过程更高效、更可持续。
           </p>
-          <div class="social-links">
-            <a href="#" class="social-link">
-              <i class="icon-wechat"></i>
-            </a>
-            <a href="#" class="social-link">
-              <i class="icon-weibo"></i>
-            </a>
-            <a href="#" class="social-link">
-              <i class="icon-douyin"></i>
-            </a>
+          <div class="social-links" aria-label="social links">
+            <a href="#" class="social-link" aria-label="WeChat">WX</a>
+            <a href="#" class="social-link" aria-label="Weibo">WB</a>
+            <a href="#" class="social-link" aria-label="Douyin">DY</a>
           </div>
-        </div>
-        
-        <div class="footer-section">
-          <h3 class="footer-title">快速链接</h3>
-          <ul class="footer-links">
-            <li><router-link to="/" class="footer-link">首页</router-link></li>
-            <li><router-link to="/courses" class="footer-link">课程</router-link></li>
-            <li><router-link to="/coaches" class="footer-link">教练</router-link></li>
-            <li><router-link to="/facilities" class="footer-link">设施</router-link></li>
+        </section>
+
+        <section class="footer-block">
+          <h4>快速导航</h4>
+          <ul class="link-list">
+            <li><router-link to="/">首页</router-link></li>
+            <li><router-link to="/courses">课程</router-link></li>
+            <li><router-link to="/coaches">教练</router-link></li>
+            <li><router-link to="/equipment">器材</router-link></li>
+            <li><router-link to="/recipes">饮食计划</router-link></li>
           </ul>
-        </div>
-        
-        <div class="footer-section">
-          <h3 class="footer-title">联系方式</h3>
-          <ul class="contact-info">
-            <li class="contact-item">
-              <i class="icon-location"></i>
-              <span>北京市朝阳区建国路88号</span>
-            </li>
-            <li class="contact-item">
-              <i class="icon-phone"></i>
-              <span>400-888-8888</span>
-            </li>
-            <li class="contact-item">
-              <i class="icon-email"></i>
-              <span>info@gymlink.com</span>
-            </li>
+        </section>
+
+        <section class="footer-block">
+          <h4>联系信息</h4>
+          <ul class="meta-list">
+            <li><span class="dot"></span>北京市朝阳区建国路 88 号</li>
+            <li><span class="dot"></span>400-888-8888</li>
+            <li><span class="dot"></span>info@gymlink.com</li>
           </ul>
-        </div>
-        
-        <div class="footer-section">
-          <h3 class="footer-title">营业时间</h3>
-          <ul class="opening-hours">
-            <li class="hours-item">
-              <span class="day">周一至周五</span>
-              <span class="time">06:00 - 22:00</span>
-            </li>
-            <li class="hours-item">
-              <span class="day">周六、周日</span>
-              <span class="time">07:00 - 21:00</span>
-            </li>
-            <li class="hours-item">
-              <span class="day">节假日</span>
-              <span class="time">08:00 - 20:00</span>
-            </li>
+        </section>
+
+        <section class="footer-block">
+          <h4>营业时间</h4>
+          <ul class="meta-list">
+            <li><span>周一至周五</span><b>06:00 - 22:00</b></li>
+            <li><span>周六至周日</span><b>07:00 - 21:00</b></li>
+            <li><span>节假日</span><b>08:00 - 20:00</b></li>
           </ul>
-        </div>
+        </section>
       </div>
-      
+
       <div class="footer-bottom">
-        <div class="copyright">
-          <p>&copy; {{ currentYear }} GymLink. 保留所有权利。</p>
-        </div>
-        <div class="footer-bottom-links">
-          <a href="#" class="bottom-link">隐私政策</a>
-          <a href="#" class="bottom-link">使用条款</a>
+        <p>© {{ currentYear }} GymLink. 保留所有权利。</p>
+        <div class="bottom-links">
+          <a href="#">隐私政策</a>
+          <a href="#">使用条款</a>
         </div>
       </div>
     </div>
@@ -83,208 +59,169 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// 页脚组件，包含公司信息、快速链接、联系方式和营业时间
+defineOptions({
+  name: 'AppFooter'
+})
+
 const currentYear = computed(() => new Date().getFullYear())
 </script>
 
 <style scoped>
 .footer {
-  background-color: #222;
-  color: #ccc;
-  padding: 60px 0 20px;
+  margin-top: 40px;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(249, 115, 22, 0.2), transparent 34%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 48%, #334155 100%);
+  color: #cbd5e1;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .footer-container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 46px 20px 18px;
 }
 
-.footer-content {
+.footer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 40px;
-  margin-bottom: 40px;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 26px;
 }
 
-.footer-section {
-  margin-bottom: 20px;
+.footer-block h3,
+.footer-block h4 {
+  margin: 0 0 14px;
+  color: #f8fafc;
 }
 
-.footer-title {
-  color: #fff;
-  font-size: 18px;
-  margin-bottom: 20px;
-  position: relative;
-  padding-bottom: 10px;
+.footer-block h3 {
+  font-size: 28px;
+  font-weight: 800;
 }
 
-.footer-title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 50px;
-  height: 2px;
-  background-color: #4a6cf7;
+.footer-block h4 {
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.footer-text {
-  line-height: 1.6;
-  margin-bottom: 20px;
+.about p {
+  margin: 0 0 14px;
+  line-height: 1.75;
+  color: #cbd5e1;
 }
 
 .social-links {
   display: flex;
-  gap: 15px;
+  gap: 8px;
 }
 
 .social-link {
-  display: flex;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  color: #ccc;
   text-decoration: none;
-  transition: all 0.3s ease;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(203, 213, 225, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  transition: all 0.2s ease;
 }
 
 .social-link:hover {
-  background-color: #4a6cf7;
-  color: #fff;
-  transform: translateY(-3px);
+  border-color: #fdba74;
+  background: rgba(249, 115, 22, 0.2);
 }
 
-.footer-links {
+.link-list,
+.meta-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
 }
 
-.footer-links li {
-  margin-bottom: 10px;
-}
-
-.footer-link {
-  color: #ccc;
+.link-list a {
+  color: #cbd5e1;
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: color 0.2s ease;
 }
 
-.footer-link:hover {
-  color: #4a6cf7;
+.link-list a:hover {
+  color: #fb923c;
 }
 
-.contact-info {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 15px;
-  color: #ccc;
-}
-
-.contact-item i {
-  margin-right: 10px;
-  color: #4a6cf7;
-}
-
-.opening-hours {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.hours-item {
+.meta-list li {
+  color: #cbd5e1;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 10px;
+  line-height: 1.6;
 }
 
-.day {
-  color: #ccc;
+.meta-list li .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-top: 8px;
+  background: #fb923c;
+  flex-shrink: 0;
 }
 
-.time {
-  color: #4a6cf7;
-  font-weight: 500;
+.meta-list b {
+  color: #f8fafc;
+  font-weight: 700;
 }
 
 .footer-bottom {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 10px;
 }
 
-.copyright p {
+.footer-bottom p {
   margin: 0;
-  font-size: 14px;
+  color: #94a3b8;
+  font-size: 13px;
 }
 
-.footer-bottom-links {
+.bottom-links {
   display: flex;
-  gap: 20px;
+  gap: 12px;
 }
 
-.bottom-link {
-  color: #ccc;
+.bottom-links a {
+  color: #94a3b8;
   text-decoration: none;
-  font-size: 14px;
-  transition: color 0.3s ease;
+  font-size: 13px;
 }
 
-.bottom-link:hover {
-  color: #4a6cf7;
+.bottom-links a:hover {
+  color: #fb923c;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .footer-content {
-    grid-template-columns: 1fr;
-    gap: 30px;
+@media (max-width: 980px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
   }
-  
+}
+
+@media (max-width: 640px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+
   .footer-bottom {
     flex-direction: column;
-    gap: 15px;
-    text-align: center;
+    align-items: flex-start;
   }
-}
-
-/* 图标样式 - 使用简单的CSS创建图标 */
-.icon-wechat::before {
-  content: '微';
-  font-family: Arial, sans-serif;
-}
-
-.icon-weibo::before {
-  content: '微';
-  font-family: Arial, sans-serif;
-}
-
-.icon-douyin::before {
-  content: '抖';
-  font-family: Arial, sans-serif;
-}
-
-.icon-location::before {
-  content: '📍';
-}
-
-.icon-phone::before {
-  content: '📞';
-}
-
-.icon-email::before {
-  content: '✉️';
 }
 </style>

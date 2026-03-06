@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="profile-container">
       <div class="profile-header">
@@ -298,7 +298,7 @@
                       </div>
                       <div class="favorite-info">
                         <h3 class="favorite-name">{{ item.targetName }}</h3>
-                        <p class="favorite-desc">{{ item.targetDescription || '暂无简介' }}</p>
+                         <p class="favorite-desc">{{ item.targetDescription || '暂无简介' }}</p>
                         <div class="favorite-actions">
                           <el-button size="small" type="danger" @click.stop="handleRemoveFavorite(item, 2)">取消收藏</el-button>
                         </div>
@@ -362,7 +362,7 @@
                   <div class="announcement-card-content">{{ item.content }}</div>
                 </div>
               </div>
-              <el-empty v-else description="暂无公告" />
+               <el-empty v-else description="暂无公告" />
             </div>
             <el-pagination v-if="announcementPagination.total > 0" layout="prev, pager, next"
               :total="announcementPagination.total" :page-size="announcementPagination.pageSize"
@@ -423,7 +423,7 @@
                 </el-table-column>
                 <el-table-column prop="message" label="留言" min-width="150">
                   <template #default="{ row }">
-                    <span>{{ row.message || '无' }}</span>
+                    <span>{{ row.message || '-' }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column label="状态" width="100">
@@ -522,7 +522,13 @@ const favoriteTab = ref('course')
 const studentFormRef = ref()
 const coachFormRef = ref()
 const securityFormRef = ref()
-const userDetailInfo = ref<any>(null)
+type UserDetailInfo = {
+  id?: string | number
+  name?: string
+  avatar?: string
+  createTime?: string
+}
+const userDetailInfo = ref<UserDetailInfo | null>(null)
 
 const studentForm = ref({ id: '' as string | number, username: '', name: '', phone: '', gender: 1, height: 0, weight: 0, balance: 0 })
 const coachForm = ref({ id: '' as string | number, username: '', name: '', phone: '', gender: 1, age: 18, specialty: '', intro: '' })
@@ -541,7 +547,7 @@ const securityRules = {
   oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
   newPassword: [{ required: true, message: '请输入新密码', trigger: 'blur' }, { min: 8, message: '密码长度不能少于8位', trigger: 'blur' }],
   checkedPassword: [{ required: true, message: '请确认新密码', trigger: 'blur' }, {
-    validator: (_rule: any, value: string, callback: any) => {
+    validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
       if (value !== securityForm.value.newPassword) callback(new Error('两次输入的密码不一致'))
       else callback()
     }, trigger: 'blur'
@@ -587,8 +593,17 @@ const topUpForm = ref({ amount: 100 })
 // 评价相关
 const reviewDialogVisible = ref(false)
 const reviewFormRef = ref()
-const reviewForm = ref({ 
-  courseId: 0, 
+type ReviewForm = {
+  courseId: number | string
+  courseName: string
+  appointmentId: number | string
+  coachName: string
+  reviewType: 1 | 2
+  rating: number
+  content: string
+}
+const reviewForm = ref<ReviewForm>({
+  courseId: 0,
   courseName: '', 
   appointmentId: 0,
   coachName: '',
@@ -604,6 +619,11 @@ const user = computed(() => authStore.user)
 const displayName = computed(() => userDetailInfo.value?.name || authStore.displayName || user.value?.username || '')
 const isStudent = computed(() => { const role = user.value?.role; return role === 'student' || role === 'user' })
 const isCoach = computed(() => user.value?.role === 'coach')
+const toNumberId = (rawId?: string | number): number | null => {
+  if (rawId === undefined || rawId === null) return null
+  const numericId = Number(rawId)
+  return Number.isFinite(numericId) ? numericId : null
+}
 const getUserRoleText = computed(() => {
   const roleMap: Record<string, string> = { admin: '管理员', coach: '教练', student: '学员', user: '学员' }
   return roleMap[user.value?.role || 'student'] || '学员'
@@ -661,7 +681,7 @@ const loadPurchasedCourses = async () => {
       status: courseStatusFilter.value
     })
     const courses = res.records || []
-    // 检查每个课程是否可以评价
+  // 检查每个课程是否可以评价
     const coursesWithReviewStatus = await Promise.all(
       courses.map(async (course) => {
         if (course.status === 1) {
@@ -701,7 +721,7 @@ const handleTopUp = async () => {
   loading.value.topUp = true
   try {
     await studentTopUp(studentForm.value.id, topUpForm.value.amount)
-    ElMessage.success(`充值成功！已充值 ¥${topUpForm.value.amount}`)
+    ElMessage.success(`充值成功！已充 ¥${topUpForm.value.amount}`)
     topUpDialogVisible.value = false
     // 刷新学员信息以更新余额
     const studentInfo = await getStudentByUserId(user.value?.id as number)
@@ -724,7 +744,7 @@ const handleRefundCourse = async (course: PurchasedCourse) => {
     await refundCourse(course.orderId)
     ElMessage.success('退款申请已提交，请等待管理员审核')
     loadPurchasedCourses()
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       // 错误已在 request 拦截器中处理
     }
@@ -797,8 +817,8 @@ const submitReview = async () => {
     }
     ElMessage.success('评价提交成功')
     reviewDialogVisible.value = false
-  } catch (error: any) {
-    ElMessage.error(error.message || '评价提交失败')
+  } catch (error: unknown) {
+    ElMessage.error(error instanceof Error ? error.message : '评价提交失败')
   } finally {
     loading.value.review = false
   }
@@ -816,7 +836,7 @@ const handleAvatarChange = async (event: Event) => {
     ElMessage.error('请选择图片文件')
     return
   }
-  // 验证文件大小 (最大 5MB)
+  // 验证文件大小 (最大5MB)
   if (file.size > 5 * 1024 * 1024) {
     ElMessage.error('图片大小不能超过 5MB')
     return
@@ -846,7 +866,6 @@ const handleAvatarChange = async (event: Event) => {
       newAvatarUrl = await uploadCoachAvatar(coachId, file)
     }
 
-    console.log('头像上传返回的URL:', newAvatarUrl)
     
     // 添加时间戳参数强制浏览器刷新图片缓存
     const avatarWithTimestamp = newAvatarUrl + '?t=' + Date.now()
@@ -875,9 +894,7 @@ const loadStudentInfo = async () => {
   if (!user.value?.id) return
   loading.value.userInfo = true
   try {
-    console.log('loadStudentInfo - userId:', user.value.id)
     const info = await getStudentByUserId(user.value.id)
-    console.log('loadStudentInfo - 返回的学员信息:', info)
     if (info && info.id) {
       userDetailInfo.value = info
       studentForm.value = {
@@ -901,9 +918,7 @@ const loadCoachInfo = async () => {
   if (!user.value?.id) return
   loading.value.userInfo = true
   try {
-    console.log('loadCoachInfo - userId:', user.value.id)
     const info = await getCoachByUserId(user.value.id)
-    console.log('loadCoachInfo - 返回的教练信息:', info)
     if (info && info.id) {
       userDetailInfo.value = info
       coachForm.value = {
@@ -932,7 +947,6 @@ const updateStudentInfo = async () => {
   }
   loading.value.submit = true
   try {
-    console.log('updateStudentInfo - id:', studentForm.value.id)
     await updateStudent(studentForm.value.id, { name: studentForm.value.name, gender: studentForm.value.gender, phone: studentForm.value.phone, height: studentForm.value.height, weight: studentForm.value.weight })
     ElMessage.success('信息更新成功')
     if (authStore.user) authStore.user.name = studentForm.value.name
@@ -949,7 +963,6 @@ const updateCoachInfo = async () => {
   }
   loading.value.submit = true
   try {
-    console.log('updateCoachInfo - id:', coachForm.value.id)
     await updateCoach(coachForm.value.id, { name: coachForm.value.name, gender: coachForm.value.gender, phone: coachForm.value.phone, age: coachForm.value.age, specialty: coachForm.value.specialty, intro: coachForm.value.intro })
     ElMessage.success('信息更新成功')
     if (authStore.user) authStore.user.name = coachForm.value.name
@@ -1010,11 +1023,9 @@ const loadEquipmentReservations = async () => {
   try {
     // 确保studentId是数字类型
     const numericStudentId = typeof studentId === 'string' ? parseInt(studentId, 10) : studentId
-    console.log('loadEquipmentReservations - studentId:', numericStudentId)
     const res = await listStudentEquipmentReservation({ studentId: numericStudentId, pageNum: equipmentReservationPagination.value.currentPage, pageSize: equipmentReservationPagination.value.pageSize })
     equipmentReservations.value = res.records || []
     equipmentReservationPagination.value.total = res.total || 0
-    console.log('loadEquipmentReservations - 获取到记录数:', equipmentReservations.value.length)
   } catch (error) { console.error('获取器材预约记录失败:', error) }
   finally { loading.value.equipmentReservations = false }
 }
@@ -1069,10 +1080,11 @@ const handleAnnouncementPageChange = (page: number) => {
 
 // 消息通知相关函数
 const loadNotifications = async () => {
-  if (!user.value?.id) return
+  const userId = toNumberId(user.value?.id)
+  if (userId === null) return
   loading.value.notifications = true
   try {
-    const res = await getNotificationList(user.value.id, notificationPagination.value.currentPage, notificationPagination.value.pageSize)
+    const res = await getNotificationList(userId, notificationPagination.value.currentPage, notificationPagination.value.pageSize)
     notificationList.value = res.records || []
     notificationPagination.value.total = res.total || 0
   } catch (error) {
@@ -1083,9 +1095,10 @@ const loadNotifications = async () => {
 }
 
 const loadNotificationUnreadCount = async () => {
-  if (!user.value?.id) return
+  const userId = toNumberId(user.value?.id)
+  if (userId === null) return
   try {
-    notificationUnreadCount.value = await getUnreadCount(user.value.id)
+    notificationUnreadCount.value = await getUnreadCount(userId)
   } catch (error) {
     console.error('获取未读数量失败:', error)
   }
@@ -1104,9 +1117,10 @@ const handleNotificationClick = async (item: Notification) => {
 }
 
 const handleMarkAllNotificationsRead = async () => {
-  if (!user.value?.id) return
+  const userId = toNumberId(user.value?.id)
+  if (userId === null) return
   try {
-    await markAllAsRead(user.value.id)
+    await markAllAsRead(userId)
     notificationList.value.forEach(n => n.isRead = 1)
     notificationUnreadCount.value = 0
     ElMessage.success('已全部标为已读')
@@ -1125,7 +1139,7 @@ const loadFavorites = async (type: FavoriteType) => {
   loading.value.favorites = true
   try {
     const res = await getFavoriteList({ type, pageNum: 1, pageSize: 50 })
-    const list = (res as any)?.records || []
+    const list = res.records || []
     switch (type) {
       case FavoriteType.COURSE:
         favoriteCourses.value = list
@@ -1154,7 +1168,10 @@ const handleFavoriteTabChange = (tab: string) => {
     equipment: FavoriteType.EQUIPMENT,
     recipe: FavoriteType.RECIPE
   }
-  loadFavorites(typeMap[tab])
+  const favoriteType = typeMap[tab]
+  if (favoriteType !== undefined) {
+    loadFavorites(favoriteType)
+  }
 }
 
 const handleRemoveFavorite = async (item: FavoriteVo, type: FavoriteType) => {
@@ -1175,7 +1192,10 @@ const goToDetail = (type: string, id: number) => {
     equipment: '/equipment/',
     recipe: '/recipes/'
   }
-  router.push(routeMap[type] + id)
+  const basePath = routeMap[type]
+  if (basePath) {
+    router.push(basePath + id)
+  }
 }
 
 // 教练预约管理相关函数
@@ -1184,14 +1204,12 @@ const loadCoachAppointmentList = async () => {
   if (!coachId) return
   loading.value.coachAppointmentList = true
   try {
-    console.log('loadCoachAppointmentList - coachId:', coachId)
     const res = await listAppointmentsByCoach({
-      coachId: coachId, // 直接传，API层会转字符串
+      coachId: coachId,
       status: coachAppointmentStatusFilter.value,
       pageNum: coachAppointmentPagination.value.currentPage,
       pageSize: coachAppointmentPagination.value.pageSize
     })
-    console.log('loadCoachAppointmentList - res:', res)
     coachAppointmentList.value = res.records || []
     coachAppointmentPagination.value.total = res.total || 0
   } catch (error) {
@@ -1206,14 +1224,14 @@ const loadPendingAppointmentCount = async () => {
   if (!coachId) return
   try {
     const res = await listAppointmentsByCoach({
-      coachId: coachId, // 直接传，API层会转字符串
+      coachId: coachId,
       status: 0, // 待确认
       pageNum: 1,
       pageSize: 1
     })
     pendingAppointmentCount.value = res.total || 0
   } catch (error) {
-    console.error('获取待处理预约数量失败:', error)
+    console.error('获取待处理预约数量失败', error)
   }
 }
 
@@ -1899,5 +1917,481 @@ onMounted(async () => {
 .menu-badge :deep(.el-badge__content) {
   top: 8px;
   right: 15px;
+}
+
+/* ===== UI Refresh Overrides ===== */
+.profile-container {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --soft: #f8fafc;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.profile-header {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.2), transparent 42%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 48%, #334155 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.user-avatar {
+  border-color: rgba(249, 115, 22, 0.45);
+}
+
+.profile-menu {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.profile-main {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.profile-section h2 {
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.profile-main :deep(.el-input__wrapper),
+.profile-main :deep(.el-select__wrapper),
+.profile-main :deep(.el-textarea__inner) {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
+}
+
+.profile-main :deep(.el-input__wrapper.is-focus),
+.profile-main :deep(.el-select__wrapper.is-focused),
+.profile-main :deep(.el-textarea__inner:focus) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
+}
+
+.profile-main :deep(.el-button--primary) {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+.profile-main :deep(.el-tabs__item.is-active),
+.profile-main :deep(.el-menu-item.is-active) {
+  color: #c2410c;
+}
+
+.profile-main :deep(.el-tabs__active-bar),
+.profile-main :deep(.el-menu-item.is-active) {
+  background-color: #f97316;
+}
+
+.profile-main :deep(.el-table) {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.purchased-course-card,
+.favorite-card,
+.announcement-card,
+.notification-card {
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+}
+
+.purchased-course-card:hover,
+.favorite-card:hover,
+.announcement-card:hover,
+.notification-card:hover {
+  border-color: rgba(249, 115, 22, 0.42);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.14);
+}
+
+.favorite-name,
+.purchased-course-card .course-name {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ===== Section Refresh V2: Appointments / Favorites / Notifications ===== */
+.profile-section {
+  position: relative;
+}
+
+.profile-section :deep(.el-tabs__header) {
+  margin-bottom: 18px;
+}
+
+.profile-section :deep(.el-tabs__item) {
+  font-weight: 600;
+}
+
+.profile-section :deep(.el-table th.el-table__cell) {
+  background: #fff7ed;
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.profile-section :deep(.el-table td.el-table__cell) {
+  color: #334155;
+}
+
+.profile-section :deep(.el-table tr:hover > td.el-table__cell) {
+  background: #fffaf5;
+}
+
+.appointments-filter {
+  background: #fffaf5;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.favorites-grid,
+.notifications-list,
+.announcements-list,
+.coach-appointments-list {
+  min-height: 220px;
+}
+
+.favorites-list {
+  gap: 16px;
+}
+
+.favorite-card {
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+  border: 1px solid #fde5cb;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.favorite-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 28px rgba(249, 115, 22, 0.16);
+  border-color: #fdba74;
+}
+
+.favorite-image {
+  background:
+    radial-gradient(circle at 14% 14%, rgba(251, 146, 60, 0.18), rgba(251, 146, 60, 0) 60%),
+    #fff7ed;
+  border-bottom: 1px solid #fde7cf;
+}
+
+.favorite-info {
+  padding: 14px;
+}
+
+.favorite-desc {
+  color: #64748b;
+}
+
+.favorite-actions :deep(.el-button) {
+  border-radius: 9px;
+}
+
+.announcement-card {
+  border: 1px solid #fde5cb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fffbf7 100%);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.announcement-card-title {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.announcement-card-time {
+  color: #94a3b8;
+}
+
+.announcement-card-content {
+  color: #475569;
+}
+
+.notifications-header {
+  justify-content: space-between;
+  align-items: center;
+  background: #fffaf5;
+  border: 1px solid #fde5cb;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.notification-card {
+  background: linear-gradient(180deg, #ffffff 0%, #fffbf7 100%);
+  border: 1px solid #fde5cb;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.notification-card:hover {
+  transform: translateY(-2px);
+  border-color: #fdba74;
+  box-shadow: 0 14px 24px rgba(249, 115, 22, 0.14);
+}
+
+.notification-card.unread {
+  background: linear-gradient(90deg, rgba(255, 237, 213, 0.7) 0%, #fff 16%);
+  border-color: #fdba74;
+}
+
+.notification-card-title {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.notification-card-time {
+  color: #94a3b8;
+}
+
+.notification-card-text {
+  color: #475569;
+  line-height: 1.6;
+}
+
+.notification-unread-dot {
+  background: #f97316;
+  width: 9px;
+  height: 9px;
+  margin-top: 10px;
+}
+
+.menu-badge :deep(.el-badge__content) {
+  background: #f97316;
+  border-color: #fff;
+}
+
+.profile-banner {
+  max-width: 1240px;
+}
+
+.profile-info {
+  gap: 4px;
+}
+
+.avatar-wrapper {
+  margin-right: 22px;
+}
+
+.avatar-clickable {
+  width: 116px;
+  height: 116px;
+}
+
+.avatar-overlay {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.1) 0%, rgba(15, 23, 42, 0.72) 100%);
+  font-weight: 600;
+}
+
+.user-details h1 {
+  margin: 0 0 8px;
+  letter-spacing: 0.2px;
+}
+
+.user-role,
+.join-date {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.profile-content {
+  max-width: 1240px;
+  gap: 22px;
+  padding-top: 24px;
+}
+
+.profile-sidebar {
+  width: 260px;
+}
+
+.profile-menu :deep(.el-menu-item) {
+  height: 46px;
+  line-height: 46px;
+  margin: 4px 8px;
+  border-radius: 10px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.profile-menu :deep(.el-menu-item:hover) {
+  background: #fff4e7;
+  color: #9a3412;
+}
+
+.profile-menu :deep(.el-menu-item.is-active) {
+  color: #9a3412;
+  background: linear-gradient(90deg, #ffedd5 0%, #fff7ed 100%);
+}
+
+.profile-main {
+  padding: 24px;
+}
+
+.profile-section h2 {
+  margin: 0 0 16px;
+}
+
+.user-info-form,
+.security-form {
+  max-width: 620px;
+}
+
+.profile-main :deep(.el-form-item__label) {
+  color: #334155;
+  font-weight: 600;
+}
+
+.profile-main :deep(.el-input-number) {
+  width: 100%;
+}
+
+.balance-row {
+  gap: 12px;
+}
+
+.balance-row .el-input {
+  max-width: 170px;
+}
+
+.topup-amounts .el-button {
+  border-radius: 10px;
+  border-color: #fed7aa;
+  color: #9a3412;
+  background: #fffaf5;
+}
+
+.topup-amounts .el-button:hover {
+  border-color: #fb923c;
+  color: #7c2d12;
+}
+
+.courses-filter {
+  background: #fffaf5;
+  border: 1px solid #fde5cb;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.purchased-course-card {
+  border: 1px solid #fde5cb;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+  border-radius: 16px;
+}
+
+.purchased-course-card .course-info {
+  padding: 14px;
+}
+
+.purchased-course-card .course-name {
+  font-size: 17px;
+}
+
+.purchased-course-card .course-meta {
+  gap: 12px;
+}
+
+.purchased-course-card .meta-item,
+.purchased-course-card .course-coach,
+.purchased-course-card .course-time {
+  color: #64748b;
+}
+
+.purchased-course-card .course-price {
+  color: #c2410c;
+  font-weight: 700;
+}
+
+.purchased-course-card .course-actions {
+  gap: 8px;
+}
+
+.purchased-course-card .course-actions .el-button,
+.purchased-course-card .course-actions .el-tag {
+  border-radius: 8px;
+}
+
+.pagination :deep(.btn-prev),
+.pagination :deep(.btn-next),
+.pagination :deep(.number) {
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .appointments-filter,
+  .notifications-header {
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .profile-content {
+    gap: 14px;
+  }
+
+  .profile-main {
+    padding: 16px;
+  }
+
+  .profile-section h2 {
+    font-size: 24px;
+  }
+
+  .profile-menu :deep(.el-menu-item) {
+    margin: 4px;
+    min-width: 120px;
+  }
+
+  .courses-filter {
+    padding: 8px 10px;
+  }
+
+  .favorites-list {
+    gap: 12px;
+  }
+
+  .favorite-card,
+  .announcement-card,
+  .notification-card {
+    border-radius: 12px;
+  }
+
+  .notification-card {
+    padding: 12px 14px;
+  }
+
+  .notification-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .notification-card-time {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purchased-course-card,
+  .favorite-card,
+  .announcement-card,
+  .notification-card {
+    transition: none;
+  }
+
+  .purchased-course-card:hover,
+  .favorite-card:hover,
+  .announcement-card:hover,
+  .notification-card:hover {
+    transform: none;
+  }
 }
 </style>

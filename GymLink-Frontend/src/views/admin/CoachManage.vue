@@ -122,9 +122,23 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
 import { coachSpecialtyOptions, getCoachSpecialtyName, getGenderName } from '@/constants/categories'
 
+type CoachRecord = {
+  id: number | string
+  username?: string
+  password?: string
+  name?: string
+  gender?: number
+  phone?: string
+  age?: number
+  specialty?: string
+  intro?: string
+  createTime?: string
+  [key: string]: unknown
+}
+
 const loading = ref(false)
 const submitLoading = ref(false)
-const tableData = ref<any[]>([])
+const tableData = ref<CoachRecord[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
@@ -153,7 +167,7 @@ const loadData = async () => {
     const res = await request.post('/coach/ListCoach', {
       pageNum: pagination.current, pageSize: pagination.pageSize,
       name: searchForm.name || undefined, specialty: searchForm.specialty || undefined, gender: searchForm.gender || undefined
-    })
+    }) as { records?: CoachRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) { console.error(e) }
@@ -170,14 +184,14 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = (row: CoachRecord) => {
   isEdit.value = true
   dialogTitle.value = '编辑教练'
   Object.assign(form, { ...row })
   dialogVisible.value = true
 }
 
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: CoachRecord) => {
   try {
     await ElMessageBox.confirm('确定要删除该教练吗？', '提示', { type: 'warning' })
     await request.post('/coach/deleteCoach', null, { params: { id: row.id } })

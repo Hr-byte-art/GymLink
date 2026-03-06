@@ -14,7 +14,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <el-button @click="resetSearch">閲嶇疆</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -36,7 +36,7 @@
           </el-table-column>
           <el-table-column prop="viewCount" label="浏览量" width="80" />
           <el-table-column prop="likeCount" label="点赞数" width="80" />
-          <el-table-column prop="content" label="内容" show-overflow-tooltip>
+          <el-table-column prop="content" label="鍐呭" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-html="stripHtml(row.content)"></span>
             </template>
@@ -44,7 +44,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="鎿嶄綔" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleView(row)">查看</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -63,15 +63,15 @@
         <div class="post-meta">
           <span>发布者ID: {{ currentPost.userId }}</span>
           <span>角色: {{ currentPost.userRole === 1 ? '教练' : '学员' }}</span>
-          <span>浏览量: {{ currentPost.viewCount }}</span>
-          <span>点赞数: {{ currentPost.likeCount }}</span>
+          <span>浏览量? {{ currentPost.viewCount }}</span>
+          <span>点赞数? {{ currentPost.likeCount }}</span>
           <span>发布时间: {{ formatDate(currentPost.createTime) }}</span>
         </div>
         <el-divider />
         <div class="post-content" v-html="currentPost.content"></div>
       </div>
       <template #footer>
-        <el-button @click="viewDialogVisible = false">关闭</el-button>
+        <el-button @click="viewDialogVisible = false">鍏抽棴</el-button>
       </template>
     </el-dialog>
   </AdminLayout>
@@ -83,15 +83,25 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
 
+type PostRecord = {
+  id: number | string
+  title?: string
+  content?: string
+  userName?: string
+  userRole?: number
+  createTime?: string
+  [key: string]: unknown
+}
+
 const loading = ref(false)
-const tableData = ref<any[]>([])
+const tableData = ref<PostRecord[]>([])
 const viewDialogVisible = ref(false)
-const currentPost = ref<any>({})
+const currentPost = ref<Partial<PostRecord>>({})
 
 const searchForm = reactive({ title: '', userRole: null as number | null })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 
-const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+const formatDate = (date?: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
 
 // 去除HTML标签，用于表格显示
 const stripHtml = (html: string) => {
@@ -105,7 +115,7 @@ const loadData = async () => {
     const res = await request.post('/experience/listExperience', {
       pageNum: pagination.current, pageSize: pagination.pageSize,
       title: searchForm.title || undefined, userRole: searchForm.userRole || undefined
-    })
+    }) as { records?: PostRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) { console.error(e) }
@@ -115,12 +125,12 @@ const loadData = async () => {
 const handleSearch = () => { pagination.current = 1; loadData() }
 const resetSearch = () => { Object.assign(searchForm, { title: '', userRole: null }); handleSearch() }
 
-const handleView = (row: any) => {
+const handleView = (row: PostRecord) => {
   currentPost.value = row
   viewDialogVisible.value = true
 }
 
-const handleDelete = async (row: any) => {
+const handleDelete = async (row: PostRecord) => {
   try {
     await ElMessageBox.confirm('确定要删除该帖子吗？', '提示', { type: 'warning' })
     await request.post('/experience/deleteExperience', null, { params: { id: row.id } })
@@ -143,3 +153,4 @@ onMounted(() => loadData())
 .post-meta { display: flex; gap: 20px; color: #909399; font-size: 14px; flex-wrap: wrap; }
 .post-content { line-height: 1.8; color: #606266; max-height: 400px; overflow-y: auto; }
 </style>
+

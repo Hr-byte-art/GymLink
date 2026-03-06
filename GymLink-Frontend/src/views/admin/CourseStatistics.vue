@@ -113,6 +113,13 @@ import AdminLayout from '@/components/AdminLayout.vue'
 import request from '@/utils/request'
 import * as echarts from 'echarts'
 
+type DifficultyStat = { difficulty?: string; difficultyName?: string; count: number }
+type TypeStat = { type?: string; typeName?: string; count: number }
+type DailyOrderItem = { date: string; count: number; revenue?: number }
+type HotCourseItem = { courseName: string; orderCount: number }
+type HotCoachItem = { coachName: string; orderCount: number }
+
+
 const statistics = reactive({
   totalCourse: 0,
   todayOrderCount: 0,
@@ -120,11 +127,11 @@ const statistics = reactive({
   monthOrderCount: 0,
   totalRevenue: 0,
   monthRevenue: 0,
-  difficultyStatistics: [] as any[],
-  typeStatistics: [] as any[],
-  dailyOrderTrend: [] as any[],
-  hotCourseRank: [] as any[],
-  hotCoachRank: [] as any[]
+  difficultyStatistics: [] as DifficultyStat[],
+  typeStatistics: [] as TypeStat[],
+  dailyOrderTrend: [] as DailyOrderItem[],
+  hotCourseRank: [] as HotCourseItem[],
+  hotCoachRank: [] as HotCoachItem[]
 })
 
 const trendChartRef = ref<HTMLElement>()
@@ -300,3 +307,5 @@ onUnmounted(() => {
 .chart-card { height: 400px; }
 .chart-container { width: 100%; height: 320px; }
 </style>
+
+

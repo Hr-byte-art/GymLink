@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <!-- 加载状态 -->
     <div v-if="coachStore.loading" class="loading-container">
@@ -358,8 +358,12 @@ const submitBooking = async () => {
 
       ElMessage.success('预约成功！请等待教练确认')
       bookingDialogVisible.value = false
-    } catch (error: any) {
-      ElMessage.error(error.message || '预约失败，请稍后重试')
+    } catch (error: unknown) {
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? String((error as { message?: unknown }).message || '')
+          : ''
+      ElMessage.error(message || '预约失败，请稍后重试')
     } finally {
       bookingLoading.value = false
     }
@@ -482,7 +486,7 @@ const handleToggleFavorite = async () => {
     // request.ts 响应拦截器已解包，res 直接就是 boolean
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
-  } catch (error) {
+  } catch {
     ElMessage.error('操作失败，请先登录')
   }
 }
@@ -490,9 +494,9 @@ const handleToggleFavorite = async () => {
 // 检查收藏状态
 const checkFavoriteStatus = async () => {
   try {
-    const res = await checkFavorite(coachId.value as any, FavoriteType.COACH)
+    const res = await checkFavorite(coachId.value, FavoriteType.COACH)
     isFavorite.value = res.data
-  } catch (error) {
+  } catch {
     // 未登录时忽略错误
   }
 }
@@ -508,544 +512,67 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.coach-detail-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 加载和错误状态样式 */
-.loading-container,
-.error-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
-}
-
-/* 返回按钮样式 */
-.back-button {
-  padding: 20px 0;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-left: 20px;
-}
-
-/* 教练基本信息样式 */
-.coach-hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 60px 0;
-}
-
-.coach-hero-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 40px;
-}
-
-.coach-avatar {
-  flex-shrink: 0;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 5px solid rgba(255, 255, 255, 0.3);
-}
-
-.coach-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.coach-basic-info {
-  flex: 1;
-}
-
-.coach-name {
-  font-size: 42px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.coach-specialty {
-  font-size: 20px;
-  font-weight: 500;
-  margin-bottom: 15px;
-  opacity: 0.9;
-}
-
-
-
-.coach-actions {
-  display: flex;
-  gap: 20px;
-}
-
-.book-btn {
-  background: white;
-  color: #667eea;
-  border: none;
-  font-weight: 600;
-  padding: 12px 30px;
-}
-
-.contact-btn {
-  background: transparent;
-  color: white;
-  border: 2px solid white;
-  font-weight: 600;
-  padding: 12px 30px;
-}
-
-/* 个人简介区域样式 */
-.coach-intro-section {
-  padding: 40px 0;
-}
-
-.intro-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.intro-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  padding: 30px;
-}
-
-.section-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #f0f2f5;
-}
-
-.intro-text {
-  line-height: 1.8;
-  color: #555;
-  font-size: 16px;
-}
-
-/* SVG 图标样式 */
-.icon-svg {
-  width: 20px;
-  height: 20px;
-  vertical-align: middle;
-  filter: brightness(0) invert(1); /* 白色图标 */
-}
-
-
-
-/* 基本信息样式（性别、年龄、电话） */
-.coach-basic-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 25px;
-  margin-bottom: 20px;
-  padding: 15px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.basic-meta-item {
-  display: flex;
-  align-items: center;
-  font-size: 16px;
-}
-
-.basic-meta-item .icon-svg {
-  margin-right: 8px;
-}
-
-/* 评分样式 */
-.coach-rating {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.review-count {
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-/* 统计信息样式 */
-.coach-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 25px;
-  margin-bottom: 20px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  font-size: 16px;
-}
-
-.stat-item .icon-svg {
-  margin-right: 8px;
-}
-
-/* 预约价格样式 */
-.coach-price {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 20px;
-}
-
-.price-label {
-  font-size: 16px;
-  opacity: 0.9;
-}
-
-.price-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #ffd700;
-}
-
-.price-unit {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-left: 4px;
-}
-
-/* 课程区域样式 */
-.coach-courses-section {
-  padding: 40px 0;
-}
-
-.courses-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.courses-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  padding: 30px;
-}
-
-.courses-loading {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-}
-
-.courses-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.course-card {
-  background: #f8f9fa;
-  border-radius: 10px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.course-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-}
-
-.course-card .course-image {
-  height: 140px;
-  overflow: hidden;
-}
-
-.course-card .course-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.course-card .course-info {
-  padding: 15px;
-}
-
-.course-card .course-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.course-card .course-meta {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.course-card .course-meta .meta-item {
-  font-size: 13px;
-  color: #888;
-}
-
-.course-card .course-price {
-  font-size: 18px;
-  font-weight: 600;
-  color: #f56c6c;
-}
-
-.no-courses {
-  padding: 40px 0;
-}
-
-/* 评价区域样式 */
-.coach-reviews-section {
-  padding: 40px 0;
-  background: #f8f9fa;
-}
-
-.reviews-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.reviews-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  padding: 30px;
-}
-
-.review-summary {
-  display: flex;
-  gap: 40px;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.rating-overview {
-  text-align: center;
-  min-width: 120px;
-}
-
-.rating-score {
-  font-size: 48px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 10px;
-}
-
-.rating-stars {
-  margin-bottom: 10px;
-}
-
-.rating-count {
-  color: #666;
-  font-size: 14px;
-}
-
-.rating-distribution {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rating-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bar-label {
-  width: 30px;
-  font-size: 14px;
-  color: #666;
-}
-
-.bar-container {
-  flex: 1;
-  height: 10px;
-  background: #f0f2f5;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.bar-count {
-  width: 30px;
-  text-align: right;
-  font-size: 14px;
-  color: #666;
-}
-
-.reviews-loading {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-}
-
-.reviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.review-item {
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 10px;
-}
-
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 15px;
-}
-
-.reviewer-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.reviewer-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  overflow: hidden;
-}
-
-.reviewer-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.reviewer-name {
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.review-course {
-  font-size: 13px;
-  color: #888;
-}
-
-.review-rating {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 5px;
-}
-
-.review-date {
-  font-size: 13px;
-  color: #999;
-}
-
-.review-content {
-  line-height: 1.6;
-  color: #555;
-}
-
-.reviews-pagination {
-  display: flex;
-  justify-content: center;
-  margin-top: 30px;
-}
-
-.no-reviews {
-  padding: 40px 0;
-}
-
-/* 预约时长按钮样式 */
-.duration-radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.duration-radio-group .el-radio-button {
-  margin-right: 0;
-}
-
-.duration-radio-group .el-radio-button__inner {
-  border-radius: 6px !important;
-  border: 1px solid #dcdfe6;
-}
-
-.duration-radio-group .el-radio-button:first-child .el-radio-button__inner,
-.duration-radio-group .el-radio-button:last-child .el-radio-button__inner {
-  border-radius: 6px !important;
-}
-
-/* 响应式设计 */
-@media (max-width: 992px) {
-  .coach-hero-container {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .coach-basic-meta,
-  .coach-stats {
-    justify-content: center;
-  }
-
-  .coach-rating {
-    justify-content: center;
-  }
-
-  .coach-actions {
-    justify-content: center;
-  }
-
-  .review-summary {
-    flex-direction: column;
-    align-items: center;
-  }
-}
-
-@media (max-width: 768px) {
-  .coach-name {
-    font-size: 32px;
-  }
-
-  .coach-specialty {
-    font-size: 18px;
-  }
-
-  .coach-actions {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .book-btn,
-  .contact-btn {
-    width: 100%;
-  }
-
-  .intro-content {
-    padding: 20px;
-  }
-}
+:deep(.el-card__header){border-bottom:1px solid #f3e9dc;}
+.loading-container,.error-container{display:flex;justify-content:center;align-items:center;min-height:50vh;}
+.back-button{max-width:1240px;margin:0 auto;padding:20px;}
+.coach-hero{background:radial-gradient(circle at 14% 14%,rgba(255,244,229,.65) 0%,rgba(255,244,229,0) 35%),linear-gradient(145deg,#2d2114 0%,#4a2f1b 42%,#f97316 100%);color:#fff;padding:48px 0;}
+.coach-hero-container{max-width:1240px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:32px;}
+.coach-avatar{width:196px;height:196px;border-radius:50%;overflow:hidden;border:4px solid rgba(255,255,255,.35);box-shadow:0 14px 30px rgba(0,0,0,.22);flex-shrink:0;}
+.coach-avatar img{width:100%;height:100%;object-fit:cover;}
+.coach-basic-info{flex:1;}
+.coach-name{margin:0 0 8px;font-size:42px;line-height:1.1;}
+.coach-specialty{margin-bottom:14px;font-size:20px;color:rgba(255,255,255,.9);}
+.coach-rating{display:flex;align-items:center;gap:10px;margin-bottom:16px;}.review-count{font-size:14px;color:rgba(255,255,255,.85);}
+.icon-svg{width:18px;height:18px;margin-right:8px;filter:brightness(0) invert(1);}
+.coach-basic-meta,.coach-stats{display:flex;flex-wrap:wrap;gap:14px 22px;margin-bottom:14px;}
+.basic-meta-item,.stat-item{display:inline-flex;align-items:center;font-size:15px;color:rgba(255,255,255,.92);}
+.coach-price{display:flex;align-items:baseline;gap:4px;margin-bottom:20px;}
+.price-label,.price-unit{color:rgba(255,255,255,.88);} .price-value{font-size:30px;line-height:1;font-weight:800;color:#ffd18c;}
+.coach-actions{display:flex;flex-wrap:wrap;gap:12px;}
+.book-btn,.contact-btn,.favorite-btn{min-width:132px;}
+.book-btn{background:#fff;color:#7a3300;border:none;font-weight:700;}
+.contact-btn{background:transparent;border:1px solid rgba(255,255,255,.65);color:#fff;}
+.favorite-btn{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.26);}
+.coach-intro-section,.coach-courses-section,.coach-reviews-section{padding:26px 0;}
+.coach-reviews-section{background:#fffaf5;}
+.intro-container,.courses-container,.reviews-container{max-width:1240px;margin:0 auto;padding:0 20px;}
+.intro-content,.courses-content,.reviews-content{background:#fff;border:1px solid #f4e8da;border-radius:20px;padding:24px;box-shadow:0 10px 24px rgba(248,146,43,.06);}
+.section-title{margin:0 0 16px;padding-bottom:12px;font-size:24px;font-weight:700;color:#2a1f12;border-bottom:1px solid #f4e8da;}
+.intro-text{margin:0;line-height:1.85;color:#5c4532;}
+.courses-loading,.reviews-loading,.no-courses,.no-reviews{padding:24px 0;}
+.courses-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.course-card{background:#fffaf5;border:1px solid #f3e7d8;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease;}
+.course-card:hover{transform:translateY(-2px);box-shadow:0 10px 18px rgba(248,146,43,.16);}
+.course-card .course-image{height:140px;overflow:hidden;}
+.course-card .course-image img{width:100%;height:100%;object-fit:cover;}
+.course-card .course-info{padding:12px;}
+.course-card .course-name{margin:0 0 7px;color:#2a1f12;font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.course-card .course-meta{display:flex;gap:8px;margin-bottom:8px;}
+.course-card .meta-item{color:#8f7660;font-size:12px;}
+.course-card .course-price{color:#ea580c;font-size:18px;font-weight:700;}
+.review-summary{display:flex;gap:28px;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid #f4e8da;}
+.rating-overview{min-width:130px;text-align:center;}
+.rating-score{font-size:46px;line-height:1;color:#2a1f12;font-weight:800;}
+.rating-count,.bar-label,.bar-count{font-size:12px;color:#8f7660;}
+.rating-distribution{flex:1;display:flex;flex-direction:column;gap:8px;}
+.rating-bar{display:flex;align-items:center;gap:8px;}
+.bar-label,.bar-count{width:34px;}
+.bar-container{flex:1;height:9px;background:#f4eee5;border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;background:linear-gradient(90deg,#f97316 0%,#fdba74 100%);} .bar-count{text-align:right;}
+.reviews-list{display:grid;gap:12px;}
+.review-item{padding:14px;border-radius:12px;border:1px solid #f4e8da;background:#fffaf5;}
+.review-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.reviewer-info{display:flex;align-items:center;gap:10px;}
+.reviewer-avatar{width:42px;height:42px;border-radius:50%;overflow:hidden;}
+.reviewer-avatar img{width:100%;height:100%;object-fit:cover;}
+.reviewer-name{font-weight:700;color:#2a1f12;}
+.review-course,.review-date{color:#8f7660;font-size:12px;}
+.review-rating{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.review-content{margin:0;line-height:1.7;color:#5c4532;}
+.reviews-pagination{display:flex;justify-content:center;margin-top:22px;}
+.duration-radio-group{display:flex;flex-wrap:wrap;gap:8px;}
+.duration-radio-group .el-radio-button{margin-right:0;}
+.duration-radio-group .el-radio-button__inner{border-radius:8px !important;}
+@media (max-width:992px){.coach-hero-container{flex-direction:column;text-align:center;}.coach-basic-meta,.coach-stats,.coach-rating,.coach-actions{justify-content:center;}.review-summary{flex-direction:column;align-items:center;}}
+@media (max-width:768px){.back-button,.coach-hero-container,.intro-container,.courses-container,.reviews-container{padding-left:14px;padding-right:14px;}.coach-name{font-size:32px;}.coach-actions{flex-direction:column;}.coach-actions .el-button{width:100%;}.intro-content,.courses-content,.reviews-content{padding:16px;border-radius:16px;}.review-header{flex-direction:column;}}
 </style>

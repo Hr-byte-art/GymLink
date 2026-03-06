@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <!-- 加载状态 -->
     <div v-if="equipmentStore.detailLoading" class="loading-container">
@@ -32,7 +32,7 @@
         </div>
         <div class="equipment-info">
           <div class="equipment-category">
-            <el-tag type="success" size="large">{{ getTypeText(equipmentStore.equipmentDetail.type) }}</el-tag>
+            <el-tag type="success" size="large">{{ equipmentStore.equipmentDetail.location }}</el-tag>
           </div>
           <h1 class="equipment-title">{{ equipmentStore.equipmentDetail.name }}</h1>
 
@@ -94,7 +94,7 @@
           </template>
           <el-descriptions :column="2" border>
             <el-descriptions-item label="器材类型">
-              {{ getTypeText(equipmentStore.equipmentDetail.type) }}
+              {{ equipmentStore.equipmentDetail.location }}
             </el-descriptions-item>
             <el-descriptions-item label="放置位置">
               {{ equipmentStore.equipmentDetail.location }}
@@ -274,33 +274,6 @@ const equipmentId = computed(() => {
   return route.params.id as string
 })
 
-// 类型映射
-const typeMap: { [key: string]: string } = {
-  '1': '有氧健身器材',
-  '2': '力量训练器材',
-  '3': '功能性训练器材',
-  '4': '小型健身器械',
-  '5': '康复与辅助器材',
-  '6': '其他辅助设备',
-  '7': '商用专用器材',
-  '8': '家用专用器材',
-  '1-1': '跑步机',
-  '1-2': '椭圆机',
-  '1-3': '动感单车',
-  '1-4': '划船机',
-  '1-5': '健身车',
-  '1-6': '楼梯机',
-  '1-7': '体适能运动机',
-  '2-1': '固定器械',
-  '2-2': '自由重量器材',
-  '2-3': '综合训练器材'
-}
-
-// 获取类型文本
-const getTypeText = (type: string) => {
-  return typeMap[type] || type || '未分类'
-}
-
 // 获取状态文本
 const getStatusText = (status: number) => {
   return status === 1 ? '可用' : '维护中'
@@ -384,7 +357,7 @@ const handleToggleFavorite = async () => {
     })
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
-  } catch (error) {
+  } catch {
     ElMessage.error('操作失败，请先登录')
   }
 }
@@ -392,9 +365,9 @@ const handleToggleFavorite = async () => {
 // 检查收藏状态
 const checkFavoriteStatus = async () => {
   try {
-    const res = await checkFavorite(equipmentId.value as any, FavoriteType.EQUIPMENT)
+    const res = await checkFavorite(equipmentId.value, FavoriteType.EQUIPMENT)
     isFavorite.value = res.data
-  } catch (error) {
+  } catch {
     // 未登录时忽略错误
   }
 }
@@ -473,286 +446,43 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.loading-container,
-.error-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  padding: 40px;
-}
-
-.equipment-detail {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.back-button {
-  margin-bottom: 20px;
-}
-
-.equipment-header {
-  display: flex;
-  gap: 40px;
-  margin-bottom: 40px;
-  background: white;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.equipment-image {
-  position: relative;
-  flex: 0 0 400px;
-  height: 300px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.equipment-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.equipment-status {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  color: white;
-}
-
-.equipment-status.status-1 {
-  background: #67c23a;
-}
-
-.equipment-status.status-2 {
-  background: #f56c6c;
-}
-
-.equipment-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.equipment-category {
-  margin-bottom: 15px;
-}
-
-.equipment-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 25px;
-}
-
-.info-cards {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.info-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  flex: 1;
-}
-
-.info-icon {
-  width: 28px;
-  height: 28px;
-  filter: invert(45%) sepia(98%) saturate(1500%) hue-rotate(80deg) brightness(100%) contrast(96%);
-}
-
-.info-icon-text {
-  font-size: 24px;
-}
-
-.info-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.info-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.info-label {
-  font-size: 12px;
-  color: #909399;
-}
-
-.status-text-1 {
-  color: #67c23a;
-}
-
-.status-text-2 {
-  color: #f56c6c;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: auto;
-}
-
-.book-btn {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  border: none;
-  padding: 12px 40px;
-  font-size: 16px;
-}
-
-.book-btn:hover {
-  background: linear-gradient(135deg, #85ce61 0%, #67c23a 100%);
-}
-
-.book-btn:disabled {
-  background: #c0c4cc;
-}
-
-.equipment-content {
-  margin-top: 30px;
-}
-
-.detail-card {
-  margin-bottom: 20px;
-}
-
-.card-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.description-content {
-  line-height: 1.8;
-  color: #606266;
-  white-space: pre-wrap;
-  min-height: 100px;
-}
-
-/* 响应式设计 */
-@media (max-width: 992px) {
-  .equipment-header {
-    flex-direction: column;
-  }
-
-  .equipment-image {
-    flex: none;
-    width: 100%;
-    height: 250px;
-  }
-
-  .info-cards {
-    flex-wrap: wrap;
-  }
-
-  .info-card {
-    flex: 1 1 calc(50% - 10px);
-    min-width: 150px;
-  }
-}
-
-@media (max-width: 768px) {
-  .equipment-header {
-    padding: 20px;
-  }
-
-  .equipment-title {
-    font-size: 24px;
-  }
-
-  .info-cards {
-    flex-direction: column;
-  }
-
-  .info-card {
-    flex: none;
-    width: 100%;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-  }
-
-  .action-buttons .el-button {
-    width: 100%;
-  }
-}
-
-/* 预约时长按钮样式 */
-.duration-radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.duration-radio-group .el-radio-button {
-  margin-right: 0;
-}
-
-.duration-radio-group .el-radio-button__inner {
-  border-radius: 6px !important;
-  border: 1px solid #dcdfe6;
-}
-
-.duration-radio-group .el-radio-button:first-child .el-radio-button__inner,
-.duration-radio-group .el-radio-button:last-child .el-radio-button__inner {
-  border-radius: 6px !important;
-}
-
-/* 已预约时段样式 */
-.reservation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.reservations-loading {
-  padding: 20px 0;
-}
-
-.no-reservations {
-  padding: 20px 0;
-  text-align: center;
-}
-
-.reservations-list {
-  padding: 10px 0;
-}
-
-.time-slot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.time-start, .time-end {
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.time-separator {
-  color: #909399;
-  font-size: 12px;
-}
-
-.reservations-pagination {
-  display: flex;
-  justify-content: center;
-  margin-top: 15px;
-}
+:deep(.el-card__header){border-bottom:1px solid #f4e8da;}
+.loading-container,.error-container{display:flex;justify-content:center;align-items:center;min-height:380px;padding:32px;}
+.equipment-detail{max-width:1240px;margin:0 auto;padding:24px 20px 40px;}
+.back-button{margin-bottom:18px;}
+.equipment-header{display:flex;gap:30px;margin-bottom:24px;padding:24px;border-radius:22px;border:1px solid #f4e8da;background:linear-gradient(165deg,#fff 0%,#fff9f3 100%);box-shadow:0 10px 24px rgba(248,146,43,.07);}
+.equipment-image{position:relative;flex:0 0 410px;height:300px;border-radius:16px;overflow:hidden;}
+.equipment-image img{width:100%;height:100%;object-fit:cover;}
+.equipment-status{position:absolute;top:12px;right:12px;padding:7px 14px;border-radius:999px;color:#fff;font-size:13px;font-weight:600;}
+.equipment-status.status-1{background:rgba(34,197,94,.92);} .equipment-status.status-2{background:rgba(239,68,68,.92);}
+.equipment-info{flex:1;display:flex;flex-direction:column;}
+.equipment-category{margin-bottom:10px;}
+.equipment-title{margin:0 0 20px;font-size:34px;line-height:1.25;color:#2a1f12;}
+.info-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px;}
+.info-card{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:#fff;border:1px solid #f4e8da;}
+.info-icon{width:26px;height:26px;filter:invert(52%) sepia(89%) saturate(853%) hue-rotate(349deg) brightness(97%) contrast(95%);}
+.info-icon-text{width:26px;text-align:center;font-size:20px;}
+.info-content{display:flex;flex-direction:column;}
+.info-value{color:#2a1f12;font-size:16px;font-weight:700;}
+.info-label{color:#8f7660;font-size:12px;}
+.status-text-1{color:#16a34a;} .status-text-2{color:#dc2626;}
+.action-buttons{display:flex;flex-wrap:wrap;gap:12px;margin-top:auto;}
+.book-btn{background:linear-gradient(135deg,#f97316 0%,#fb923c 100%);border-color:transparent;color:#fff;font-weight:700;min-width:144px;}
+.book-btn:disabled{background:#c2b09a;}
+.equipment-content{margin-top:20px;}
+.detail-card{margin-bottom:14px;border-radius:18px;border:1px solid #f4e8da;box-shadow:none;}
+.card-title{font-size:18px;font-weight:700;color:#2a1f12;}
+.description-content{min-height:100px;color:#5c4532;line-height:1.8;white-space:pre-wrap;}
+.duration-radio-group{display:flex;flex-wrap:wrap;gap:8px;}
+.duration-radio-group .el-radio-button{margin-right:0;}
+.duration-radio-group .el-radio-button__inner{border-radius:8px !important;}
+.reservation-header{display:flex;justify-content:space-between;align-items:center;}
+.reservations-loading,.no-reservations{padding:18px 0;}
+.reservations-list{padding:8px 0;}
+.time-slot{display:flex;align-items:center;gap:6px;}
+.time-start,.time-end{color:#2a1f12;font-weight:600;}
+.time-separator{color:#8f7660;font-size:12px;}
+.reservations-pagination{display:flex;justify-content:center;margin-top:16px;}
+@media (max-width:992px){.equipment-header{flex-direction:column;padding:18px;}.equipment-image{width:100%;flex:none;height:240px;}.info-cards{grid-template-columns:1fr;}}
+@media (max-width:768px){.equipment-detail{padding:18px 14px 30px;}.equipment-title{font-size:28px;}.action-buttons{flex-direction:column;}.action-buttons .el-button{width:100%;}}
 </style>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AppLayout>
     <div class="posts-view">
       <div class="container">
@@ -122,8 +122,28 @@ import request from '@/utils/request'
 const router = useRouter()
 const authStore = useAuthStore()
 
+interface ExperiencePost {
+  id: number | string
+  userAvatar?: string
+  userName?: string
+  userId?: number | string
+  userRole?: number
+  title: string
+  content?: string
+  viewCount?: number
+  likeCount?: number
+  commentCount?: number
+  isLiked?: boolean
+  createTime: string
+}
+
+interface ExperiencePageResponse {
+  records?: ExperiencePost[]
+  total?: number
+}
+
 // 帖子列表数据
-const posts = ref<any[]>([])
+const posts = ref<ExperiencePost[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const pagination = ref({ current: 1, pageSize: 20, total: 0 })
@@ -147,7 +167,7 @@ const loadPosts = async () => {
       pageSize: pagination.value.pageSize,
       title: searchQuery.value || undefined,
       userRole: selectedUserRole.value || undefined
-    })
+    }) as ExperiencePageResponse
     posts.value = res.records || []
     pagination.value.total = res.total || 0
   } catch (e) {
@@ -174,12 +194,12 @@ const handleCategoryChange = () => {
 }
 
 // 跳转到帖子详情
-const goToPostDetail = (id: number) => {
+const goToPostDetail = (id: number | string) => {
   router.push(`/posts/${id}`)
 }
 
 // 切换点赞状态
-const toggleLike = async (post: any) => {
+const toggleLike = async (post: ExperiencePost) => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录')
     return
@@ -200,7 +220,7 @@ const toggleLike = async (post: any) => {
       post.likeCount = currentLikeCount + 1
       ElMessage.success('点赞成功')
     }
-  } catch (e) {
+  } catch {
     ElMessage.error('操作失败')
   }
 }
@@ -257,15 +277,13 @@ const submitPost = async () => {
     // 使用 User 表的 id，全局唯一，避免教练/学员 ID 冲突
     const userId = authStore.user?.id
     
-    console.log('发表帖子 - userId:', userId, 'typeof userId:', typeof userId, 'userRole:', userRole)
-    console.log('完整用户信息:', JSON.stringify(authStore.user))
     
     if (!userId) {
       ElMessage.error('用户信息异常，请重新登录')
       return
     }
     
-    // 直接传递 userId，后端会自动转换类型
+    // 直接传入userId，后端会自动转换类型
     await request.post('/experience/addExperience', {
       title: publishForm.value.title,
       content: publishForm.value.content,
@@ -291,185 +309,167 @@ onMounted(() => {
 
 <style scoped>
 .posts-view {
-  padding: 2rem 0;
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --surface: #ffffff;
+  --soft: #f8fafc;
   min-height: calc(100vh - 140px);
+  padding: 30px 0 70px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 20px;
 }
 
 .page-header {
+  border-radius: 20px;
+  padding: 42px 28px;
+  margin-bottom: 24px;
   text-align: center;
-  margin-bottom: 2rem;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.2), transparent 42%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 48%, #334155 100%);
+  color: #f8fafc;
 }
 
 .page-header h1 {
-  font-size: 2.5rem;
-  color: #2c3e50;
-  margin-bottom: 0.5rem;
+  margin: 0;
+  font-size: clamp(32px, 5vw, 46px);
+  font-weight: 800;
 }
 
 .page-header p {
-  font-size: 1.1rem;
-  color: #7f8c8d;
+  margin: 12px 0 0;
+  color: #e2e8f0;
+  font-size: 17px;
 }
 
 .filter-section {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  padding: 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  gap: 1rem;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
-.filter-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.category-select {
-  width: 200px;
-}
-
-.search-input {
-  width: 300px;
-}
-
+.filter-left,
 .filter-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 10px;
+}
+
+.category-select {
+  width: 180px;
+}
+
+.search-input {
+  width: 280px;
+}
+
+.filter-section :deep(.el-input__wrapper),
+.filter-section :deep(.el-select__wrapper) {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
+}
+
+.filter-section :deep(.el-input__wrapper.is-focus),
+.filter-section :deep(.el-select__wrapper.is-focused) {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
+}
+
+.filter-right > .el-button {
+  border-radius: 10px;
+  min-height: 40px;
+}
+
+.filter-right > .el-button:last-child {
+  border: none;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
 .publish-btn {
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .loading-container,
 .error-container,
 .empty-container {
-  margin: 2rem 0;
+  margin: 24px 0;
 }
 
 .posts-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 18px;
 }
 
 .post-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.3s, box-shadow 0.3s;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   cursor: pointer;
 }
 
 .post-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  border-color: rgba(249, 115, 22, 0.42);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.14);
 }
 
 .post-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 12px;
 }
 
 .author-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.author-details {
-  display: flex;
-  flex-direction: column;
+  gap: 10px;
 }
 
 .author-name {
-  font-weight: 600;
-  color: #2c3e50;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .post-time {
-  font-size: 0.875rem;
-  color: #7f8c8d;
-}
-
-.post-category {
-  background-color: #e3f2fd;
-  color: #1976d2;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 13px;
+  color: #64748b;
 }
 
 .post-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 0.75rem;
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 800;
   line-height: 1.4;
 }
 
 .post-content {
-  color: #7f8c8d;
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-.post-images {
-  margin-bottom: 1rem;
-}
-
-.images-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  position: relative;
-}
-
-.post-image {
-  width: 100%;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
-.more-images {
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.post-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.tag {
-  background-color: #f0f2f5;
-  color: #606266;
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  min-height: 76px;
 }
 
 .like-icon {
@@ -477,53 +477,64 @@ onMounted(() => {
   height: 16px;
   margin-right: 4px;
   vertical-align: middle;
-  transition: filter 0.3s;
+  transition: filter 0.2s;
 }
 
 .like-icon.liked {
-  /* 红色 */
   filter: invert(27%) sepia(95%) saturate(5000%) hue-rotate(355deg) brightness(95%) contrast(95%);
 }
 
 .post-stats {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
   display: flex;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #f0f2f5;
+  gap: 14px;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  color: #909399;
-  font-size: 0.875rem;
+  gap: 4px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .like-item {
   cursor: pointer;
 }
 
-.liked {
-  color: #f56c6c;
+.like-item:hover {
+  color: #be123c;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .filter-section {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .filter-left {
-    justify-content: center;
+  .filter-left,
+  .filter-right {
+    flex-wrap: wrap;
   }
 
+  .category-select,
   .search-input {
     width: 100%;
   }
 
   .posts-list {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-card {
+    transition: none;
+  }
+
+  .post-card:hover {
+    transform: none;
   }
 }
 </style>
