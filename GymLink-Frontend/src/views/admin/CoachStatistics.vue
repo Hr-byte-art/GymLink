@@ -42,7 +42,7 @@
               <div class="stat-icon" style="background: #E6A23C;"><el-icon :size="24"><Calendar /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.todayAppointmentCount || 0 }}</div>
-                <div class="stat-label">今日棰勭害</div>
+                <div class="stat-label">今日预约</div>
               </div>
             </div>
           </el-card>
@@ -214,7 +214,7 @@ const initCharts = () => {
       xAxis: { type: 'category', data: names, axisLabel: { rotate: 30, interval: 0 } },
       yAxis: { type: 'value', minInterval: 1 },
       series: [{
-        name: '棰勭害次数',
+        name: '预约次数',
         type: 'bar',
         data: values,
         itemStyle: {

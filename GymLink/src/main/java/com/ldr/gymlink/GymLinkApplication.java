@@ -13,6 +13,7 @@ public class GymLinkApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(GymLinkApplication.class, args);
+        System.out.println("SymLink 启动成功"); ;
     }
 
 }

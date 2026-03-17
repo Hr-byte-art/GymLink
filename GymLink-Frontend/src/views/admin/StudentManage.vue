@@ -6,7 +6,7 @@
           <el-form-item label="姓名">
             <el-input v-model="searchForm.name" placeholder="请输入姓名" clearable />
           </el-form-item>
-          <el-form-item label="鎬у埆">
+          <el-form-item label="性别">
             <el-select v-model="searchForm.gender" placeholder="请选择" clearable>
               <el-option label="男" :value="1" />
               <el-option label="女" :value="2" />
@@ -17,7 +17,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -31,18 +31,18 @@
         </template>
         <el-table :data="tableData" v-loading="loading" stripe>
           <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column label="澶村儚" width="80">
+          <el-table-column label="头像" width="80">
             <template #default="{ row }">
               <el-avatar :size="40" :src="row.avatar || '/avatar-placeholder.svg'" />
             </template>
           </el-table-column>
           <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="name" label="姓名" width="100" />
-          <el-table-column label="鎬у埆" width="80">
+          <el-table-column label="性别" width="80">
             <template #default="{ row }">{{ getGenderName(row.gender) }}</template>
           </el-table-column>
           <el-table-column prop="phone" label="手机号" width="130" />
-          <el-table-column prop="height" label="韬珮(cm)" width="100" />
+          <el-table-column prop="height" label="身高(cm)" width="100" />
           <el-table-column prop="weight" label="体重(kg)" width="100" />
           <el-table-column prop="balance" label="余额" width="100">
             <template #default="{ row }">¥{{ row.balance || 0 }}</template>
@@ -50,7 +50,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="150" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -74,7 +74,7 @@
         <el-form-item label="姓名" prop="name">
           <el-input v-model="form.name" placeholder="请输入姓名" />
         </el-form-item>
-        <el-form-item label="鎬у埆">
+        <el-form-item label="性别">
           <el-radio-group v-model="form.gender">
             <el-radio :label="1">男</el-radio>
             <el-radio :label="2">女</el-radio>
@@ -83,7 +83,7 @@
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" placeholder="请输入手机号" />
         </el-form-item>
-        <el-form-item label="韬珮(cm)">
+        <el-form-item label="身高(cm)">
           <el-input-number v-model="form.height" :min="0" :max="300" />
         </el-form-item>
         <el-form-item label="体重(kg)">

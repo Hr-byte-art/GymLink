@@ -18,7 +18,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -49,7 +49,7 @@
               <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="180" fixed="right">
+          <el-table-column label="操作" width="180" fixed="right">
             <template #default="{ row }">
               <template v-if="row.status === 3">
                 <el-button size="small" type="success" @click="handleApprove(row)">通过</el-button>
@@ -108,7 +108,7 @@ const getStatusType = (status: number) => {
 
 const getStatusText = (status: number) => {
   const map: Record<number, string> = { 1: '已支付', 2: '已退款', 3: '退款申请中' }
-  return map[status] || '鏈煡'
+  return map[status] || '未知'
 }
 
 const formatDate = (dateStr: string) => {

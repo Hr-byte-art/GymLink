@@ -14,7 +14,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -36,7 +36,7 @@
           </el-table-column>
           <el-table-column prop="viewCount" label="浏览量" width="80" />
           <el-table-column prop="likeCount" label="点赞数" width="80" />
-          <el-table-column prop="content" label="鍐呭" show-overflow-tooltip>
+          <el-table-column prop="content" label="内容" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-html="stripHtml(row.content)"></span>
             </template>
@@ -44,7 +44,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="150" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleView(row)">查看</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -63,8 +63,8 @@
         <div class="post-meta">
           <span>发布者ID: {{ currentPost.userId }}</span>
           <span>角色: {{ currentPost.userRole === 1 ? '教练' : '学员' }}</span>
-          <span>浏览量? {{ currentPost.viewCount }}</span>
-          <span>点赞数? {{ currentPost.likeCount }}</span>
+          <span>浏览量: {{ currentPost.viewCount }}</span>
+          <span>点赞数:{{ currentPost.likeCount }}</span>
           <span>发布时间: {{ formatDate(currentPost.createTime) }}</span>
         </div>
         <el-divider />

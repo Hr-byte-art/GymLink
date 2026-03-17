@@ -20,7 +20,7 @@
               <div class="stat-icon" style="background: #67C23A;"><el-icon :size="24"><CircleCheck /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.normalCount || 0 }}</div>
-                <div class="stat-label">姝ｅ父杩愯</div>
+                <div class="stat-label">正常运行</div>
               </div>
             </div>
           </el-card>
@@ -42,7 +42,7 @@
               <div class="stat-icon" style="background: #F56C6C;"><el-icon :size="24"><Calendar /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.todayReservationCount || 0 }}</div>
-                <div class="stat-label">今日棰勭害</div>
+                <div class="stat-label">今日预约</div>
               </div>
             </div>
           </el-card>
@@ -53,7 +53,7 @@
               <div class="stat-icon" style="background: #909399;"><el-icon :size="24"><DataLine /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.weekReservationCount || 0 }}</div>
-                <div class="stat-label">本周棰勭害</div>
+                <div class="stat-label">本周预约</div>
               </div>
             </div>
           </el-card>
@@ -64,7 +64,7 @@
               <div class="stat-icon" style="background: #b37feb;"><el-icon :size="24"><TrendCharts /></el-icon></div>
               <div class="stat-info">
                 <div class="stat-value">{{ statistics.monthReservationCount || 0 }}</div>
-                <div class="stat-label">本月棰勭害</div>
+                <div class="stat-label">本月预约</div>
               </div>
             </div>
           </el-card>
@@ -176,7 +176,7 @@ const initCharts = () => {
     })
   }
 
-  // 楗煎浘
+  // 饼图
   if (pieChartRef.value) {
     pieChart = echarts.init(pieChartRef.value)
     const pieData = statistics.typeStatistics.map(item => ({

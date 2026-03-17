@@ -11,7 +11,7 @@
           </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="searchForm.status" placeholder="请选择" clearable>
-              <el-option label="姝ｅ父" :value="1" />
+              <el-option label="正常" :value="1" />
               <el-option label="维护中" :value="2" />
             </el-select>
           </el-form-item>
@@ -28,7 +28,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -68,7 +68,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="150" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -132,7 +132,7 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="form.status" placeholder="请选择">
-            <el-option label="姝ｅ父" :value="1" />
+            <el-option label="正常" :value="1" />
             <el-option label="维护中" :value="2" />
           </el-select>
         </el-form-item>
@@ -371,7 +371,7 @@ const handleImageChange = async (event: Event) => {
     // 上传成功，保存URL
     form.image = imageUrl
     imageTimestamp.value = Date.now()
-    // 娓呴櫎鏈湴棰勮
+    //清除本地预览
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''
