@@ -159,7 +159,23 @@ const router = createRouter({
 })
 
 // 公开路由列表（无需登录即可访问）
-const publicRoutes = ['home', 'auth', 'login', 'register']
+const publicRoutes = [
+  'home',
+  'auth',
+  'login',
+  'register',
+  'about',
+  'courses',
+  'course-detail',
+  'coaches',
+  'coach-detail',
+  'equipment',
+  'equipment-detail',
+  'recipes',
+  'recipe-detail',
+  'posts',
+  'post-detail'
+]
 
 // 路由守卫
 router.beforeEach(async (to, from, next) => {

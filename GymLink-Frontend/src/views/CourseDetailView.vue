@@ -166,6 +166,15 @@
       </div>
     </div>
 
+    <div v-else class="error-container">
+      <el-result icon="info" title="课程信息暂时无法显示" sub-title="请刷新页面重试，或返回课程列表重新进入。">
+        <template #extra>
+          <el-button type="primary" @click="loadCourseDetail">重新加载</el-button>
+          <el-button @click="goBack">返回列表</el-button>
+        </template>
+      </el-result>
+    </div>
+
     <!-- 教练信息弹窗 -->
     <el-dialog v-model="coachDialogVisible" title="教练信息" width="400px" center>
       <div v-if="coachLoading" class="coach-dialog-loading">
@@ -199,11 +208,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
-import request from '@/utils/request'
 import { getCourseTypeName, getCoachSpecialtyName, getGenderName } from '@/constants/categories'
 import { useAuthStore } from '@/stores/auth'
 import { purchaseCourse, getPurchasedCourseIds } from '@/api/student'
 import { getCoachDetail, type Coach } from '@/api/coach'
+import { getCourseDetail } from '@/api/course'
 import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
 import { getReviewList, getCourseReviewStats, type CourseReview, type CourseReviewStats } from '@/api/review'
 
@@ -274,9 +283,10 @@ const goBack = () => {
 
 // 加载课程详情
 const loadCourseDetail = async () => {
-  const id = route.params.id as string
-  if (!id) {
-    error.value = '课程ID不存在'
+  const id = Number(route.params.id)
+  if (!Number.isFinite(id)) {
+    course.value = null
+    error.value = '课程ID无效'
     return
   }
 
@@ -284,11 +294,18 @@ const loadCourseDetail = async () => {
   error.value = null
 
   try {
-    const res = await request.get('/course/getCourseById', { params: { id } })
-    course.value = res?.data as CourseDetail
+    const detail = await getCourseDetail(id)
+    if (!detail) {
+      course.value = null
+      error.value = '课程不存在或已下架'
+      return
+    }
+
+    course.value = detail as unknown as CourseDetail
     // 检查是否已购买
     await checkPurchaseStatus()
   } catch (e: unknown) {
+    course.value = null
     error.value = getErrorMessage(e, '获取课程详情失败')
   } finally {
     loading.value = false
@@ -411,6 +428,11 @@ const handleToggleFavorite = async () => {
 
 // 检查收藏状态
 const checkFavoriteStatus = async () => {
+  if (!authStore.isAuthenticated) {
+    isFavorite.value = false
+    return
+  }
+
   try {
     const res = await checkFavorite(Number(route.params.id), FavoriteType.COURSE)
     isFavorite.value = res.data
@@ -499,6 +521,16 @@ watch(() => authStore.user?.associatedUserId, (newVal) => {
   if (newVal && course.value?.id) {
     checkPurchaseStatus()
   }
+})
+
+watch(() => route.params.id, () => {
+  reviewPage.value = 1
+  course.value = null
+  isFavorite.value = false
+  loadCourseDetail()
+  checkFavoriteStatus()
+  loadCourseStats()
+  loadReviews()
 })
 </script>
 
