@@ -1,0 +1,79 @@
+﻿spring:
+  datasource:
+    primary:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbc-url: jdbc:mysql://<生产/远程 MySQL 主机>:3306/gymlink?useUnicode=true&characterEncoding=utf8&useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: "<远程 MySQL 用户名>"
+      password: "<远程 MySQL 密码>"
+    secondary:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: jdbc:postgresql://<生产/远程 PostgreSQL 主机>:5432/postgres
+      username: "<远程 PostgreSQL 用户名>"
+      password: "<远程 PostgreSQL 密码>"
+
+  data:
+    redis:
+      database: 1
+      host: "<远程 Redis 主机>"
+      port: 6379
+      password: "<远程 Redis 密码>"
+
+  rabbitmq:
+    host: "<远程 RabbitMQ 主机>"
+    port: 5672
+    username: "<远程 RabbitMQ 用户名>"
+    password: "<远程 RabbitMQ 密码>"
+    virtual-host: GymLink
+    connection-timeout: 15000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2
+        max-interval: 10000
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 10
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2000
+          multiplier: 2
+          max-interval: 10000
+        concurrency: 1
+        max-concurrency: 5
+
+# 对象存储（远程环境）
+cos:
+  client:
+    host: "<远程 COS 访问域名>"
+    secretId: "<远程 COS SecretId>"
+    secretKey: "<远程 COS SecretKey>"
+    region: "<远程 COS 地域>"
+    bucket: "<远程 COS Bucket 名称>"
+
+# AI 服务（远程环境）
+langchain4j:
+  community:
+    dashscope:
+      tokenizer:
+        api-key: "<远程 DashScope API Key>"
+        model-name: qwen-turbo
+      streaming-chat-model:
+        api-key: "<远程 DashScope API Key>"
+        model-name: qwen-turbo
+        temperature: 0.7
+      chat-model:
+        api-key: "<远程 DashScope API Key>"
+        model-name: qwen-turbo
+        temperature: 0.7
+      embedding-model:
+        api-key: "<远程 DashScope API Key>"
+        base-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding
+        modelName: text-embedding-v3
+        dimension: 1024

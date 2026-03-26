@@ -200,10 +200,13 @@ const getRecipeDescription = (content?: string) => {
 const getDifficultyText = (difficulty?: string) => {
   switch (difficulty) {
     case 'easy':
+    case '初级':
       return '简单'
     case 'medium':
+    case '中级':
       return '中等'
     case 'hard':
+    case '高级':
       return '困难'
     default:
       return '未知'
@@ -222,7 +225,7 @@ const handleToggleFavorite = async () => {
       targetId: Number(route.params.id),
       type: FavoriteType.RECIPE
     })
-    // request.ts 响应拦截器已解包，res 直接就是 boolean
+    // 响应拦截器已解包，返回值可直接作为布尔结果使用
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
   } catch {
@@ -249,7 +252,7 @@ onMounted(() => {
   checkFavoriteStatus()
 })
 
-// 监听recipe变化
+// 监听食谱详情变化
 watch(recipe, () => {
   initializeCheckedIngredients()
 }, { immediate: true })

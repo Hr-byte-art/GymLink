@@ -40,8 +40,8 @@ export const useRecipeStore = defineStore('recipe', () => {
 
     // 过滤分类
     if (category && category !== '全部') {
-      // 假设 tags 字段包含分类信息，或者我们需要扩展 Recipe 类型
-      // 这里做模糊匹配，因为 tags 可能是 "增肌食谱,早餐" 这样的字符串
+      // 假设标签字段包含分类信息，必要时可扩展食谱类型定义
+      // 这里做模糊匹配，因为该字段可能是“增肌食谱,早餐”这类字符串
       result = result.filter(r => r.tags && r.tags.includes(category))
     }
 
@@ -69,7 +69,7 @@ export const useRecipeStore = defineStore('recipe', () => {
       recipes.value = records.map(item => ({
         ...item,
         // 适配字段映射
-        image: item.coverImage || 'https://via.placeholder.com/300x200?text=No+Image',
+        image: item.coverImage || 'https://via.placeholder.com/300x200',
         description: item.content ? item.content.substring(0, 100) + '...' : '',
         category: item.tags ? item.tags.split(',')[0] : '未分类',
 

@@ -1,12 +1,12 @@
 ﻿<template>
   <header class="navbar">
     <div class="navbar-container">
-      <router-link to="/" class="brand-link" aria-label="GymLink Home">
+      <router-link to="/" class="brand-link" aria-label="GymLink 首页">
         <img src="/logo.png" alt="GymLink" class="logo" />
         <span class="brand-name">GymLink</span>
       </router-link>
 
-      <nav class="navbar-menu" aria-label="Main navigation">
+      <nav class="navbar-menu" aria-label="主导航">
         <ul class="menu-list">
           <li><router-link to="/" class="menu-link">首页</router-link></li>
           <li><router-link to="/courses" class="menu-link">课程</router-link></li>

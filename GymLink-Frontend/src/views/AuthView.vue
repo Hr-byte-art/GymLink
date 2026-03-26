@@ -1,16 +1,16 @@
 ﻿<template>
-  <main class="auth-page" aria-label="GymLink authentication">
+  <main class="auth-page" aria-label="GymLink 用户认证页面">
     <section class="auth-shell">
       <aside class="brand-panel">
         <div class="brand-overlay"></div>
         <div class="brand-content">
           <img src="/logo.png" alt="GymLink" class="logo" />
           <h1>GymLink</h1>
-          <p class="brand-subtitle">Smart training and gym life management</p>
+          <p class="brand-subtitle">智能训练与健身生活管理平台</p>
           <ul class="brand-points">
-            <li>Personalized training plans</li>
-            <li>Course booking and coach management</li>
-            <li>Equipment and progress tracking</li>
+            <li>个性化训练计划</li>
+            <li>课程预约与教练管理</li>
+            <li>器材使用与进度追踪</li>
           </ul>
         </div>
       </aside>
@@ -18,20 +18,20 @@
       <section class="form-panel">
         <div class="form-card">
           <header class="form-header">
-            <h2>{{ isLogin ? 'Welcome Back' : 'Create Account' }}</h2>
-            <p>{{ isLogin ? 'Sign in to continue your fitness journey' : 'Join GymLink and start training smarter' }}</p>
+            <h2>{{ isLogin ? '欢迎回来' : '创建账号' }}</h2>
+            <p>{{ isLogin ? '登录后继续你的健身旅程' : '加入 GymLink，开启更科学的训练' }}</p>
           </header>
 
           <div v-show="isLogin" class="form-wrapper">
             <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="auth-form">
               <el-form-item prop="userAccount">
-                <el-input v-model="loginForm.userAccount" placeholder="Username" :prefix-icon="User" size="large" />
+                <el-input v-model="loginForm.userAccount" placeholder="用户名" :prefix-icon="User" size="large" />
               </el-form-item>
               <el-form-item prop="password">
                 <el-input
                   v-model="loginForm.password"
                   type="password"
-                  placeholder="Password"
+                  placeholder="密码"
                   :prefix-icon="Lock"
                   show-password
                   size="large"
@@ -39,38 +39,38 @@
                 />
               </el-form-item>
               <el-form-item prop="role">
-                <el-radio-group v-model="loginForm.role" class="role-radio-group" aria-label="role select">
-                  <el-radio value="user">User</el-radio>
-                  <el-radio value="coach">Coach</el-radio>
-                  <el-radio value="admin">Admin</el-radio>
+                <el-radio-group v-model="loginForm.role" class="role-radio-group" aria-label="角色选择">
+                  <el-radio value="user">学员</el-radio>
+                  <el-radio value="coach">教练</el-radio>
+                  <el-radio value="admin">管理员</el-radio>
                 </el-radio-group>
               </el-form-item>
               <el-form-item>
-                <el-checkbox v-model="loginForm.rememberMe" class="remember-me">Remember me</el-checkbox>
+                <el-checkbox v-model="loginForm.rememberMe" class="remember-me">记住我</el-checkbox>
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" class="submit-btn" @click="handleLogin" :loading="loading" size="large">
-                  Sign In
+                  登录
                 </el-button>
               </el-form-item>
             </el-form>
 
             <footer class="form-footer">
-              <span>No account yet?</span>
-              <a href="javascript:;" @click="isLogin = false" class="switch-link">Create one</a>
+              <span>还没有账号？</span>
+              <a href="javascript:;" @click="isLogin = false" class="switch-link">立即注册</a>
             </footer>
           </div>
 
           <div v-show="!isLogin" class="form-wrapper">
             <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" class="auth-form">
               <el-form-item prop="userAccount">
-                <el-input v-model="registerForm.userAccount" placeholder="Username (4+ chars)" :prefix-icon="User" size="large" />
+                <el-input v-model="registerForm.userAccount" placeholder="用户名（至少 4 位）" :prefix-icon="User" size="large" />
               </el-form-item>
               <el-form-item prop="userPassword">
                 <el-input
                   v-model="registerForm.userPassword"
                   type="password"
-                  placeholder="Password (8+ chars)"
+                  placeholder="密码（至少 8 位）"
                   :prefix-icon="Lock"
                   show-password
                   size="large"
@@ -80,7 +80,7 @@
                 <el-input
                   v-model="registerForm.checkPassword"
                   type="password"
-                  placeholder="Confirm password"
+                  placeholder="确认密码"
                   :prefix-icon="Lock"
                   show-password
                   size="large"
@@ -89,14 +89,14 @@
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" class="submit-btn" @click="handleRegister" :loading="loading" size="large">
-                  Register
+                  注册
                 </el-button>
               </el-form-item>
             </el-form>
 
             <footer class="form-footer">
-              <span>Already have an account?</span>
-              <a href="javascript:;" @click="isLogin = true" class="switch-link">Sign in</a>
+              <span>已有账号？</span>
+              <a href="javascript:;" @click="isLogin = true" class="switch-link">去登录</a>
             </footer>
           </div>
         </div>
@@ -123,7 +123,7 @@ const authStore = useAuthStore()
 // 根据路由参数判断显示登录还是注册
 const isLogin = ref(route.query.type !== 'register')
 
-// Login form
+// 登录表单
 const loginForm = reactive({
   userAccount: '', // 用户名
   password: '', // 密码
@@ -136,7 +136,7 @@ const loginRules = reactive<FormRules>({
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 })
 
-// Register form
+// 注册表单
 const registerForm = reactive({
   userAccount: '',
   userPassword: '',
@@ -165,7 +165,7 @@ const registerRules = reactive<FormRules>({
   checkPassword: [{ required: true, validator: validatePass2, trigger: 'blur' }]
 })
 
-// Login handler
+// 登录处理
 const handleLogin = async () => {
   if (!loginFormRef.value) return
   await loginFormRef.value.validate(async (valid) => {
@@ -205,7 +205,7 @@ const handleLogin = async () => {
   })
 }
 
-// Register handler
+// 注册处理
 const handleRegister = async () => {
   if (!registerFormRef.value) return
   await registerFormRef.value.validate(async (valid) => {

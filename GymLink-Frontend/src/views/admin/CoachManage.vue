@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -8,8 +8,7 @@
           </el-form-item>
           <el-form-item label="专业方向">
             <el-select v-model="searchForm.specialty" placeholder="请选择专业方向" clearable>
-              <el-option v-for="coachType in coachTypes" :key="coachType.value" :label="coachType.label"
-                :value="coachType.value">
+              <el-option v-for="coachType in coachTypes" :key="coachType.value" :label="coachType.label" :value="coachType.value">
                 <el-tooltip :content="coachType.description" placement="right">
                   <span>{{ coachType.label }}</span>
                 </el-tooltip>
@@ -64,9 +63,7 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-pagination class="pagination" v-model:current-page="pagination.current"
-          v-model:page-size="pagination.pageSize" :total="pagination.total" :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next" @change="loadData" />
+        <el-pagination class="pagination" v-model:current-page="pagination.current" v-model:page-size="pagination.pageSize" :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadData" />
       </el-card>
     </div>
 
@@ -95,8 +92,7 @@
         </el-form-item>
         <el-form-item label="专业方向" prop="specialty">
           <el-select v-model="form.specialty" placeholder="请选择专业方向">
-            <el-option v-for="coachType in coachTypes" :key="coachType.value" :label="coachType.label"
-              :value="coachType.value">
+            <el-option v-for="coachType in coachTypes" :key="coachType.value" :label="coachType.label" :value="coachType.value">
               <el-tooltip :content="coachType.description" placement="right">
                 <span>{{ coachType.label }}</span>
               </el-tooltip>
@@ -133,6 +129,7 @@ type CoachRecord = {
   specialty?: string
   intro?: string
   createTime?: string
+  avatar?: string
   [key: string]: unknown
 }
 
@@ -147,7 +144,6 @@ const searchForm = reactive({ name: '', specialty: '', gender: null as number | 
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const form = reactive({ id: 0, username: '', password: '', name: '', gender: 1, phone: '', age: 25, specialty: '', intro: '' })
 
-// 使用统一的教练类型数据
 const coachTypes = coachSpecialtyOptions
 
 const rules = {
@@ -159,23 +155,36 @@ const rules = {
 }
 
 const dialogTitle = ref('添加教练')
-const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await request.post('/coach/ListCoach', {
-      pageNum: pagination.current, pageSize: pagination.pageSize,
-      name: searchForm.name || undefined, specialty: searchForm.specialty || undefined, gender: searchForm.gender || undefined
-    }) as { records?: CoachRecord[]; total?: number }
+    const res = (await request.post('/coach/ListCoach', {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      name: searchForm.name || undefined,
+      specialty: searchForm.specialty || undefined,
+      gender: searchForm.gender || undefined
+    })) as { records?: CoachRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleSearch = () => { pagination.current = 1; loadData() }
-const resetSearch = () => { Object.assign(searchForm, { name: '', specialty: '', gender: null }); handleSearch() }
+const handleSearch = () => {
+  pagination.current = 1
+  loadData()
+}
+
+const resetSearch = () => {
+  Object.assign(searchForm, { name: '', specialty: '', gender: null })
+  handleSearch()
+}
 
 const handleAdd = () => {
   isEdit.value = false
@@ -197,7 +206,9 @@ const handleDelete = async (row: CoachRecord) => {
     await request.post('/coach/deleteCoach', null, { params: { id: row.id } })
     ElMessage.success('删除成功')
     loadData()
-  } catch (e) { if (e !== 'cancel') console.error(e) }
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
 }
 
 const handleSubmit = async () => {
@@ -206,49 +217,44 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     if (isEdit.value) {
-      await request.post(`/coach/updateCoach?id=${form.id}`, { name: form.name, gender: form.gender, phone: form.phone, age: form.age, specialty: form.specialty, intro: form.intro })
+      await request.post(`/coach/updateCoach?id=${form.id}`, {
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        age: form.age,
+        specialty: form.specialty,
+        intro: form.intro
+      })
     } else {
-      await request.post('/coach/addCoach', { username: form.username, password: form.password, name: form.name, gender: form.gender, phone: form.phone, age: form.age, specialty: form.specialty, intro: form.intro })
+      await request.post('/coach/addCoach', {
+        username: form.username,
+        password: form.password,
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        age: form.age,
+        specialty: form.specialty,
+        intro: form.intro
+      })
     }
     ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
     dialogVisible.value = false
     loadData()
-  } catch (e) { console.error(e) }
-  finally { submitLoading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 onMounted(() => loadData())
 </script>
 
 <style scoped>
-.manage-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.search-card {
-  margin-bottom: 0;
-}
-
-.search-form {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-/* 增加下拉框宽度以改善可读性 */
-.search-form :deep(.el-select) {
-  width: 200px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.pagination {
-  margin-top: 20px;
-  justify-content: flex-end;
-}
+.manage-container { display: flex; flex-direction: column; gap: 20px; }
+.search-card { margin-bottom: 0; }
+.search-form { display: flex; flex-wrap: wrap; }
+.search-form :deep(.el-select) { width: 200px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.pagination { margin-top: 20px; justify-content: flex-end; }
 </style>

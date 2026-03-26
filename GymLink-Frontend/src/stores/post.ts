@@ -9,7 +9,7 @@ import {
 import type { Page } from '@/api/types'
 
 export const usePostStore = defineStore('post', () => {
-  // 状态 - Posts对应后端的Announcements
+  // 状态：帖子列表对应后端公告数据
   const posts = ref<Announcement[]>([])
   const postDetail = ref<Announcement | null>(null)
   const total = ref(0)

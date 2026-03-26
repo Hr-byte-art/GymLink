@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+ï»¿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Coach } from '@/api/coach'
 import type { Student } from '@/api/student'
@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true, user: userData }
     } catch {
-      return { success: false, error: 'µÇÂ¼Ê§°Ü£¬Çë¼ì²éÓÃ»§ÃûºÍÃÜÂë' }
+      return { success: false, error: 'ç™»å½•å¤±è´¥ï¼Œè¯·æ£€æŸ¥ç”¨æˆ·åå’Œå¯†ç ' }
     }
   }
 
@@ -96,7 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
       })
       return { success: true, userId: response }
     } catch (error: unknown) {
-      return { success: false, error: error instanceof Error ? error.message : '×¢²áÊ§°Ü£¬ÇëÉÔºóÔÙÊÔ' }
+      return { success: false, error: error instanceof Error ? error.message : 'æ³¨å†Œå¤±è´¥ï¼Œè¯·ç¨åå†è¯•' }
     }
   }
 
@@ -118,7 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       user.value = {
         id: response.id,
-        username: response.username || 'unknown',
+        username: response.username || 'æœªçŸ¥ç”¨æˆ·',
         email: response.email || `${response.username || 'user'}@example.com`,
         avatar: response.avatar || '/avatar-placeholder.svg',
         role: response.role || 'student',
@@ -155,7 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
       const normalizedRole = user.value.role === 'user' ? 'student' : user.value.role
 
       if (normalizedRole === 'coach') {
-        user.value.name = user.value.name || '½ÌÁ·ÓÃ»§'
+        user.value.name = user.value.name || 'æ•™ç»ƒç”¨æˆ·'
         user.value.detailedInfo = {
           id: user.value.id,
           username: user.value.username,
@@ -164,13 +164,13 @@ export const useAuthStore = defineStore('auth', () => {
           phone: '13800138000',
           avatar: user.value.avatar || '/avatar-placeholder.svg',
           age: 30,
-          specialty: '½¡ÉíÑµÁ·',
-          intro: '×¨Òµ½¡Éí½ÌÁ·',
+          specialty: 'ç»¼åˆè®­ç»ƒ',
+          intro: 'ä¸“ä¸šå¥èº«æ•™ç»ƒ',
           price: 0,
           createTime: new Date().toISOString()
         }
       } else if (normalizedRole === 'student') {
-        user.value.name = user.value.name || 'Ñ§Ô±ÓÃ»§'
+        user.value.name = user.value.name || 'å­¦å‘˜ç”¨æˆ·'
         user.value.detailedInfo = {
           id: user.value.id,
           username: user.value.username,

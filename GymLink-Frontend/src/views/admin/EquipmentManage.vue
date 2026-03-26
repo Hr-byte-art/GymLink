@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -11,7 +11,7 @@
           </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="searchForm.status" placeholder="请选择" clearable>
-              <el-option label="姝ｅ父" :value="1" />
+              <el-option label="正常" :value="1" />
               <el-option label="维护中" :value="2" />
             </el-select>
           </el-form-item>
@@ -28,7 +28,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -56,9 +56,7 @@
           <el-table-column prop="totalCount" label="数量" width="80" />
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'warning'"
-                >{{ row.status === 1 ? '正常' : '维护中' }}
-              </el-tag>
+              <el-tag :type="row.status === 1 ? 'success' : 'warning'">{{ row.status === 1 ? '正常' : '维护中' }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="类型" width="150">
@@ -68,7 +66,7 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="150" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -95,12 +93,7 @@
         <el-form-item label="图片">
           <div class="image-upload-container">
             <div class="image-preview">
-              <el-image
-                v-if="previewImageUrl"
-                :src="previewImageUrl"
-                style="width: 120px; height: 80px"
-                fit="cover"
-              />
+              <el-image v-if="previewImageUrl" :src="previewImageUrl" style="width: 120px; height: 80px" fit="cover" />
               <el-image
                 v-else-if="form.image"
                 :src="form.image + '?t=' + imageTimestamp"
@@ -120,7 +113,7 @@
               <el-button size="small" @click="triggerImageUpload" :loading="imageUploading">
                 {{ form.image || previewImageUrl ? '更换图片' : '上传图片' }}
               </el-button>
-              <div class="upload-tip">支持 jpg、png、webp 格式</div>
+              <div class="upload-tip">支持 jpg、png、webp 格式，大小不超过 5MB</div>
             </div>
           </div>
         </el-form-item>
@@ -132,17 +125,17 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="form.status" placeholder="请选择">
-            <el-option label="姝ｅ父" :value="1" />
+            <el-option label="正常" :value="1" />
             <el-option label="维护中" :value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item label="类别">
+        <el-form-item label="分类">
           <el-cascader
             v-model="form.typeArray"
             :options="categoryOptions"
             :props="cascaderProps"
             clearable
-            placeholder="请选择器材类别"
+            placeholder="请选择器材分类"
             style="width: 100%"
             @change="handleTypeChange"
           />
@@ -195,9 +188,11 @@ const searchForm = reactive({
   location: '',
   status: null as number | null,
   type: '',
-  typeArray: [] as string[],
+  typeArray: [] as string[]
 })
+
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
+
 const form = reactive({
   id: 0,
   name: '',
@@ -207,10 +202,9 @@ const form = reactive({
   status: 1,
   description: '',
   type: '' as string,
-  typeArray: [] as string[],
+  typeArray: [] as string[]
 })
 
-// 使用统一的器材类别选项
 const categoryOptions = equipmentTypeOptions
 
 const cascaderProps = {
@@ -225,21 +219,20 @@ const rules = {
 
 const dialogTitle = ref('添加器材')
 const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
-
-// 使用统一的类型名称获取函数
 const getTypeName = getEquipmentTypeName
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await request.post('/equipment/listEquipment', {
+    const res = (await request.post('/equipment/listEquipment', {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       name: searchForm.name || undefined,
       location: searchForm.location || undefined,
       status: searchForm.status || undefined,
       type: searchForm.type || undefined
-    }) as { records?: EquipmentRecord[]; total?: number }
+    })) as { records?: EquipmentRecord[]; total?: number }
+
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) {
@@ -249,10 +242,9 @@ const loadData = async () => {
   }
 }
 
-// 类型筛选变化
 const handleTypeFilterChange = (value: string[]) => {
   if (value && value.length > 0) {
-    searchForm.type = value[value.length - 1] || ""
+    searchForm.type = value[value.length - 1] || ''
   } else {
     searchForm.type = ''
   }
@@ -262,6 +254,7 @@ const handleSearch = () => {
   pagination.current = 1
   loadData()
 }
+
 const resetSearch = () => {
   Object.assign(searchForm, { name: '', location: '', status: null, type: '', typeArray: [] })
   handleSearch()
@@ -286,10 +279,20 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
+const parseTypeToArray = (type: string): string[] => {
+  if (!type) {
+    return []
+  }
+  if (type.includes('-')) {
+    const mainType = type.split('-')[0] || ''
+    return [mainType, type]
+  }
+  return [type]
+}
+
 const handleEdit = (row: EquipmentRecord) => {
   isEdit.value = true
   dialogTitle.value = '编辑器材'
-  // 将 type 字符串转换为级联选择器数组格式
   const typeArray = row.type ? parseTypeToArray(row.type) : []
   Object.assign(form, { ...row, typeArray })
   previewImageUrl.value = ''
@@ -297,23 +300,9 @@ const handleEdit = (row: EquipmentRecord) => {
   dialogVisible.value = true
 }
 
-// 将 type 字符串解析为级联选择器数组
-const parseTypeToArray = (type: string): string[] => {
-  if (!type) return []
-  if (type.includes('-')) {
-    // 例如 "1-1" -> ["1", "1-1"]
-    const mainType = type.split('-')[0] || ''
-    return [mainType, type]
-  }
-  // 例如 "3" -> ["3"]
-  return [type]
-}
-
-// 级联选择器变化时更新 type 字段
 const handleTypeChange = (value: string[]) => {
   if (value && value.length > 0) {
-    // 取最后一个值作为 type
-    form.type = value[value.length - 1] || ""
+    form.type = value[value.length - 1] || ''
   } else {
     form.type = ''
   }
@@ -326,40 +315,38 @@ const handleDelete = async (row: EquipmentRecord) => {
     ElMessage.success('删除成功')
     loadData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error(e)
+    }
   }
 }
 
-// 触发文件选择
 const triggerImageUpload = () => {
   imageInputRef.value?.click()
 }
 
-// 处理图片选择 - 选择后立即上传
 const handleImageChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  if (!file) return
+  if (!file) {
+    return
+  }
 
-  // 验证文件类型
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     ElMessage.error('请选择 jpg、png 或 webp 格式的图片')
     return
   }
 
-  // 验证文件大小（最大5MB）
   if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error('图片大小不能超过5MB')
+    ElMessage.error('图片大小不能超过 5MB')
     return
   }
 
-  // 先显示本地预览
   previewImageUrl.value = URL.createObjectURL(file)
   imageUploading.value = true
 
   try {
-    // 立即上传到通用图片接口
     const formData = new FormData()
     formData.append('image', file)
     formData.append('type', 'equipment')
@@ -368,14 +355,14 @@ const handleImageChange = async (event: Event) => {
       headers: { 'Content-Type': 'multipart/form-data' }
     })) as string
 
-    // 上传成功，保存URL
     form.image = imageUrl
     imageTimestamp.value = Date.now()
-    // 娓呴櫎鏈湴棰勮
+
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''
     }
+
     ElMessage.success('图片上传成功')
   } catch (e) {
     console.error('图片上传失败:', e)
@@ -385,13 +372,18 @@ const handleImageChange = async (event: Event) => {
     }
   } finally {
     imageUploading.value = false
-    if (imageInputRef.value) imageInputRef.value.value = ''
+    if (imageInputRef.value) {
+      imageInputRef.value.value = ''
+    }
   }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (!valid) {
+    return
+  }
+
   submitLoading.value = true
   try {
     if (isEdit.value) {
@@ -406,7 +398,6 @@ const handleSubmit = async () => {
       })
       ElMessage.success('更新成功')
     } else {
-      // 新建：图片已经上传好了，直接使用 form.image
       await request.post('/equipment/addEquipment', {
         name: form.name,
         image: form.image,
@@ -511,20 +502,5 @@ onMounted(() => loadData())
 .upload-tip {
   font-size: 12px;
   color: #909399;
-}
-
-/* 类别复选框样式 */
-.el-checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.el-checkbox {
-  margin-right: 0;
-}
-
-.el-checkbox.is-disabled {
-  color: #ccc;
 }
 </style>

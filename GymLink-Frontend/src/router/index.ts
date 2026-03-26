@@ -181,23 +181,35 @@ const publicRoutes = [
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // 如果有 token 但用户信息未加载，先初始化
+  // 如果已有登录凭证但用户信息未加载，先执行初始化
   const token = localStorage.getItem('token')
   if (token && !authStore.user) {
     await authStore.initAuth()
   }
 
   const isAuthenticated = authStore.isAuthenticated
+  const userRole = authStore.user?.role
   const isPublicRoute = publicRoutes.includes(to.name as string)
   const requiresAdmin = to.meta?.role === 'admin'
 
-  // 1. 公开路由：任何人都可以访问
+  // 1. 管理员访问限制：除了登录授权页，强制只能在 /admin 下活动
+  if (isAuthenticated && userRole === 'admin') {
+    if (to.name !== 'auth' && !to.path.startsWith('/admin')) {
+      next({ path: '/admin' })
+      return
+    }
+    // 放行管理员访问自己的专属页面
+    next()
+    return
+  }
+
+  // 2. 公开路由：任何人（不包含已被处理的管理员）都可以访问
   if (isPublicRoute) {
     next()
     return
   }
 
-  // 2. 未登录用户访问非公开路由：重定向到登录页
+  // 3. 未登录用户访问非公开路由：重定向到登录页
   if (!isAuthenticated) {
     next({
       name: 'auth',
@@ -206,17 +218,13 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // 3. 管理员路由：检查角色
+  // 4. 普通会员/教练 试图访问 管理员路由：拦截并重定向到首页
   if (requiresAdmin) {
-    const userRole = authStore.user?.role
-    if (userRole !== 'admin') {
-      // 非管理员访问管理员页面，重定向到首页
-      next({ name: 'home' })
-      return
-    }
+    next({ name: 'home' })
+    return
   }
 
-  // 4. 已登录用户访问普通路由：放行
+  // 5. 已登录普通用户（非管理员）访问普通的需要登录的路由：放行
   next()
 })
 

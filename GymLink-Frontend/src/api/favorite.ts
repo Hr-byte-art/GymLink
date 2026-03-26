@@ -46,7 +46,7 @@ export function removeFavorite(data: FavoriteRequest) {
 
 // 切换收藏状态
 export function toggleFavorite(data: FavoriteRequest) {
-    // 确保 targetId 以字符串形式发送，避免大数精度丢失
+    // 确保目标标识以字符串形式发送，避免大数精度丢失
     return request.post<boolean>('/favorite/toggle', {
         ...data,
         targetId: String(data.targetId)

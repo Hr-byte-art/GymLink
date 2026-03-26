@@ -138,10 +138,13 @@ const displayedRecipes = computed(() => {
 const getDifficultyType = (difficulty?: string) => {
   switch (difficulty) {
     case 'easy':
+    case '初级':
       return 'success'
     case 'medium':
+    case '中级':
       return 'warning'
     case 'hard':
+    case '高级':
       return 'danger'
     default:
       return 'info'
@@ -152,10 +155,13 @@ const getDifficultyType = (difficulty?: string) => {
 const getDifficultyText = (difficulty?: string) => {
   switch (difficulty) {
     case 'easy':
+    case '初级':
       return '简单'
     case 'medium':
+    case '中级':
       return '中等'
     case 'hard':
+    case '高级':
       return '困难'
     default:
       return '未知'

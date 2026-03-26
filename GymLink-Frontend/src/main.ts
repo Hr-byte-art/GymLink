@@ -12,7 +12,7 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.use(ElementPlus, {
-    // 全局配置 Element Plus 组件默认属性
+    // 全局配置组件库默认属性
     message: {
         duration: 2000, // 消息显示2秒
         grouping: true  // 相同内容的消息合并

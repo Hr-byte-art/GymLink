@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -14,7 +14,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -36,42 +36,48 @@
           </el-table-column>
           <el-table-column prop="viewCount" label="浏览量" width="80" />
           <el-table-column prop="likeCount" label="点赞数" width="80" />
-          <el-table-column prop="content" label="鍐呭" show-overflow-tooltip>
+          <el-table-column prop="content" label="内容" show-overflow-tooltip>
             <template #default="{ row }">
-              <span v-html="stripHtml(row.content)"></span>
+              <span>{{ stripHtml(row.content || '') }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="150" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleView(row)">查看</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
-        <el-pagination class="pagination" v-model:current-page="pagination.current" v-model:page-size="pagination.pageSize"
-          :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadData" />
+        <el-pagination
+          class="pagination"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @change="loadData"
+        />
       </el-card>
     </div>
 
-    <!-- 查看详情对话框 -->
     <el-dialog v-model="viewDialogVisible" title="帖子详情" width="700px">
       <div class="post-detail">
         <h3>{{ currentPost.title }}</h3>
         <div class="post-meta">
           <span>发布者ID: {{ currentPost.userId }}</span>
           <span>角色: {{ currentPost.userRole === 1 ? '教练' : '学员' }}</span>
-          <span>浏览量? {{ currentPost.viewCount }}</span>
-          <span>点赞数? {{ currentPost.likeCount }}</span>
+          <span>浏览量: {{ currentPost.viewCount }}</span>
+          <span>点赞数: {{ currentPost.likeCount }}</span>
           <span>发布时间: {{ formatDate(currentPost.createTime) }}</span>
         </div>
         <el-divider />
         <div class="post-content" v-html="currentPost.content"></div>
       </div>
       <template #footer>
-        <el-button @click="viewDialogVisible = false">鍏抽棴</el-button>
+        <el-button @click="viewDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </AdminLayout>
@@ -87,8 +93,10 @@ type PostRecord = {
   id: number | string
   title?: string
   content?: string
-  userName?: string
+  userId?: number | string
   userRole?: number
+  viewCount?: number
+  likeCount?: number
   createTime?: string
   [key: string]: unknown
 }
@@ -101,29 +109,41 @@ const currentPost = ref<Partial<PostRecord>>({})
 const searchForm = reactive({ title: '', userRole: null as number | null })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 
-const formatDate = (date?: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+const formatDate = (date?: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
-// 去除HTML标签，用于表格显示
 const stripHtml = (html: string) => {
   if (!html) return ''
-  return html.replace(/<[^>]*>/g, '').substring(0, 100) + (html.length > 100 ? '...' : '')
+  const text = html.replace(/<[^>]*>/g, '')
+  return text.substring(0, 100) + (text.length > 100 ? '...' : '')
 }
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await request.post('/experience/listExperience', {
-      pageNum: pagination.current, pageSize: pagination.pageSize,
-      title: searchForm.title || undefined, userRole: searchForm.userRole || undefined
-    }) as { records?: PostRecord[]; total?: number }
+    const res = (await request.post('/experience/listExperience', {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      title: searchForm.title || undefined,
+      userRole: searchForm.userRole || undefined
+    })) as { records?: PostRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleSearch = () => { pagination.current = 1; loadData() }
-const resetSearch = () => { Object.assign(searchForm, { title: '', userRole: null }); handleSearch() }
+const handleSearch = () => {
+  pagination.current = 1
+  loadData()
+}
+
+const resetSearch = () => {
+  Object.assign(searchForm, { title: '', userRole: null })
+  handleSearch()
+}
 
 const handleView = (row: PostRecord) => {
   currentPost.value = row
@@ -136,7 +156,9 @@ const handleDelete = async (row: PostRecord) => {
     await request.post('/experience/deleteExperience', null, { params: { id: row.id } })
     ElMessage.success('删除成功')
     loadData()
-  } catch (e) { if (e !== 'cancel') console.error(e) }
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
 }
 
 onMounted(() => loadData())
@@ -153,4 +175,3 @@ onMounted(() => loadData())
 .post-meta { display: flex; gap: 20px; color: #909399; font-size: 14px; flex-wrap: wrap; }
 .post-content { line-height: 1.8; color: #606266; max-height: 400px; overflow-y: auto; }
 </style>
-

@@ -36,7 +36,7 @@
             <el-tag type="primary">{{ getCourseTypeName(course.type || '') }}</el-tag>
           </div>
           <h1 class="course-title">{{ course.name }}</h1>
-          
+
           <!-- 教练信息 -->
           <div class="coach-info" v-if="course.coachName">
             <el-avatar :size="40" :src="course.coachAvatar || '/avatar-placeholder.svg'" />
@@ -149,7 +149,7 @@
               </div>
             </div>
             <el-empty v-else description="暂无评价" />
-            
+
             <!-- 分页 -->
             <div v-if="reviewTotal > reviewPageSize" class="reviews-pagination">
               <el-pagination
@@ -314,19 +314,19 @@ const loadCourseDetail = async () => {
 
 // 检查课程是否已购买
 const checkPurchaseStatus = async () => {
-  
+
   if (!authStore.isAuthenticated) {
     isPurchased.value = false
     return
   }
-  
+
   // 只有学员角色才检查购买状态
   const role = authStore.user?.role
   if (role !== 'student' && role !== 'user') {
     isPurchased.value = false
     return
   }
-  
+
   const studentId = authStore.user?.associatedUserId
   if (!studentId || !course.value?.id) {
     isPurchased.value = false
@@ -358,7 +358,7 @@ const handlePurchase = async () => {
     return
   }
 
-  // 获取学员ID（使用 associatedUserId）
+  // 获取学员标识（使用关联用户标识）
   const studentId = authStore.user?.associatedUserId
   if (!studentId) {
     ElMessage.error('无法获取学员信息，请重新登录')
@@ -418,7 +418,7 @@ const handleToggleFavorite = async () => {
       targetId: Number(route.params.id),
       type: FavoriteType.COURSE
     })
-    // request.ts 响应拦截器已解包，res 直接就是 boolean
+    // 响应拦截器已解包，可直接作为布尔结果使用
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
   } catch {
@@ -509,14 +509,14 @@ onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
     await authStore.initAuth()
   }
-  
+
   loadCourseDetail()
   checkFavoriteStatus()
   loadCourseStats()
   loadReviews()
 })
 
-// 监听 associatedUserId 变化，重新检查购买状态
+// 监听关联用户标识变化并重新检查购买状态
 watch(() => authStore.user?.associatedUserId, (newVal) => {
   if (newVal && course.value?.id) {
     checkPurchaseStatus()

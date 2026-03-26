@@ -1,4 +1,4 @@
-// 通用分页响应类型 - 匹配后端 MyBatis Plus Page<T>
+// 通用分页响应类型
 export interface Page<T> {
     records: T[] // 数据列表
     total: number // 总记录数
@@ -7,7 +7,7 @@ export interface Page<T> {
     pages: number // 总页数
 }
 
-// 通用请求响应类型 - 匹配后端 BaseResponse<T>
+// 通用请求响应类型
 export interface BaseResponse<T> {
     code: number
     data: T

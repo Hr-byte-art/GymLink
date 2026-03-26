@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AppLayout>
     <div class="coaches-container">
 
@@ -202,10 +202,10 @@ const coachTypes = coachSpecialtyOptions
 
 // 年龄区间选项
 const ageRangeOptions = [
-  { label: '20岁以下', value: '0-20', min: 0, max: 20 },
-  { label: '20-30岁', value: '20-30', min: 20, max: 30 },
-  { label: '30-40岁', value: '30-40', min: 30, max: 40 },
-  { label: '40-50岁', value: '40-50', min: 40, max: 50 },
+  { label: '20岁以下', value: '0-19', min: 0, max: 19 },
+  { label: '20-30岁', value: '20-29', min: 20, max: 29 },
+  { label: '30-40岁', value: '30-39', min: 30, max: 39 },
+  { label: '40-50岁', value: '40-49', min: 40, max: 49 },
   { label: '50岁以上', value: '50-100', min: 50, max: 100 }
 ]
 
@@ -318,7 +318,7 @@ const submitBooking = async () => {
 
 // 加载教练数据
 const loadCoaches = () => {
-  // 构建查询参数，与后端 CoachQueryPageRequest 对应
+  // 构建查询参数，与后端教练分页查询模型对应
   const params: Record<string, string | number> = {
     pageNum: currentPage.value,
     pageSize: pageSize.value
@@ -347,7 +347,7 @@ const loadCoaches = () => {
     params.specialty = activeSpecialty.value
   }
 
-  // 调用API获取教练数据
+  // 调用接口获取教练数据
   coachStore.fetchCoaches(params as unknown as CoachQueryParams)
 }
 

@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { Page } from './types'
 
-// 菜谱接口类型 - 匹配后端 RecipeVo
+// 菜谱接口类型
 export interface Recipe {
     id: number
     title: string
@@ -18,10 +18,10 @@ export interface Recipe {
     prepTime?: number      // 准备时间(分钟)
     cookTime?: number      // 烹饪时间(分钟)
     servings?: number      // 份数
-    difficulty?: string    // 难度(easy/medium/hard)
+    difficulty?: string    // 难度（编码：easy/medium/hard）
 }
 
-// 菜谱查询参数 - 匹配后端 RecipeQueryPageRequest
+// 菜谱查询参数
 export interface RecipeQueryParams {
     current?: number
     pageSize?: number
@@ -31,12 +31,12 @@ export interface RecipeQueryParams {
     sortOrder?: string
 }
 
-// 获取菜谱列表 - POST /recipe/listRecipe
+// 获取菜谱列表
 export function getRecipeList(params: RecipeQueryParams = {}): Promise<Page<Recipe>> {
     return request.post('/recipe/listRecipe', params) as Promise<Page<Recipe>>
 }
 
-// 获取菜谱详情 - GET /recipe/getRecipeById
+// 获取菜谱详情
 export function getRecipeDetail(id: string | number): Promise<Recipe> {
     return request.get('/recipe/getRecipeById', {
         params: { id: String(id) }

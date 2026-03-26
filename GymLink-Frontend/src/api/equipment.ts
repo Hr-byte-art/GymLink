@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { Page } from './types'
 
-// 健身器材接口类型 - 匹配后端 EquipmentVo
+// 健身器材接口类型
 export interface Equipment {
   id: number
   name: string
@@ -26,7 +26,7 @@ export interface EquipmentReservation {
   studentName?: string
 }
 
-// 器材查询参数 - 匹配后端 EquipmentQueryPageRequest
+// 器材查询参数
 export interface EquipmentQueryParams {
   pageNum?: number
   pageSize?: number
@@ -36,19 +36,19 @@ export interface EquipmentQueryParams {
   status?: number
 }
 
-// 获取器材列表 - POST /equipment/listEquipment
+// 获取器材列表
 export function getEquipmentList(params: EquipmentQueryParams = {}): Promise<Page<Equipment>> {
   return request.post('/equipment/listEquipment', params) as Promise<Page<Equipment>>
 }
 
-// 获取器材详情 - GET /equipment/getEquipmentById
+// 获取器材详情
 export function getEquipmentDetail(id: string | number): Promise<Equipment> {
   return request.get('/equipment/getEquipmentById', {
     params: { id: String(id) }
   }) as Promise<Equipment>
 }
 
-// 预约器材 - POST /appointment/bookingEquipment
+// 提交器材预约
 export interface BookEquipmentRequest {
   equipmentId: number
   studentId: number
@@ -60,14 +60,14 @@ export function reserveEquipment(data: BookEquipmentRequest): Promise<boolean> {
   return request.post('/appointment/bookingEquipment', data) as Promise<boolean>
 }
 
-// 取消器材预约 - GET /appointment/cancelBookingEquipment
+// 取消器材预约
 export function cancelReservation(bookingId: number): Promise<boolean> {
   return request.get('/appointment/cancelBookingEquipment', {
     params: { bookingId }
   }) as Promise<boolean>
 }
 
-// 获取器材的预约记录 - POST /appointment/listEquipmentReservations
+// 获取器材预约记录
 export interface EquipmentReservationQueryParams {
   equipmentId: number
   status?: number

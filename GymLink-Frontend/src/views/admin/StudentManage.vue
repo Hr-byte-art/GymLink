@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -6,7 +6,7 @@
           <el-form-item label="姓名">
             <el-input v-model="searchForm.name" placeholder="请输入姓名" clearable />
           </el-form-item>
-          <el-form-item label="鎬у埆">
+          <el-form-item label="性别">
             <el-select v-model="searchForm.gender" placeholder="请选择" clearable>
               <el-option label="男" :value="1" />
               <el-option label="女" :value="2" />
@@ -17,7 +17,7 @@
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="resetSearch">閲嶇疆</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -31,18 +31,18 @@
         </template>
         <el-table :data="tableData" v-loading="loading" stripe>
           <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column label="澶村儚" width="80">
+          <el-table-column label="头像" width="80">
             <template #default="{ row }">
               <el-avatar :size="40" :src="row.avatar || '/avatar-placeholder.svg'" />
             </template>
           </el-table-column>
           <el-table-column prop="username" label="用户名" width="120" />
           <el-table-column prop="name" label="姓名" width="100" />
-          <el-table-column label="鎬у埆" width="80">
+          <el-table-column label="性别" width="80">
             <template #default="{ row }">{{ getGenderName(row.gender) }}</template>
           </el-table-column>
           <el-table-column prop="phone" label="手机号" width="130" />
-          <el-table-column prop="height" label="韬珮(cm)" width="100" />
+          <el-table-column prop="height" label="身高(cm)" width="100" />
           <el-table-column prop="weight" label="体重(kg)" width="100" />
           <el-table-column prop="balance" label="余额" width="100">
             <template #default="{ row }">¥{{ row.balance || 0 }}</template>
@@ -50,19 +50,25 @@
           <el-table-column prop="createTime" label="创建时间" width="180">
             <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
           </el-table-column>
-          <el-table-column label="鎿嶄綔" width="150" fixed="right">
+          <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
-        <el-pagination class="pagination" v-model:current-page="pagination.current" v-model:page-size="pagination.pageSize"
-          :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadData" />
+        <el-pagination
+          class="pagination"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @change="loadData"
+        />
       </el-card>
     </div>
 
-    <!-- 添加/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="用户名" prop="username" v-if="!isEdit">
@@ -74,7 +80,7 @@
         <el-form-item label="姓名" prop="name">
           <el-input v-model="form.name" placeholder="请输入姓名" />
         </el-form-item>
-        <el-form-item label="鎬у埆">
+        <el-form-item label="性别">
           <el-radio-group v-model="form.gender">
             <el-radio :label="1">男</el-radio>
             <el-radio :label="2">女</el-radio>
@@ -83,7 +89,7 @@
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" placeholder="请输入手机号" />
         </el-form-item>
-        <el-form-item label="韬珮(cm)">
+        <el-form-item label="身高(cm)">
           <el-input-number v-model="form.height" :min="0" :max="300" />
         </el-form-item>
         <el-form-item label="体重(kg)">
@@ -119,6 +125,7 @@ type StudentRecord = {
   weight?: number
   balance?: number
   createTime?: string
+  avatar?: string
   [key: string]: unknown
 }
 
@@ -142,23 +149,36 @@ const rules = {
 
 const dialogTitle = ref('添加学员')
 
-const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await request.post('/student/ListStudent', {
-      pageNum: pagination.current, pageSize: pagination.pageSize,
-      name: searchForm.name || undefined, gender: searchForm.gender || undefined, phone: searchForm.phone || undefined
-    }) as { records?: StudentRecord[]; total?: number }
+    const res = (await request.post('/student/ListStudent', {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      name: searchForm.name || undefined,
+      gender: searchForm.gender || undefined,
+      phone: searchForm.phone || undefined
+    })) as { records?: StudentRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleSearch = () => { pagination.current = 1; loadData() }
-const resetSearch = () => { Object.assign(searchForm, { name: '', gender: null, phone: '' }); handleSearch() }
+const handleSearch = () => {
+  pagination.current = 1
+  loadData()
+}
+
+const resetSearch = () => {
+  Object.assign(searchForm, { name: '', gender: null, phone: '' })
+  handleSearch()
+}
 
 const handleAdd = () => {
   isEdit.value = false
@@ -180,7 +200,9 @@ const handleDelete = async (row: StudentRecord) => {
     await request.post('/student/deleteStudent', null, { params: { id: row.id } })
     ElMessage.success('删除成功')
     loadData()
-  } catch (e) { if (e !== 'cancel') console.error(e) }
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
 }
 
 const handleSubmit = async () => {
@@ -189,15 +211,33 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     if (isEdit.value) {
-      await request.post(`/student/updateStudent?id=${form.id}`, { name: form.name, gender: form.gender, phone: form.phone, height: form.height, weight: form.weight })
+      await request.post(`/student/updateStudent?id=${form.id}`, {
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        height: form.height,
+        weight: form.weight
+      })
     } else {
-      await request.post('/student/addStudent', { username: form.username, password: form.password, name: form.name, gender: form.gender, phone: form.phone, height: form.height, weight: form.weight, balance: form.balance })
+      await request.post('/student/addStudent', {
+        username: form.username,
+        password: form.password,
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        height: form.height,
+        weight: form.weight,
+        balance: form.balance
+      })
     }
     ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
     dialogVisible.value = false
     loadData()
-  } catch (e) { console.error(e) }
-  finally { submitLoading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 onMounted(() => loadData())
@@ -211,4 +251,3 @@ onMounted(() => loadData())
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination { margin-top: 20px; justify-content: flex-end; }
 </style>
-

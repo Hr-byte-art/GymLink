@@ -341,7 +341,7 @@ const submitReservation = async () => {
       // 预约成功后刷新已预约时段列表
       loadReservations()
     } catch {
-      // 错误已在 request 拦截器中处理，这里不重复显示
+      // 错误已在请求拦截器中处理，这里不重复提示
     } finally {
       reservationLoading.value = false
     }
