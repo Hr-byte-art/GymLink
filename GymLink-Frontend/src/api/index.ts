@@ -1,4 +1,4 @@
-// API exports - centralized API imports
+// 统一导出接口模块
 export * from './types'
 export * from './course'
 export * from './coach'

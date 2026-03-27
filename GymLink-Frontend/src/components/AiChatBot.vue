@@ -2,7 +2,7 @@
   <div class="ai-chatbot">
     <!-- 悬浮按钮 -->
     <div class="chat-trigger" @click="toggleChat" :class="{ active: isOpen }">
-      <img src="/AI.png" alt="AI鍔╂墜" class="ai-avatar" />
+      <img src="/AI.png" alt="AI助手" class="ai-avatar" />
       <span class="pulse" v-if="!isOpen"></span>
     </div>
 
@@ -35,8 +35,8 @@
             />
             <div class="message-content">
               <!-- 如果是流式返回中的最后一条空消息，显示 loading 动画 -->
-              <div 
-                v-if="msg.role === 'assistant' && isLoading && index === messages.length - 1 && !msg.content" 
+              <div
+                v-if="msg.role === 'assistant' && isLoading && index === messages.length - 1 && !msg.content"
                 class="message-bubble typing"
               >
                 <span class="dot"></span>
@@ -146,7 +146,7 @@ const sendMessage = async () => {
   closeStream = chatStream(
     userId.value,
     message,
-    // onMessage: 收到流式片段
+    // 消息回调：收到流式片段
     (text: string) => {
       const assistantMessage = messages.value[assistantMessageIndex]
       if (assistantMessage) {
@@ -154,7 +154,7 @@ const sendMessage = async () => {
       }
       scrollToBottom()
     },
-    // onError: 发生错误
+    // 错误回调：发生错误
     (error: Error) => {
       console.error('AI 对话失败:', error)
       const assistantMessage = messages.value[assistantMessageIndex]
@@ -163,7 +163,7 @@ const sendMessage = async () => {
       }
       isLoading.value = false
     },
-    // onComplete: 流式完成
+    // 完成回调：流式结束
     () => {
       isLoading.value = false
       closeStream = null

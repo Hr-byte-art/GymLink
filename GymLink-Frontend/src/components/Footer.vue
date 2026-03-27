@@ -8,10 +8,10 @@
             GymLink 为健身房会员提供课程预约、教练管理、器材预约和健康数据追踪，
             让训练过程更高效、更可持续。
           </p>
-          <div class="social-links" aria-label="social links">
-            <a href="#" class="social-link" aria-label="WeChat">WX</a>
-            <a href="#" class="social-link" aria-label="Weibo">WB</a>
-            <a href="#" class="social-link" aria-label="Douyin">DY</a>
+          <div class="social-links" aria-label="社交链接">
+            <a href="#" class="social-link" aria-label="微信">微</a>
+            <a href="#" class="social-link" aria-label="微博">博</a>
+            <a href="#" class="social-link" aria-label="抖音">抖</a>
           </div>
         </section>
 
@@ -29,9 +29,9 @@
         <section class="footer-block">
           <h4>联系信息</h4>
           <ul class="meta-list">
-            <li><span class="dot"></span>北京市朝阳区建国路 88 号</li>
-            <li><span class="dot"></span>400-888-8888</li>
-            <li><span class="dot"></span>info@gymlink.com</li>
+            <li><span class="dot"></span>成都市高新西区百叶路1号</li>
+            <li><span class="dot"></span>188-8888-8888</li>
+            <li><span class="dot"></span>liderun@gmail.com</li>
           </ul>
         </section>
 

@@ -1,5 +1,5 @@
-// Home API has been removed
-// Backend doesn't have dedicated home endpoints
-// Use course and coach list APIs directly with pagination:
-// - import { getCourseList } from './course'
-// - import { getCoachList } from './coach'
+// 首页独立接口已移除
+// 后端未提供专门的首页接口
+// 直接复用课程和教练分页接口：
+// - 可复用课程列表接口
+// - 可复用教练列表接口

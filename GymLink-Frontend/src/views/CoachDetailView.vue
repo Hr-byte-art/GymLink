@@ -337,7 +337,7 @@ const submitBooking = async () => {
 
     bookingLoading.value = true
     try {
-      // 获取学员ID（使用 associatedUserId）
+      // 获取学员标识（使用关联用户标识）
       const studentId = authStore.user?.associatedUserId
       if (!studentId) {
         ElMessage.error('无法获取学员信息，请重新登录')
@@ -483,7 +483,7 @@ const handleToggleFavorite = async () => {
       targetId: coachId.value, // 保持字符串，避免大数精度丢失
       type: FavoriteType.COACH
     })
-    // request.ts 响应拦截器已解包，res 直接就是 boolean
+    // 响应拦截器已解包，可直接作为布尔结果使用
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
   } catch {

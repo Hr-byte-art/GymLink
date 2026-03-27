@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -57,12 +57,18 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-pagination class="pagination" v-model:current-page="pagination.current" v-model:page-size="pagination.pageSize"
-          :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadData" />
+        <el-pagination
+          class="pagination"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @change="loadData"
+        />
       </el-card>
     </div>
 
-    <!-- 添加/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="用户名" prop="username" v-if="!isEdit">
@@ -119,6 +125,7 @@ type StudentRecord = {
   weight?: number
   balance?: number
   createTime?: string
+  avatar?: string
   [key: string]: unknown
 }
 
@@ -142,23 +149,36 @@ const rules = {
 
 const dialogTitle = ref('添加学员')
 
-const formatDate = (date: string) => date ? new Date(date).toLocaleString('zh-CN') : ''
+const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await request.post('/student/ListStudent', {
-      pageNum: pagination.current, pageSize: pagination.pageSize,
-      name: searchForm.name || undefined, gender: searchForm.gender || undefined, phone: searchForm.phone || undefined
-    }) as { records?: StudentRecord[]; total?: number }
+    const res = (await request.post('/student/ListStudent', {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      name: searchForm.name || undefined,
+      gender: searchForm.gender || undefined,
+      phone: searchForm.phone || undefined
+    })) as { records?: StudentRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleSearch = () => { pagination.current = 1; loadData() }
-const resetSearch = () => { Object.assign(searchForm, { name: '', gender: null, phone: '' }); handleSearch() }
+const handleSearch = () => {
+  pagination.current = 1
+  loadData()
+}
+
+const resetSearch = () => {
+  Object.assign(searchForm, { name: '', gender: null, phone: '' })
+  handleSearch()
+}
 
 const handleAdd = () => {
   isEdit.value = false
@@ -180,7 +200,9 @@ const handleDelete = async (row: StudentRecord) => {
     await request.post('/student/deleteStudent', null, { params: { id: row.id } })
     ElMessage.success('删除成功')
     loadData()
-  } catch (e) { if (e !== 'cancel') console.error(e) }
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
 }
 
 const handleSubmit = async () => {
@@ -189,15 +211,33 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     if (isEdit.value) {
-      await request.post(`/student/updateStudent?id=${form.id}`, { name: form.name, gender: form.gender, phone: form.phone, height: form.height, weight: form.weight })
+      await request.post(`/student/updateStudent?id=${form.id}`, {
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        height: form.height,
+        weight: form.weight
+      })
     } else {
-      await request.post('/student/addStudent', { username: form.username, password: form.password, name: form.name, gender: form.gender, phone: form.phone, height: form.height, weight: form.weight, balance: form.balance })
+      await request.post('/student/addStudent', {
+        username: form.username,
+        password: form.password,
+        name: form.name,
+        gender: form.gender,
+        phone: form.phone,
+        height: form.height,
+        weight: form.weight,
+        balance: form.balance
+      })
     }
     ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
     dialogVisible.value = false
     loadData()
-  } catch (e) { console.error(e) }
-  finally { submitLoading.value = false }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 onMounted(() => loadData())
@@ -211,4 +251,3 @@ onMounted(() => loadData())
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination { margin-top: 20px; justify-content: flex-end; }
 </style>
-

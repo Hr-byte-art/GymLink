@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -59,8 +59,15 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-pagination class="pagination" v-model:current-page="pagination.current" v-model:page-size="pagination.pageSize"
-          :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @change="loadData" />
+        <el-pagination
+          class="pagination"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @change="loadData"
+        />
       </el-card>
     </div>
   </AdminLayout>
@@ -94,15 +101,13 @@ const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const searchForm = reactive({
   studentName: '',
   courseName: '',
-  status: 3 as number | undefined // 默认显示退款申请中
+  status: 3 as number | undefined
 })
 
-const pendingCount = computed(() => {
-  return tableData.value.filter(item => item.status === 3).length
-})
+const pendingCount = computed(() => tableData.value.filter((item) => item.status === 3).length)
 
 const getStatusType = (status: number) => {
-  const map: Record<number, string> = { 1: '已支付', 2: '已退款', 3: '退款申请中' }
+  const map: Record<number, string> = { 1: 'success', 2: 'info', 3: 'warning' }
   return map[status] || 'info'
 }
 
@@ -111,24 +116,21 @@ const getStatusText = (status: number) => {
   return map[status] || '未知'
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
-}
+const formatDate = (dateStr: string) => (dateStr ? new Date(dateStr).toLocaleString('zh-CN') : '-')
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await request.post('/student/getRefundOrders', {
+    const res = (await request.post('/student/getRefundOrders', {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       status: searchForm.status,
       courseName: searchForm.courseName || undefined
-    }) as { records: RefundOrder[]; total: number }
+    })) as { records?: RefundOrder[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (error) {
-    console.error('加载退款订单失败?', error)
+    console.error('加载退款订单失败:', error)
   } finally {
     loading.value = false
   }
@@ -158,7 +160,7 @@ const handleApprove = async (row: RefundOrder) => {
     loadData()
   } catch (error: unknown) {
     if (error !== 'cancel') {
-
+      console.error('通过退款失败:', error)
     }
   }
 }
@@ -175,7 +177,7 @@ const handleReject = async (row: RefundOrder) => {
     loadData()
   } catch (error: unknown) {
     if (error !== 'cancel') {
-
+      console.error('拒绝退款失败:', error)
     }
   }
 }
@@ -222,5 +224,3 @@ onMounted(() => {
   font-weight: bold;
 }
 </style>
-
-

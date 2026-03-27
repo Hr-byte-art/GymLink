@@ -205,9 +205,9 @@ const toggleLike = async (post: ExperiencePost) => {
     return
   }
   try {
-    // 使用 User 表的 id，与后端 StpUtil.getLoginIdAsLong() 一致
+    // 使用用户主表 ID，与后端登录 ID 保持一致
     const userId = authStore.user?.id
-    // 确保 likeCount 是数字类型
+    // 确保点赞数量为数字类型
     const currentLikeCount = Number(post.likeCount) || 0
     if (post.isLiked) {
       await request.post('/experience/cancel', { experienceId: post.id, userId })
@@ -274,16 +274,16 @@ const submitPost = async () => {
   try {
     // 获取用户角色：1-教练 2-学员
     const userRole = authStore.user?.role === 'coach' ? 1 : 2
-    // 使用 User 表的 id，全局唯一，避免教练/学员 ID 冲突
+    // 使用用户主表 ID（全局唯一），避免教练/学员 ID 冲突
     const userId = authStore.user?.id
-    
-    
+
+
     if (!userId) {
       ElMessage.error('用户信息异常，请重新登录')
       return
     }
-    
-    // 直接传入userId，后端会自动转换类型
+
+    // 直接传入用户标识，后端会自动转换类型
     await request.post('/experience/addExperience', {
       title: publishForm.value.title,
       content: publishForm.value.content,

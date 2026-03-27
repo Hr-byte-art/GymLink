@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AppLayout>
     <!-- 页面头部 -->
     <div class="page-header">
@@ -34,9 +34,9 @@
             <div class="duration-filter">
               <span class="filter-label">时长：</span>
               <el-select v-model="selectedDuration" placeholder="选择时长范围" clearable>
-                <el-option label="30分钟以下" value="0-30"></el-option>
-                <el-option label="30-60分钟" value="30-60"></el-option>
-                <el-option label="60-90分钟" value="60-90"></el-option>
+                <el-option label="30分钟以下" value="0-29"></el-option>
+                <el-option label="30-60分钟" value="30-59"></el-option>
+                <el-option label="60-90分钟" value="60-89"></el-option>
                 <el-option label="90分钟以上" value="90-"></el-option>
               </el-select>
             </div>
@@ -196,7 +196,7 @@ const handlePurchase = async (course: Course) => {
     return
   }
 
-  // 获取学员ID（使用 associatedUserId）
+  // 获取学员标识（使用关联用户标识）
   const studentId = authStore.user?.associatedUserId
   if (!studentId) {
     ElMessage.error('无法获取学员信息，请重新登录')
@@ -223,13 +223,13 @@ const handlePurchase = async (course: Course) => {
 
 // 加载课程数据
 const loadCourses = () => {
-  // 构建查询参数（与后端 CourseQueryPageRequest 对应）
+  // 构建查询参数（与后端课程分页查询模型对应）
   const params: Record<string, string | number> = {
     pageNum: currentPage.value,
     pageSize: pageSize.value
   }
 
-  // 添加类别筛选（后端字段 type）
+  // 添加类别筛选（对应后端分类字段）
   if (activeCategory.value && activeCategory.value !== 'all') {
     params.type = activeCategory.value
   }
@@ -246,12 +246,12 @@ const loadCourses = () => {
     if (max) params.maxDuration = max
   }
 
-  // 添加关键词搜索（后端字段 name）
+  // 添加关键词搜索（对应后端名称字段）
   if (searchKeyword.value) {
     params.name = searchKeyword.value
   }
 
-  // 调用API获取课程数据
+  // 调用接口获取课程数据
   courseStore.fetchCourses(params as unknown as CourseQueryParams)
 }
 
@@ -286,22 +286,22 @@ watch(() => authStore.isAuthenticated, (newVal) => {
 
 // 加载已购课程ID列表
 const loadPurchasedCourseIds = async () => {
-  
+
   if (!authStore.isAuthenticated) {
     return
   }
-  
+
   // 只有学员角色才加载已购课程
   const role = authStore.user?.role
   if (role !== 'student' && role !== 'user') {
     return
   }
-  
+
   const studentId = authStore.user?.associatedUserId
   if (!studentId) {
     return
   }
-  
+
   try {
     purchasedCourseIds.value = await getPurchasedCourseIds(studentId)
   } catch (e) {
@@ -319,16 +319,16 @@ const isPurchased = (courseId: number | string) => {
 // 组件挂载时加载数据
 onMounted(async () => {
   loadCourses()
-  
+
   // 确保用户信息已加载
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
     await authStore.initAuth()
   }
-  
+
   await loadPurchasedCourseIds()
 })
 
-// 监听 associatedUserId 变化
+// 监听关联用户标识变化
 watch(() => authStore.user?.associatedUserId, (newVal) => {
   if (newVal) {
     loadPurchasedCourseIds()

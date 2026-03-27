@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Coach } from '@/api/coach'
 import type { Student } from '@/api/student'
@@ -118,7 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       user.value = {
         id: response.id,
-        username: response.username || 'unknown',
+        username: response.username || '未知用户',
         email: response.email || `${response.username || 'user'}@example.com`,
         avatar: response.avatar || '/avatar-placeholder.svg',
         role: response.role || 'student',
@@ -155,7 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
       const normalizedRole = user.value.role === 'user' ? 'student' : user.value.role
 
       if (normalizedRole === 'coach') {
-        user.value.name = user.value.name || '张教练'
+        user.value.name = user.value.name || '教练用户'
         user.value.detailedInfo = {
           id: user.value.id,
           username: user.value.username,
@@ -164,13 +164,13 @@ export const useAuthStore = defineStore('auth', () => {
           phone: '13800138000',
           avatar: user.value.avatar || '/avatar-placeholder.svg',
           age: 30,
-          specialty: '健身训练',
-          intro: '专业健身教练，拥有多年教学经验',
+          specialty: '综合训练',
+          intro: '专业健身教练',
           price: 0,
           createTime: new Date().toISOString()
         }
       } else if (normalizedRole === 'student') {
-        user.value.name = user.value.name || 'ѧԱ�û�'
+        user.value.name = user.value.name || '学员用户'
         user.value.detailedInfo = {
           id: user.value.id,
           username: user.value.username,

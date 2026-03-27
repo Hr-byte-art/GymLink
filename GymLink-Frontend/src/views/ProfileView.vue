@@ -604,12 +604,12 @@ type ReviewForm = {
 }
 const reviewForm = ref<ReviewForm>({
   courseId: 0,
-  courseName: '', 
+  courseName: '',
   appointmentId: 0,
   coachName: '',
   reviewType: 1, // 1:课程评价 2:预约评价
-  rating: 5, 
-  content: '' 
+  rating: 5,
+  content: ''
 })
 const reviewRules = {
   rating: [{ required: true, message: '请选择评分', trigger: 'change' }]
@@ -652,7 +652,7 @@ const formatDateTime = (dateString?: string | Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-const handleMenuSelect = (index: string) => { 
+const handleMenuSelect = (index: string) => {
   activeMenu.value = index
   if (index === 'appointments') loadCoachAppointments()
   else if (index === 'courses') loadPurchasedCourses()
@@ -727,7 +727,7 @@ const handleTopUp = async () => {
     const studentInfo = await getStudentByUserId(user.value?.id as number)
     studentForm.value = { ...studentForm.value, ...studentInfo }
   } catch {
-    // 错误已在 request 拦截器中处理
+    // 错误已在请求拦截器中处理
   } finally {
     loading.value.topUp = false
   }
@@ -746,7 +746,7 @@ const handleRefundCourse = async (course: PurchasedCourse) => {
     loadPurchasedCourses()
   } catch (error: unknown) {
     if (error !== 'cancel') {
-      // 错误已在 request 拦截器中处理
+      // 错误已在请求拦截器中处理
     }
   }
 }
@@ -847,7 +847,7 @@ const handleAvatarChange = async (event: Event) => {
     let newAvatarUrl: string
     const role = user.value?.role
     const isStudentRole = role === 'student' || role === 'user'
-    
+
     if (isStudentRole) {
       // 学员上传头像
       const studentId = studentForm.value.id || user.value?.associatedUserId
@@ -866,11 +866,11 @@ const handleAvatarChange = async (event: Event) => {
       newAvatarUrl = await uploadCoachAvatar(coachId, file)
     }
 
-    
+
     // 添加时间戳参数强制浏览器刷新图片缓存
     const avatarWithTimestamp = newAvatarUrl + '?t=' + Date.now()
-    
-    // 直接使用返回的 URL 更新本地显示
+
+    // 直接使用返回的链接更新本地显示
     if (newAvatarUrl) {
       if (userDetailInfo.value) {
         userDetailInfo.value = { ...userDetailInfo.value, avatar: avatarWithTimestamp }
@@ -885,7 +885,7 @@ const handleAvatarChange = async (event: Event) => {
     ElMessage.error('头像上传失败')
   } finally {
     loading.value.avatar = false
-    // 清空 input 以便可以再次选择同一文件
+    // 清空输入控件，以便再次选择同一文件
     input.value = ''
   }
 }
@@ -1021,7 +1021,7 @@ const loadEquipmentReservations = async () => {
   }
   loading.value.equipmentReservations = true
   try {
-    // 确保studentId是数字类型
+    // 确保学员标识为数字类型
     const numericStudentId = typeof studentId === 'string' ? parseInt(studentId, 10) : studentId
     const res = await listStudentEquipmentReservation({ studentId: numericStudentId, pageNum: equipmentReservationPagination.value.currentPage, pageSize: equipmentReservationPagination.value.pageSize })
     equipmentReservations.value = res.records || []
@@ -1274,14 +1274,14 @@ const getAppointmentStatusText = (status: number) => {
   return map[status] || '未知'
 }
 
-// 处理 URL query 参数切换 tab
+// 处理地址栏参数切换标签页
 const handleQueryTab = async () => {
   const tab = route.query.tab as string
   if (tab) {
     activeMenu.value = tab
-    // 等待 DOM 更新后再加载数据
+    // 等待页面更新后再加载数据
     await nextTick()
-    // 根据 tab 加载对应数据
+    // 根据标签页加载对应数据
     if (tab === 'appointments') {
       loadCoachAppointments()
     } else if (tab === 'coach-appointments') {
@@ -1298,18 +1298,18 @@ const handleQueryTab = async () => {
   }
 }
 
-// 监听路由 query 变化
+// 监听路由参数变化
 watch(() => route.query.tab, () => {
   handleQueryTab()
 })
 
 onMounted(async () => {
-  // 确保用户信息已加载，如果没有 associatedUserId 也需要重新获取
+  // 确保用户信息已加载；若无关联用户标识则重新获取
   if (!authStore.user || !authStore.user.associatedUserId) {
     await authStore.initAuth()
   }
 
-  // 直接根据 authStore.user.role 判断
+  // 直接根据当前用户角色判断
   const role = authStore.user?.role
   const isStudentRole = role === 'student' || role === 'user'
   const isCoachRole = role === 'coach'
@@ -1321,11 +1321,11 @@ onMounted(async () => {
     // 加载待处理预约数量
     loadPendingAppointmentCount()
   }
-  
+
   // 加载未读通知数量
   loadNotificationUnreadCount()
-  
-  // 处理 URL query 参数
+
+  // 处理地址栏参数
   handleQueryTab()
 })
 </script>
@@ -1919,7 +1919,7 @@ onMounted(async () => {
   right: 15px;
 }
 
-/* ===== UI Refresh Overrides ===== */
+/* ===== 界面样式覆盖 ===== */
 .profile-container {
   --primary: #f97316;
   --primary-dark: #ea580c;
@@ -2020,7 +2020,7 @@ onMounted(async () => {
   font-weight: 700;
 }
 
-/* ===== Section Refresh V2: Appointments / Favorites / Notifications ===== */
+/* ===== 分区样式增强：预约/收藏/通知 ===== */
 .profile-section {
   position: relative;
 }

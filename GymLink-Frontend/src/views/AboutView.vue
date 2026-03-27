@@ -14,7 +14,7 @@
             <div class="intro-text">
               <h2>我们的故事</h2>
               <p>
-                GymLink 成立于 2020 年，致力于打造一个连接健身爱好者、专业教练和优质健身资源的综合平台。
+                GymLink 成立于 2025 年，致力于打造一个连接健身爱好者、专业教练和优质健身资源的综合平台。
                 我们相信每个人都应该拥有健康的生活方式，而我们的使命就是让健身变得更加便捷、有趣和高效。
               </p>
               <p>
@@ -23,7 +23,7 @@
               </p>
             </div>
             <div class="intro-image">
-              <img src="/logo.png" alt="GymLink Logo" />
+              <img src="/logo.png" alt="GymLink 标志" />
             </div>
           </div>
         </section>
@@ -61,10 +61,10 @@
           <div class="team-grid">
             <div class="team-member">
               <div class="member-avatar">
-                <img src="/coach1.svg" alt="张明 - 创始人" />
+                <img src="/coach1.svg" alt="李德润 - 创始人" />
               </div>
-              <h3>张明</h3>
-              <p class="member-title">创始人 & CEO</p>
+              <h3>李德润</h3>
+              <p class="member-title">创始人兼首席执行官</p>
               <p class="member-desc">10年健身行业经验，前知名连锁健身房高管</p>
             </div>
             <div class="team-member">
@@ -195,10 +195,10 @@ const submitContact = () => {
     ElMessage.warning('请填写完整信息')
     return
   }
-  
+
   // 这里可以添加实际的提交逻辑
   ElMessage.success('消息发送成功！我们会尽快回复您')
-  
+
   // 清空表单
   contactForm.name = ''
   contactForm.email = ''

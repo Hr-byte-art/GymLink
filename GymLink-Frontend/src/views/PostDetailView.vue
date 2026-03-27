@@ -66,7 +66,7 @@
         <!-- 评论区 -->
         <div v-if="post" class="comments-section">
           <h3 class="section-title">评论 ({{ getTotalCommentCount() }})</h3>
-          
+
           <!-- 发表评论 -->
           <div class="comment-input-box">
             <el-avatar :size="40" :src="authStore.user?.avatar" />
@@ -111,7 +111,7 @@
                     </span>
                     <span class="action-btn" @click="showReplyInput(comment)">回复</span>
                   </div>
-                  
+
                   <!-- 回复输入框 -->
                   <div v-if="replyingTo === comment.id" class="reply-input-box">
                     <el-input
@@ -128,7 +128,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <!-- 子评论/回复 -->
               <div v-if="comment.replies && comment.replies.length > 0" class="replies-list">
                 <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
@@ -257,9 +257,9 @@ const handleReaction = async (reaction: number) => {
   const currentPost = post.value
   try {
     const userId = authStore.user?.id
-    // 确保 likeCount 是数字类型
+    // 确保点赞数量为数字类型
     const currentLikeCount = Number(currentPost.likeCount) || 0
-    
+
     if (userReaction.value === reaction) {
       // 取消反应
       await request.post('/experience/cancel', { experienceId: currentPost.id, userId })

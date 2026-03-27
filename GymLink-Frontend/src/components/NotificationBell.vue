@@ -1,7 +1,7 @@
-﻿<template>
+<template>
   <el-popover placement="bottom" :width="360" trigger="click" @show="loadNotifications">
     <template #reference>
-      <button class="notification-bell" type="button" aria-label="notifications">
+      <button class="notification-bell" type="button" aria-label="通知">
         <el-badge v-if="unreadCount > 0" :value="unreadCount" :max="99">
           <el-icon :size="20"><Bell /></el-icon>
         </el-badge>
@@ -52,6 +52,7 @@ import { useRouter } from 'vue-router'
 import { Bell, Calendar } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { getNotificationList, getUnreadCount, markAsRead, markAllAsRead, type Notification } from '@/api/notification'
+import { ElNotification } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -83,11 +84,21 @@ const formatTime = (time: string) => {
   return date.toLocaleDateString('zh-CN')
 }
 
-const loadUnreadCount = async () => {
+const loadUnreadCount = async (isInit = false) => {
   const userId = getAuthUserId()
   if (!authStore.isAuthenticated || userId === null) return
   try {
-    unreadCount.value = await getUnreadCount(userId)
+    const newCount = await getUnreadCount(userId)
+    // 如果不是首次加载且发生了未读数量上升，弹出通知
+    if (!isInit && newCount > unreadCount.value) {
+      ElNotification({
+        title: '新消息通知',
+        message: '您有新的业务消息，请点击右上角小铃铛查看',
+        type: 'info',
+        duration: 5000
+      })
+    }
+    unreadCount.value = newCount
   } catch (e) {
     console.error('获取未读数量失败:', e)
   }
@@ -139,8 +150,10 @@ const goToNotificationCenter = () => {
 }
 
 const startPolling = () => {
-  loadUnreadCount()
-  pollTimer = window.setInterval(loadUnreadCount, 30000)
+  // 首次请求不需要弹窗
+  loadUnreadCount(true)
+  // 将轮询时间调短为 10 秒，避免等待过久导致用户觉得没有通知
+  pollTimer = window.setInterval(() => loadUnreadCount(false), 10000)
 }
 
 const stopPolling = () => {

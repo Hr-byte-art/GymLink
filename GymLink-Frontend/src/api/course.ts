@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { Page } from './types'
 
-// 课程接口类型 - 匹配后端 CourseVo
+// 课程接口类型
 export interface Course {
   id: number
   name: string
@@ -15,7 +15,7 @@ export interface Course {
   createTime: string
 }
 
-// 课程查询参数 - 匹配后端 CourseQueryPageRequest
+// 课程查询参数
 export interface CourseQueryParams {
   current?: number // 当前页
   pageSize?: number // 每页大小
@@ -27,12 +27,12 @@ export interface CourseQueryParams {
   sortOrder?: string
 }
 
-// 获取课程列表 - POST /course/listCourse
+// 获取课程列表
 export const getCourseList = (params: CourseQueryParams = {}) => {
   return request.post('/course/listCourse', params) as Promise<Page<Course>>
 }
 
-// 获取课程详情 - GET /course/getCourseById
+// 获取课程详情
 export const getCourseDetail = (id: number) => {
   return request.get('/course/getCourseById', {
     params: { id }

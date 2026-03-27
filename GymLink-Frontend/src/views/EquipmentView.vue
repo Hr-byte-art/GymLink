@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AppLayout>
     <!-- 页面头部 -->
     <div class="page-header">
@@ -357,7 +357,7 @@ const submitReservation = async () => {
       ElMessage.success('预约成功')
       reservationDialogVisible.value = false
     } catch {
-      // 错误已在 request 拦截器中处理，这里不重复显示
+      // 错误已在请求拦截器中处理，这里不重复提示
     } finally {
       reservationLoading.value = false
     }
@@ -392,21 +392,19 @@ const subCategoryLabelMap: { [key: string]: string } = {
 
 // 加载器材数据
 const loadEquipment = () => {
-  // 构建查询参数，与后端 EquipmentQueryPageRequest 对应
+  // 构建查询参数，与后端器材分页查询模型对应
   const params: Record<string, string | number> = {
     pageNum: currentPage.value,
     pageSize: pageSize.value
   }
 
-  // 添加类别筛选（后端字段type）
+  // 添加类别筛选（对应后端分类字段）
   if (activeCategory.value !== 'all') {
-    // 如果有子分类选中，使用子分类；否则使用主分类
-    const subCategoryLabel = subCategoryLabelMap[activeSubCategory.value]
-    const mainCategoryLabel = mainCategoryLabels[activeCategory.value]
-    if (activeSubCategory.value && subCategoryLabel) {
-      params.type = subCategoryLabel
-    } else if (mainCategoryLabel) {
-      params.type = mainCategoryLabel
+    // 根据后台字段，需要传递编号（如 '1', '1-1'）而不是中文描述
+    if (activeSubCategory.value) {
+      params.type = activeSubCategory.value
+    } else {
+      params.type = activeCategory.value
     }
   }
 
@@ -420,12 +418,12 @@ const loadEquipment = () => {
     params.location = selectedLocation.value
   }
 
-  // 添加名称搜索（后端字段是 name）
+  // 添加名称搜索（对应后端名称字段）
   if (searchKeyword.value) {
     params.name = searchKeyword.value
   }
 
-  // 调用API获取器材数据
+  // 调用接口获取器材数据
   equipmentStore.fetchEquipmentList(params)
 }
 

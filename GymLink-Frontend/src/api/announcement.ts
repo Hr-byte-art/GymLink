@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { Page } from './types'
 
-// 公告接口类型 - 匹配后端 AnnouncementVo
+// 公告接口类型
 export interface Announcement {
     id: number
     title: string
@@ -10,7 +10,7 @@ export interface Announcement {
     createTime: string
 }
 
-// 公告查询参数 - 匹配后端 AnnouncementQueryPageRequest
+// 公告查询参数
 export interface AnnouncementQueryParams {
     current?: number
     pageSize?: number
@@ -20,12 +20,12 @@ export interface AnnouncementQueryParams {
     sortOrder?: string
 }
 
-// 获取公告列表 - POST /announcement/listAnnouncement
+// 获取公告列表
 export function getAnnouncementList(params: AnnouncementQueryParams = {}): Promise<Page<Announcement>> {
     return request.post('/announcement/listAnnouncement', params) as Promise<Page<Announcement>>
 }
 
-// 获取公告详情 - GET /announcement/getAnnouncementById
+// 获取公告详情
 export function getAnnouncementDetail(id: number): Promise<Announcement> {
     return request.get('/announcement/getAnnouncementById', {
         params: { announcementId: id }
@@ -45,17 +45,17 @@ export interface UpdateAnnouncementRequest {
     content?: string
 }
 
-// 添加公告 - POST /announcement/addAnnouncement
+// 新增公告
 export function addAnnouncement(data: AddAnnouncementRequest): Promise<Announcement> {
     return request.post('/announcement/addAnnouncement', data) as Promise<Announcement>
 }
 
-// 更新公告 - POST /announcement/updateAnnouncement
+// 更新公告
 export function updateAnnouncement(data: UpdateAnnouncementRequest): Promise<boolean> {
     return request.post('/announcement/updateAnnouncement', data) as Promise<boolean>
 }
 
-// 删除公告 - GET /announcement/deleteAnnouncement
+// 删除公告
 export function deleteAnnouncement(id: number): Promise<boolean> {
     return request.get('/announcement/deleteAnnouncement', {
         params: { id }
@@ -69,14 +69,14 @@ export interface UnreadAnnouncementResponse {
     missedCount: number
 }
 
-// 获取用户未读公告 - GET /announcement/getUnreadAnnouncement
+// 获取用户未读公告
 export function getUnreadAnnouncement(userId: number): Promise<UnreadAnnouncementResponse | null> {
     return request.get('/announcement/getUnreadAnnouncement', {
         params: { userId }
     }) as Promise<UnreadAnnouncementResponse | null>
 }
 
-// 标记公告为已读 - POST /announcement/markAsRead
+// 标记公告为已读
 export function markAnnouncementAsRead(userId: number, announcementId: number): Promise<boolean> {
     return request.post('/announcement/markAsRead', null, {
         params: { userId, announcementId }

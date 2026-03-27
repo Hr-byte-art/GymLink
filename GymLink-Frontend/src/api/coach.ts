@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { Page } from './types'
 
-// 教练接口类型 - 匹配后端 CoachVo
+// 教练接口类型
 export interface Coach {
   id: number | string // 支持大数字转字符串
   username: string
@@ -16,7 +16,7 @@ export interface Coach {
   price: number // 预约价格
 }
 
-// 教练查询参数 - 匹配后端 CoachQueryPageRequest
+// 教练查询参数
 export interface CoachQueryParams {
   current?: number
   pageSize?: number
@@ -27,19 +27,19 @@ export interface CoachQueryParams {
   sortOrder?: string
 }
 
-// 获取教练列表 - POST /coach/ListCoach
+// 获取教练列表
 export function getCoachList(params: CoachQueryParams = {}): Promise<Page<Coach>> {
   return request.post('/coach/ListCoach', params) as Promise<Page<Coach>>
 }
 
-// 获取教练详情 - GET /coach/getCoachById
+// 获取教练详情
 export function getCoachDetail(id: string | number): Promise<Coach> {
   return request.get('/coach/getCoachById', {
     params: { id: String(id) }
   }) as Promise<Coach>
 }
 
-// 预约教练 - POST /appointment/bookingCoach
+// 提交教练预约
 export interface BookCoachRequest {
   coachId: string | number
   studentId: string | number
@@ -56,7 +56,7 @@ export function bookCoach(data: BookCoachRequest): Promise<boolean> {
   }) as Promise<boolean>
 }
 
-// 取消预约教练 - GET /appointment/cancelCoachAppointment
+// 取消教练预约
 export function cancelCoachBooking(appointmentId: number): Promise<boolean> {
   return request.get('/appointment/cancelCoachAppointment', {
     params: { appointmentId }

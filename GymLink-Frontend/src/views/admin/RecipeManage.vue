@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -7,19 +7,8 @@
             <el-input v-model="searchForm.title" placeholder="请输入标题" clearable />
           </el-form-item>
           <el-form-item label="标签">
-            <el-select
-              v-model="searchForm.tags"
-              placeholder="请选择标签"
-              clearable
-              filterable
-              multiple
-            >
-              <el-option
-                v-for="category in recipeCategories"
-                :key="category.value"
-                :label="category.label"
-                :value="category.value"
-              >
+            <el-select v-model="searchForm.tags" placeholder="请选择标签" clearable filterable multiple>
+              <el-option v-for="category in recipeCategories" :key="category.value" :label="category.label" :value="category.value">
                 <el-tooltip :content="category.description" placement="right">
                   <div style="display: flex; justify-content: space-between; width: 100%">
                     <span>{{ category.label }}</span>
@@ -38,8 +27,8 @@
       <el-card class="table-card">
         <template #header>
           <div class="card-header">
-            <span>菜谱列表</span>
-            <el-button type="primary" @click="handleAdd">添加菜谱</el-button>
+            <span>食谱列表</span>
+            <el-button type="primary" @click="handleAdd">添加食谱</el-button>
           </div>
         </template>
         <el-table :data="tableData" v-loading="loading" stripe>
@@ -88,12 +77,7 @@
         <el-form-item label="封面图片">
           <div class="image-upload-container">
             <div class="image-preview">
-              <el-image
-                v-if="previewImageUrl"
-                :src="previewImageUrl"
-                style="width: 120px; height: 80px"
-                fit="cover"
-              />
+              <el-image v-if="previewImageUrl" :src="previewImageUrl" style="width: 120px; height: 80px" fit="cover" />
               <el-image
                 v-else-if="form.coverImage"
                 :src="form.coverImage + '?t=' + imageTimestamp"
@@ -113,18 +97,13 @@
               <el-button size="small" @click="triggerImageUpload" :loading="imageUploading">
                 {{ form.coverImage || previewImageUrl ? '更换图片' : '上传图片' }}
               </el-button>
-              <div class="upload-tip">支持 jpg、png、webp 格式</div>
+              <div class="upload-tip">支持 jpg、png、webp 格式，大小不超过 5MB</div>
             </div>
           </div>
         </el-form-item>
         <el-form-item label="标签">
           <el-select v-model="form.tags" placeholder="请选择标签" clearable filterable multiple>
-            <el-option
-              v-for="category in recipeCategories"
-              :key="category.value"
-              :label="category.label"
-              :value="category.value"
-            >
+            <el-option v-for="category in recipeCategories" :key="category.value" :label="category.label" :value="category.value">
               <el-tooltip :content="category.description" placement="right">
                 <div style="display: flex; justify-content: space-between; width: 100%">
                   <span>{{ category.label }}</span>
@@ -174,7 +153,6 @@ const imageInputRef = ref<HTMLInputElement>()
 const imageTimestamp = ref(Date.now())
 const previewImageUrl = ref('')
 
-// 使用统一的菜谱标签数据
 const recipeCategories = recipeTagOptions
 
 const searchForm = reactive({ title: '', tags: [] as string[] })
@@ -185,28 +163,28 @@ const form = reactive({
   coverImage: '',
   tags: [] as string[],
   content: '',
-  adminId: 1,
+  adminId: 1
 })
 
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入内容', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
 }
 
-const dialogTitle = ref('添加菜谱')
+const dialogTitle = ref('添加食谱')
 const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
 const loadData = async () => {
   loading.value = true
   try {
-    // 将搜索标签数组转换为逗号分隔的字符串
     const tagsStr = searchForm.tags.length > 0 ? searchForm.tags.join(',') : undefined
-    const res = await request.post('/recipe/listRecipe', {
+    const res = (await request.post('/recipe/listRecipe', {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       title: searchForm.title || undefined,
       tags: tagsStr
-    }) as { records?: RecipeRecord[]; total?: number }
+    })) as { records?: RecipeRecord[]; total?: number }
+
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) {
@@ -220,6 +198,7 @@ const handleSearch = () => {
   pagination.current = 1
   loadData()
 }
+
 const resetSearch = () => {
   Object.assign(searchForm, { title: '', tags: [] })
   handleSearch()
@@ -227,7 +206,7 @@ const resetSearch = () => {
 
 const handleAdd = () => {
   isEdit.value = false
-  dialogTitle.value = '添加菜谱'
+  dialogTitle.value = '添加食谱'
   Object.assign(form, { id: 0, title: '', coverImage: '', tags: [], content: '', adminId: 1 })
   previewImageUrl.value = ''
   imageTimestamp.value = Date.now()
@@ -236,9 +215,8 @@ const handleAdd = () => {
 
 const handleEdit = (row: RecipeRecord) => {
   isEdit.value = true
-  dialogTitle.value = '编辑菜谱'
-  // 将标签字符串转换为数组
-  const tagsArray = row.tags ? row.tags.split(',').filter((t: string) => t.trim()) : []
+  dialogTitle.value = '编辑食谱'
+  const tagsArray = row.tags ? row.tags.split(',').filter((tag: string) => tag.trim()) : []
   Object.assign(form, { ...row, tags: tagsArray })
   previewImageUrl.value = ''
   imageTimestamp.value = Date.now()
@@ -247,42 +225,43 @@ const handleEdit = (row: RecipeRecord) => {
 
 const handleDelete = async (row: RecipeRecord) => {
   try {
-    await ElMessageBox.confirm('确定要删除该菜谱吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确定要删除该食谱吗？', '提示', { type: 'warning' })
     await request.post('/recipe/deleteRecipe', null, { params: { id: row.id } })
     ElMessage.success('删除成功')
     loadData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error(e)
+    }
   }
 }
 
-// 触发文件选择
 const triggerImageUpload = () => {
   imageInputRef.value?.click()
 }
 
-// 处理图片选择 - 选择后立即上传
 const handleImageChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  if (!file) return
+  if (!file) {
+    return
+  }
 
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     ElMessage.error('请选择 jpg、png 或 webp 格式的图片')
     return
   }
+
   if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error('图片大小不能超过5MB')
+    ElMessage.error('图片大小不能超过 5MB')
     return
   }
 
-  // 先显示本地预览
   previewImageUrl.value = URL.createObjectURL(file)
   imageUploading.value = true
 
   try {
-    // 立即上传到通用图片接口
     const formData = new FormData()
     formData.append('image', file)
     formData.append('type', 'recipe')
@@ -291,14 +270,14 @@ const handleImageChange = async (event: Event) => {
       headers: { 'Content-Type': 'multipart/form-data' }
     })) as string
 
-    // 上传成功，保存URL
     form.coverImage = imageUrl
     imageTimestamp.value = Date.now()
-    // 清除本地预览
+
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''
     }
+
     ElMessage.success('图片上传成功')
   } catch (e) {
     console.error('图片上传失败:', e)
@@ -308,16 +287,20 @@ const handleImageChange = async (event: Event) => {
     }
   } finally {
     imageUploading.value = false
-    if (imageInputRef.value) imageInputRef.value.value = ''
+    if (imageInputRef.value) {
+      imageInputRef.value.value = ''
+    }
   }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (!valid) {
+    return
+  }
+
   submitLoading.value = true
   try {
-    // 将标签数组转换为逗号分隔的字符串
     const tagsStr = Array.isArray(form.tags) ? form.tags.join(',') : form.tags
     if (isEdit.value) {
       await request.post(`/recipe/updateRecipe?id=${form.id}`, {
@@ -328,7 +311,6 @@ const handleSubmit = async () => {
       })
       ElMessage.success('更新成功')
     } else {
-      // 新建：图片已经上传好了，直接使用 form.coverImage
       await request.post('/recipe/addRecipe', {
         title: form.title,
         coverImage: form.coverImage,
@@ -433,4 +415,3 @@ onMounted(() => loadData())
   color: #909399;
 }
 </style>
-

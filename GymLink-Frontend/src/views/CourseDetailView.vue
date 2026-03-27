@@ -36,7 +36,7 @@
             <el-tag type="primary">{{ getCourseTypeName(course.type || '') }}</el-tag>
           </div>
           <h1 class="course-title">{{ course.name }}</h1>
-          
+
           <!-- 教练信息 -->
           <div class="coach-info" v-if="course.coachName">
             <el-avatar :size="40" :src="course.coachAvatar || '/avatar-placeholder.svg'" />
@@ -149,7 +149,7 @@
               </div>
             </div>
             <el-empty v-else description="暂无评价" />
-            
+
             <!-- 分页 -->
             <div v-if="reviewTotal > reviewPageSize" class="reviews-pagination">
               <el-pagination
@@ -164,6 +164,15 @@
           </div>
         </el-card>
       </div>
+    </div>
+
+    <div v-else class="error-container">
+      <el-result icon="info" title="课程信息暂时无法显示" sub-title="请刷新页面重试，或返回课程列表重新进入。">
+        <template #extra>
+          <el-button type="primary" @click="loadCourseDetail">重新加载</el-button>
+          <el-button @click="goBack">返回列表</el-button>
+        </template>
+      </el-result>
     </div>
 
     <!-- 教练信息弹窗 -->
@@ -199,11 +208,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
-import request from '@/utils/request'
 import { getCourseTypeName, getCoachSpecialtyName, getGenderName } from '@/constants/categories'
 import { useAuthStore } from '@/stores/auth'
 import { purchaseCourse, getPurchasedCourseIds } from '@/api/student'
 import { getCoachDetail, type Coach } from '@/api/coach'
+import { getCourseDetail } from '@/api/course'
 import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
 import { getReviewList, getCourseReviewStats, type CourseReview, type CourseReviewStats } from '@/api/review'
 
@@ -274,9 +283,10 @@ const goBack = () => {
 
 // 加载课程详情
 const loadCourseDetail = async () => {
-  const id = route.params.id as string
-  if (!id) {
-    error.value = '课程ID不存在'
+  const id = Number(route.params.id)
+  if (!Number.isFinite(id)) {
+    course.value = null
+    error.value = '课程ID无效'
     return
   }
 
@@ -284,11 +294,18 @@ const loadCourseDetail = async () => {
   error.value = null
 
   try {
-    const res = await request.get('/course/getCourseById', { params: { id } })
-    course.value = res?.data as CourseDetail
+    const detail = await getCourseDetail(id)
+    if (!detail) {
+      course.value = null
+      error.value = '课程不存在或已下架'
+      return
+    }
+
+    course.value = detail as unknown as CourseDetail
     // 检查是否已购买
     await checkPurchaseStatus()
   } catch (e: unknown) {
+    course.value = null
     error.value = getErrorMessage(e, '获取课程详情失败')
   } finally {
     loading.value = false
@@ -297,19 +314,19 @@ const loadCourseDetail = async () => {
 
 // 检查课程是否已购买
 const checkPurchaseStatus = async () => {
-  
+
   if (!authStore.isAuthenticated) {
     isPurchased.value = false
     return
   }
-  
+
   // 只有学员角色才检查购买状态
   const role = authStore.user?.role
   if (role !== 'student' && role !== 'user') {
     isPurchased.value = false
     return
   }
-  
+
   const studentId = authStore.user?.associatedUserId
   if (!studentId || !course.value?.id) {
     isPurchased.value = false
@@ -341,7 +358,7 @@ const handlePurchase = async () => {
     return
   }
 
-  // 获取学员ID（使用 associatedUserId）
+  // 获取学员标识（使用关联用户标识）
   const studentId = authStore.user?.associatedUserId
   if (!studentId) {
     ElMessage.error('无法获取学员信息，请重新登录')
@@ -401,7 +418,7 @@ const handleToggleFavorite = async () => {
       targetId: Number(route.params.id),
       type: FavoriteType.COURSE
     })
-    // request.ts 响应拦截器已解包，res 直接就是 boolean
+    // 响应拦截器已解包，可直接作为布尔结果使用
     isFavorite.value = res as unknown as boolean
     ElMessage.success(isFavorite.value ? '已添加到收藏' : '已取消收藏')
   } catch {
@@ -411,6 +428,11 @@ const handleToggleFavorite = async () => {
 
 // 检查收藏状态
 const checkFavoriteStatus = async () => {
+  if (!authStore.isAuthenticated) {
+    isFavorite.value = false
+    return
+  }
+
   try {
     const res = await checkFavorite(Number(route.params.id), FavoriteType.COURSE)
     isFavorite.value = res.data
@@ -487,18 +509,28 @@ onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user?.associatedUserId) {
     await authStore.initAuth()
   }
-  
+
   loadCourseDetail()
   checkFavoriteStatus()
   loadCourseStats()
   loadReviews()
 })
 
-// 监听 associatedUserId 变化，重新检查购买状态
+// 监听关联用户标识变化并重新检查购买状态
 watch(() => authStore.user?.associatedUserId, (newVal) => {
   if (newVal && course.value?.id) {
     checkPurchaseStatus()
   }
+})
+
+watch(() => route.params.id, () => {
+  reviewPage.value = 1
+  course.value = null
+  isFavorite.value = false
+  loadCourseDetail()
+  checkFavoriteStatus()
+  loadCourseStats()
+  loadReviews()
 })
 </script>
 

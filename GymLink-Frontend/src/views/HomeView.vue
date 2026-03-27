@@ -8,8 +8,8 @@
     >
       <template #header>
         <div class="announcement-header">
-          <img src="/announcement.svg" alt="announcement" class="announcement-icon" />
-          <span>System Announcement</span>
+          <img src="/announcement.svg" alt="系统公告" class="announcement-icon" />
+          <span>系统公告</span>
         </div>
       </template>
       <div v-if="currentAnnouncement" class="announcement-content">
@@ -17,23 +17,23 @@
         <div class="announcement-time">{{ formatDate(currentAnnouncement.createTime) }}</div>
         <div class="announcement-text">{{ currentAnnouncement.content }}</div>
         <div v-if="missedCount > 0" class="announcement-missed">
-          You still have {{ missedCount }} unread announcements.
+          你还有 {{ missedCount }} 条未读公告。
         </div>
       </div>
       <template #footer>
-        <el-button type="primary" @click="closeAnnouncement">OK</el-button>
+        <el-button type="primary" @click="closeAnnouncement">知道了</el-button>
       </template>
     </el-dialog>
 
     <main class="main-content">
       <div v-if="homeStore.loading" class="loading-container">
-        <el-loading :loading="true" text="Loading..."></el-loading>
+        <el-loading :loading="true" text="加载中..."></el-loading>
       </div>
 
       <div v-else-if="homeStore.error" class="error-container">
-        <el-result icon="warning" title="Load failed" :sub-title="homeStore.error">
+        <el-result icon="warning" title="加载失败" :sub-title="homeStore.error">
           <template #extra>
-            <el-button type="primary" @click="loadHomeData">Retry</el-button>
+            <el-button type="primary" @click="loadHomeData">重试</el-button>
           </template>
         </el-result>
       </div>
@@ -45,12 +45,12 @@
               <article class="hero-slide" :style="getHeroStyle(item.image)">
                 <div class="hero-overlay"></div>
                 <div class="hero-content">
-                  <span class="hero-kicker">GymLink Member App</span>
+                  <span class="hero-kicker">GymLink 会员平台</span>
                   <h1>{{ item.title }}</h1>
                   <p>{{ item.description }}</p>
                   <div class="hero-actions">
-                    <el-button type="primary" class="hero-btn" @click="navigateToLink(item.link)">Explore</el-button>
-                    <el-button class="hero-btn ghost" @click="router.push('/courses')">Browse Courses</el-button>
+                    <el-button type="primary" class="hero-btn" @click="navigateToLink(item.link)">立即查看</el-button>
+                    <el-button class="hero-btn ghost" @click="router.push('/courses')">浏览课程</el-button>
                   </div>
                 </div>
               </article>
@@ -60,11 +60,11 @@
           <article v-else class="hero-slide fallback" :style="getHeroStyle(undefined)">
             <div class="hero-overlay"></div>
             <div class="hero-content">
-              <span class="hero-kicker">GymLink Member App</span>
-              <h1>Train Smarter, Stay Consistent</h1>
-              <p>Discover courses, coaches, equipment, and nutrition plans in one place.</p>
+              <span class="hero-kicker">GymLink 会员平台</span>
+              <h1>科学训练，持续进步</h1>
+              <p>在一个平台内发现课程、教练、器材与饮食计划。</p>
               <div class="hero-actions">
-                <el-button type="primary" class="hero-btn" @click="router.push('/courses')">Start Now</el-button>
+                <el-button type="primary" class="hero-btn" @click="router.push('/courses')">立即开始</el-button>
               </div>
             </div>
           </article>
@@ -73,8 +73,8 @@
         <section v-if="homeStore.hasFeatures" class="features-section">
           <div class="section-container">
             <div class="section-head">
-              <h2>What You Can Do</h2>
-              <p>Everything a member needs in one place</p>
+              <h2>你可以做什么</h2>
+              <p>会员所需功能一站式覆盖</p>
             </div>
             <div class="features-grid">
               <article class="feature-card" v-for="feature in homeStore.features" :key="feature.id">
@@ -91,8 +91,8 @@
         <section v-if="homeStore.hasCourses" class="courses-section">
           <div class="section-container">
             <div class="section-head">
-              <h2>Popular Courses</h2>
-              <p>Pick one and reserve your next training session</p>
+              <h2>热门课程</h2>
+              <p>选择一门课程，预约下一次训练</p>
             </div>
             <div class="courses-grid">
               <article class="course-card" v-for="course in homeStore.courses" :key="course.id" @click="viewCourseDetail(course.id)">
@@ -101,7 +101,7 @@
                 </div>
                 <div class="course-content">
                   <h3>{{ course.name }}</h3>
-                  <p class="course-instructor">Coach ID: {{ course.coachId }}</p>
+                  <p class="course-instructor">教练编号：{{ course.coachId }}</p>
                   <div class="course-meta">
                     <span>{{ course.duration }} 分钟</span>
                     <span class="course-chip">{{ course.difficulty }}</span>
@@ -115,8 +115,8 @@
         <section v-if="homeStore.hasCoaches" class="coaches-section">
           <div class="section-container">
             <div class="section-head">
-              <h2>Professional Coaches</h2>
-              <p>Work with specialists and improve faster</p>
+              <h2>专业教练</h2>
+              <p>与专业教练一起训练，更快提升</p>
             </div>
             <div class="coaches-grid">
               <article class="coach-card" v-for="coach in homeStore.coaches" :key="coach.id" @click="viewCoachDetail(coach.id)">

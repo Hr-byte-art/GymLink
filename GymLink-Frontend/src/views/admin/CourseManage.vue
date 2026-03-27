@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="manage-container">
       <el-card class="search-card">
@@ -6,21 +6,16 @@
           <el-form-item label="课程名称">
             <el-input v-model="searchForm.name" placeholder="请输入课程名称" clearable />
           </el-form-item>
-          <el-form-item label="难度">
+          <el-form-item label="难度等级">
             <el-select v-model="searchForm.difficulty" placeholder="请选择" clearable>
               <el-option label="初级" value="初级" />
               <el-option label="中级" value="中级" />
               <el-option label="高级" value="高级" />
             </el-select>
           </el-form-item>
-          <el-form-item label="分类">
-            <el-select v-model="searchForm.type" placeholder="请选择分类" clearable>
-              <el-option
-                v-for="item in courseTypes"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              >
+          <el-form-item label="课程分类">
+            <el-select v-model="searchForm.type" placeholder="请选择课程分类" clearable>
+              <el-option v-for="item in courseTypes" :key="item.value" :label="item.label" :value="item.value">
                 <el-tooltip :content="item.description" placement="right" :show-after="300">
                   <span>{{ item.label }}</span>
                 </el-tooltip>
@@ -53,7 +48,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="name" label="课程名称" width="150" />
-          <el-table-column label="教练" width="120">
+          <el-table-column label="教练" width="160">
             <template #default="{ row }">
               {{ row.coachName || `ID: ${row.coachId}` }}
             </template>
@@ -61,8 +56,8 @@
           <el-table-column prop="price" label="价格" width="100">
             <template #default="{ row }">¥{{ row.price }}</template>
           </el-table-column>
-          <el-table-column prop="duration" label="时长(分钟)" width="100" />
-          <el-table-column prop="difficulty" label="难度" width="80" />
+          <el-table-column prop="duration" label="时长(分钟)" width="110" />
+          <el-table-column prop="difficulty" label="难度" width="90" />
           <el-table-column label="分类" width="140">
             <template #default="{ row }">{{ getCourseTypeName(row.type) }}</template>
           </el-table-column>
@@ -113,9 +108,7 @@
             >
               <div class="coach-option">
                 <span class="coach-name">{{ coach.name }}</span>
-                <span class="coach-specialty">{{
-                  getCoachSpecialtyName(coach.specialty || '') || '综合'
-                }}</span>
+                <span class="coach-specialty">{{ getCoachSpecialtyName(coach.specialty || '') || '综合' }}</span>
               </div>
             </el-option>
           </el-select>
@@ -123,12 +116,7 @@
         <el-form-item label="封面图片">
           <div class="image-upload-container">
             <div class="image-preview">
-              <el-image
-                v-if="previewImageUrl"
-                :src="previewImageUrl"
-                style="width: 120px; height: 80px"
-                fit="cover"
-              />
+              <el-image v-if="previewImageUrl" :src="previewImageUrl" style="width: 120px; height: 80px" fit="cover" />
               <el-image
                 v-else-if="form.image"
                 :src="form.image + '?t=' + imageTimestamp"
@@ -148,7 +136,7 @@
               <el-button size="small" @click="triggerImageUpload" :loading="imageUploading">
                 {{ form.image || previewImageUrl ? '更换图片' : '上传图片' }}
               </el-button>
-              <div class="upload-tip">支持 jpg、png、webp 格式</div>
+              <div class="upload-tip">支持 jpg、png、webp 格式，大小不超过 5MB</div>
             </div>
           </div>
         </el-form-item>
@@ -158,21 +146,16 @@
         <el-form-item label="时长(分钟)">
           <el-input-number v-model="form.duration" :min="1" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="难度">
+        <el-form-item label="难度等级">
           <el-select v-model="form.difficulty" placeholder="请选择" style="width: 100%">
             <el-option label="初级" value="初级" />
             <el-option label="中级" value="中级" />
             <el-option label="高级" value="高级" />
           </el-select>
         </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="form.type" placeholder="请选择分类" clearable style="width: 100%">
-            <el-option
-              v-for="item in courseTypes"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            >
+        <el-form-item label="课程分类">
+          <el-select v-model="form.type" placeholder="请选择课程分类" clearable style="width: 100%">
+            <el-option v-for="item in courseTypes" :key="item.value" :label="item.label" :value="item.value">
               <el-tooltip :content="item.description" placement="right" :show-after="300">
                 <span>{{ item.label }}</span>
               </el-tooltip>
@@ -231,7 +214,7 @@ const formRef = ref()
 const imageInputRef = ref<HTMLInputElement>()
 const imageTimestamp = ref(Date.now())
 const coachOptions = ref<CoachOption[]>([])
-const previewImageUrl = ref('') // 上传中的本地预览URL
+const previewImageUrl = ref('')
 
 const courseTypes = courseTypeOptions
 
@@ -246,19 +229,18 @@ const form = reactive({
   duration: 60,
   difficulty: '初级',
   type: '',
-  description: '',
+  description: ''
 })
 
 const rules = {
   name: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
   coachId: [{ required: true, message: '请选择授课教练', trigger: 'change' }],
-  price: [{ required: true, message: '请输入价格', trigger: 'blur' }],
+  price: [{ required: true, message: '请输入价格', trigger: 'blur' }]
 }
 
 const dialogTitle = ref('添加课程')
 const formatDate = (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '')
 
-// 搜索教练
 const searchCoaches = async (query: string) => {
   if (!query) {
     coachOptions.value = []
@@ -266,11 +248,11 @@ const searchCoaches = async (query: string) => {
   }
   coachSearchLoading.value = true
   try {
-    const res = await request.post('/coach/ListCoach', {
+    const res = (await request.post('/coach/ListCoach', {
       pageNum: 1,
       pageSize: 20,
       name: query
-    }) as { records?: CoachOption[] }
+    })) as { records?: CoachOption[] }
     coachOptions.value = res.records || []
   } catch (e) {
     console.error('搜索教练失败:', e)
@@ -280,13 +262,12 @@ const searchCoaches = async (query: string) => {
   }
 }
 
-// 加载所有教练（用于初始化和编辑时显示）
 const loadAllCoaches = async () => {
   try {
-    const res = await request.post('/coach/ListCoach', {
+    const res = (await request.post('/coach/ListCoach', {
       pageNum: 1,
-      pageSize: 20 // 后端限制每页最大20条
-    }) as { records?: CoachOption[] }
+      pageSize: 20
+    })) as { records?: CoachOption[] }
     coachOptions.value = res.records || []
   } catch (e) {
     console.error('加载教练列表失败:', e)
@@ -296,14 +277,14 @@ const loadAllCoaches = async () => {
 const loadData = async (params?: Record<string, unknown>) => {
   loading.value = true
   try {
-    const res = await request.post('/course/listCourse', {
+    const res = (await request.post('/course/listCourse', {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       name: searchForm.name || undefined,
       difficulty: searchForm.difficulty || undefined,
       type: searchForm.type || undefined,
       ...params
-    }) as { records?: CourseRecord[]; total?: number }
+    })) as { records?: CourseRecord[]; total?: number }
     tableData.value = res.records || []
     pagination.total = res.total || 0
   } catch (e) {
@@ -317,6 +298,7 @@ const handleSearch = () => {
   pagination.current = 1
   loadData()
 }
+
 const resetSearch = () => {
   Object.assign(searchForm, { name: '', difficulty: '', type: '' })
   handleSearch()
@@ -346,7 +328,6 @@ const handleAdd = () => {
 const handleEdit = (row: CourseRecord) => {
   isEdit.value = true
   dialogTitle.value = '编辑课程'
-  // 确保所有字段都正确复制
   Object.assign(form, {
     id: row.id,
     name: row.name || '',
@@ -371,40 +352,38 @@ const handleDelete = async (row: CourseRecord) => {
     ElMessage.success('删除成功')
     loadData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+    if (e !== 'cancel') {
+      console.error(e)
+    }
   }
 }
 
-// 触发文件选择
 const triggerImageUpload = () => {
   imageInputRef.value?.click()
 }
 
-// 处理图片选择 - 选择后立即上传
 const handleImageChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  if (!file) return
+  if (!file) {
+    return
+  }
 
-  // 验证文件类型
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
   if (!allowedTypes.includes(file.type)) {
     ElMessage.error('请选择 jpg、png 或 webp 格式的图片')
     return
   }
 
-  // 验证文件大小（最大5MB）
   if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error('图片大小不能超过5MB')
+    ElMessage.error('图片大小不能超过 5MB')
     return
   }
 
-  // 先显示本地预览
   previewImageUrl.value = URL.createObjectURL(file)
   imageUploading.value = true
 
   try {
-    // 立即上传到通用图片接口
     const formData = new FormData()
     formData.append('image', file)
     formData.append('type', 'course')
@@ -413,31 +392,35 @@ const handleImageChange = async (event: Event) => {
       headers: { 'Content-Type': 'multipart/form-data' }
     })) as string
 
-    // 上传成功，保存URL
     form.image = imageUrl
     imageTimestamp.value = Date.now()
-    // 清除本地预览，使用服务器URL
+
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''
     }
+
     ElMessage.success('图片上传成功')
   } catch (e) {
     console.error('图片上传失败:', e)
-    // 上传失败，清除预览
     if (previewImageUrl.value) {
       URL.revokeObjectURL(previewImageUrl.value)
       previewImageUrl.value = ''
     }
   } finally {
     imageUploading.value = false
-    if (imageInputRef.value) imageInputRef.value.value = ''
+    if (imageInputRef.value) {
+      imageInputRef.value.value = ''
+    }
   }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
+  if (!valid) {
+    return
+  }
+
   submitLoading.value = true
   try {
     if (isEdit.value) {
@@ -453,11 +436,10 @@ const handleSubmit = async () => {
       })
       ElMessage.success('更新成功')
     } else {
-      // 新建：图片已经上传好了，直接使用 form.image
       await request.post('/course/addCourse', {
         name: form.name,
         coachId: form.coachId,
-        image: form.image, // 图片 URL 已在选择时上传获得
+        image: form.image,
         price: form.price,
         duration: form.duration,
         difficulty: form.difficulty,
@@ -557,7 +539,6 @@ onMounted(() => loadData())
   color: #909399;
 }
 
-/* 教练选择下拉框样式 */
 .coach-option {
   display: flex;
   justify-content: space-between;
