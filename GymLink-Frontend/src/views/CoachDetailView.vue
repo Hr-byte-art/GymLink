@@ -399,8 +399,8 @@ const loadCoachCourses = async () => {
   coursesLoading.value = true
   try {
     const res = await getCourseList({
-      coachId: Number(coachId.value),
-      current: 1,
+      coachId: coachId.value,
+      pageNum: 1,
       pageSize: 20
     })
     coachCourses.value = res.records || []
