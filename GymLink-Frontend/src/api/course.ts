@@ -17,12 +17,13 @@ export interface Course {
 
 // 课程查询参数
 export interface CourseQueryParams {
+  pageNum?: number // 当前页码
   current?: number // 当前页
   pageSize?: number // 每页大小
   name?: string // 课程名称搜索
   difficulty?: string // 难度等级
   category?: string // 课程分类
-  coachId?: number // 教练ID
+  coachId?: number | string // 教练ID
   sortField?: string
   sortOrder?: string
 }

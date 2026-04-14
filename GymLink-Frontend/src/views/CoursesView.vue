@@ -34,10 +34,11 @@
             <div class="duration-filter">
               <span class="filter-label">时长：</span>
               <el-select v-model="selectedDuration" placeholder="选择时长范围" clearable>
-                <el-option label="30分钟以下" value="0-29"></el-option>
-                <el-option label="30-60分钟" value="30-59"></el-option>
+                <el-option label="60分钟以下" value="0-59"></el-option>
                 <el-option label="60-90分钟" value="60-89"></el-option>
-                <el-option label="90分钟以上" value="90-"></el-option>
+                <el-option label="90-120分钟" value="90-119"></el-option>
+                <el-option label="120-150分钟" value="120-149"></el-option>
+                <el-option label="150分钟及以上" value="150+"></el-option>
               </el-select>
             </div>
 
@@ -241,9 +242,16 @@ const loadCourses = () => {
 
   // 添加时长范围筛选
   if (selectedDuration.value) {
-    const [min, max] = selectedDuration.value.split('-').map(Number)
-    if (min) params.minDuration = min
-    if (max) params.maxDuration = max
+    if (selectedDuration.value.endsWith('+')) {
+      const min = Number(selectedDuration.value.replace('+', ''))
+      if (!Number.isNaN(min)) {
+        params.minDuration = min
+      }
+    } else {
+      const [min, max] = selectedDuration.value.split('-').map(Number)
+      if (!Number.isNaN(min)) params.minDuration = min
+      if (!Number.isNaN(max)) params.maxDuration = max
+    }
   }
 
   // 添加关键词搜索（对应后端名称字段）
