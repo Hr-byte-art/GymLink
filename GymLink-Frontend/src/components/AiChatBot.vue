@@ -159,7 +159,7 @@ const sendMessage = async () => {
       console.error('AI 对话失败:', error)
       const assistantMessage = messages.value[assistantMessageIndex]
       if (assistantMessage && !assistantMessage.content) {
-        assistantMessage.content = '抱歉，我暂时无法回复，请稍后再试 😅'
+        assistantMessage.content = '抱歉，我暂时无法回复，请检查您的登录状态后重试 😅'
       }
       isLoading.value = false
     },
@@ -205,7 +205,7 @@ onUnmounted(() => {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1f3b76 0%, #14393d 100%);
   box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
   cursor: pointer;
   display: flex;
@@ -269,7 +269,7 @@ onUnmounted(() => {
 /* 头部 */
 .chat-header {
   padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #6e88db 0%, #99bf38 100%);
   color: #fff;
   display: flex;
   align-items: center;

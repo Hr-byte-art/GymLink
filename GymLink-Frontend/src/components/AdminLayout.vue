@@ -91,7 +91,6 @@
               <el-avatar :size="36" :src="authStore.user?.avatar || '/avatar-placeholder.svg'" />
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="home">返回首页</el-dropdown-item>
                   <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>

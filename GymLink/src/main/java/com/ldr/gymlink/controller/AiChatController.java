@@ -1,7 +1,6 @@
 package com.ldr.gymlink.controller;
 
 import com.ldr.gymlink.ai.aiService.GymLinkAiService;
-import com.ldr.gymlink.ai.aiService.GymLinkSyncAiService;
 import com.ldr.gymlink.ai.tools.GymLinkTools;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
@@ -61,7 +60,7 @@ public class AiChatController {
 
         Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
 
-        aiService.gymLinkAiAssistant(userId, message)
+        aiService.gymLinkAiAssistantStream(userId, message)
                 .onPartialResponse(partialResponse -> {
                     // 流式输出部分响应
                     log.debug("[Stream] Partial response: {}", truncateResult(partialResponse));
@@ -110,7 +109,7 @@ public class AiChatController {
         try {
             // 使用同步 AI 服务（返回 String，支持 Tools）
             // 注册所有分类工具
-            GymLinkSyncAiService aiService = AiServices.builder(GymLinkSyncAiService.class)
+            GymLinkAiService aiService = AiServices.builder(GymLinkAiService.class)
                     .chatModel(qwenChatModel)
                     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.builder()
                             .id(memoryId)

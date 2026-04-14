@@ -14,5 +14,8 @@ import dev.langchain4j.service.UserMessage;
 public interface GymLinkAiService {
 
     @SystemMessage(fromResource = "prompt/ai-assistant-prompt.md")
-    TokenStream gymLinkAiAssistant(@MemoryId Long memoryId, @UserMessage String userMessage);
+c    TokenStream gymLinkAiAssistantStream(@MemoryId Long memoryId, @UserMessage String userMessage);
+
+    @SystemMessage(fromResource = "prompt/ai-assistant-prompt.md")
+    String gymLinkAiAssistant(@MemoryId Long memoryId, @UserMessage String userMessage);
 }
