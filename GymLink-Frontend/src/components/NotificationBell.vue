@@ -62,11 +62,10 @@ const unreadCount = ref(0)
 const notifications = ref<Notification[]>([])
 let pollTimer: number | null = null
 
-const getAuthUserId = (): number | null => {
+const getAuthUserId = (): string | null => {
   const rawId = authStore.user?.id
   if (rawId === undefined || rawId === null) return null
-  const userId = Number(rawId)
-  return Number.isFinite(userId) ? userId : null
+  return String(rawId)
 }
 
 const formatTime = (time: string) => {

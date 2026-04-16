@@ -52,6 +52,15 @@ public class CourseOrder implements Serializable {
     @TableField(value = "price")
     private BigDecimal price;
 
+    @TableField(value = "delivery_mode")
+    private Integer deliveryMode;
+
+    @TableField(value = "total_sessions")
+    private Integer totalSessions;
+
+    @TableField(value = "remaining_sessions")
+    private Integer remainingSessions;
+
     /**
      * 订单状态 1:已支付 2:已退款 3:退款申请中
      */

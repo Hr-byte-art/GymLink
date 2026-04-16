@@ -181,11 +181,34 @@
                       <span class="meta-item"><img src="/duration.svg" class="meta-icon" />{{ course.duration }}分钟</span>
                       <span class="meta-item"><img src="/star.svg" class="meta-icon" />{{ course.difficulty }}</span>
                     </div>
+                    <div class="course-tags">
+                      <el-tag size="small" type="warning">{{ getDeliveryModeName(course.deliveryMode) }}</el-tag>
+                      <el-tag size="small" type="info">总课次 {{ course.totalSessions || 0 }}</el-tag>
+                      <el-tag size="small" :type="(course.remainingSessions || 0) > 0 ? 'success' : 'info'">
+                        剩余 {{ course.remainingSessions || 0 }} 次
+                      </el-tag>
+                    </div>
                     <div class="course-coach">授课教练：{{ course.coachName || '未知' }}</div>
                     <div class="course-price">购买价格：¥{{ course.price }}</div>
                     <div class="course-time">购买时间：{{ formatDate(course.purchaseTime) }}</div>
                     <div class="course-actions">
                       <el-button type="primary" size="small" @click.stop="viewCourseDetail(course.courseId)">查看详情</el-button>
+                      <el-button
+                        v-if="course.status === 1 && Number(course.deliveryMode) === 1 && (course.remainingSessions || 0) > 0"
+                        type="success"
+                        size="small"
+                        @click.stop="goToCoachBooking(course)"
+                      >
+                        去预约教练
+                      </el-button>
+                      <el-button
+                        v-if="course.status === 1 && Number(course.deliveryMode) === 2 && (course.remainingSessions || 0) > 0"
+                        type="success"
+                        size="small"
+                        @click.stop="goToCourseSchedules(course)"
+                      >
+                        去选择场次
+                      </el-button>
                       <el-button v-if="course.status === 1 && course.canReview" type="success" size="small" @click.stop="openReviewDialog(course)">评价课程</el-button>
                       <el-tag v-else-if="course.status === 1 && !course.canReview" type="info" size="small">已评价</el-tag>
                       <el-button v-if="course.status === 1" type="warning" size="small" @click.stop="handleRefundCourse(course)">申请退款</el-button>
@@ -262,6 +285,50 @@
                   @current-change="handleEquipmentReservationPageChange" class="pagination" />
                 <el-empty v-if="!loading.equipmentReservations && equipmentReservations.length === 0"
                   description="暂无器材预约记录" />
+              </el-tab-pane>
+              <el-tab-pane label="团课约课" name="group-course">
+                <el-table :data="courseBookings" style="width: 100%" v-loading="loading.courseBookings">
+                  <el-table-column prop="courseName" label="课程" min-width="150"></el-table-column>
+                  <el-table-column prop="coachName" label="教练" width="120"></el-table-column>
+                  <el-table-column label="上课时间" min-width="220">
+                    <template #default="scope">
+                      <div>{{ formatDateTime(scope.row.scheduleStartTime) }}</div>
+                      <div class="time-to">至 {{ formatDateTime(scope.row.scheduleEndTime) }}</div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="状态" width="120">
+                    <template #default="scope">
+                      <el-tag :type="getCourseBookingStatusType(scope.row.status)">
+                        {{ getCourseBookingStatusText(scope.row.status) }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="180">
+                    <template #default="scope">
+                      <el-button
+                        v-if="scope.row.status === 1"
+                        size="small"
+                        type="danger"
+                        @click="handleCancelCourseBooking(scope.row.id)"
+                      >
+                        取消
+                      </el-button>
+                      <el-button
+                        size="small"
+                        type="primary"
+                        @click="viewCourseDetail(scope.row.courseId)"
+                      >
+                        查看课程
+                      </el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <el-pagination v-if="courseBookingPagination.total > 0" layout="prev, pager, next"
+                  :total="courseBookingPagination.total" :page-size="courseBookingPagination.pageSize"
+                  :current-page="courseBookingPagination.currentPage"
+                  @current-change="handleCourseBookingPageChange" class="pagination" />
+                <el-empty v-if="!loading.courseBookings && courseBookings.length === 0"
+                  description="暂无团课约课记录" />
               </el-tab-pane>
             </el-tabs>
           </div>
@@ -505,12 +572,26 @@ import { changePassword } from '@/api/user'
 import { getStudentByUserId, updateStudent, uploadStudentAvatar, getPurchasedCourses, refundCourse, studentTopUp, type PurchasedCourse } from '@/api/student'
 import { addCourseReview, canReviewCourse, canReviewAppointmentSilent } from '@/api/review'
 import { getCoachByUserId, updateCoach, uploadCoachAvatar } from '@/api/coach'
-import { listStudentCoachAppointment, listStudentEquipmentReservation, cancelCoachAppointment, cancelEquipmentReservation, listAppointmentsByCoach, confirmCoachAppointment, rejectCoachAppointment, type CoachAppointment, type EquipmentReservation } from '@/api/appointment'
+import {
+  listStudentCoachAppointment,
+  listStudentEquipmentReservation,
+  listStudentCourseBooking,
+  cancelCoachAppointment,
+  cancelEquipmentReservation,
+  cancelCourseBooking,
+  listAppointmentsByCoach,
+  confirmCoachAppointment,
+  rejectCoachAppointment,
+  type CoachAppointment,
+  type EquipmentReservation,
+  type CourseBooking
+} from '@/api/appointment'
 import { getFavoriteList, removeFavorite, FavoriteType, type FavoriteVo } from '@/api/favorite'
 import { getAnnouncementList, type Announcement } from '@/api/announcement'
 import { getNotificationList, getUnreadCount, markAsRead, markAllAsRead, type Notification } from '@/api/notification'
 import { Calendar, Bell } from '@element-plus/icons-vue'
 import AppLayout from '@/components/AppLayout.vue'
+import { getDeliveryModeName } from '@/constants/categories'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -554,9 +635,25 @@ const securityRules = {
   }]
 }
 
-const loading = ref({ userInfo: false, submit: false, password: false, coachAppointments: false, equipmentReservations: false, avatar: false, purchasedCourses: false, review: false, favorites: false, topUp: false, coachAppointmentList: false, announcements: false, notifications: false })
+const loading = ref({
+  userInfo: false,
+  submit: false,
+  password: false,
+  coachAppointments: false,
+  equipmentReservations: false,
+  courseBookings: false,
+  avatar: false,
+  purchasedCourses: false,
+  review: false,
+  favorites: false,
+  topUp: false,
+  coachAppointmentList: false,
+  announcements: false,
+  notifications: false
+})
 const coachAppointments = ref<(CoachAppointment & { canReview?: boolean })[]>([])
 const equipmentReservations = ref<EquipmentReservation[]>([])
+const courseBookings = ref<CourseBooking[]>([])
 
 // 教练预约管理相关
 const coachAppointmentList = ref<CoachAppointment[]>([])
@@ -570,6 +667,7 @@ const favoriteCoaches = ref<FavoriteVo[]>([])
 const favoriteEquipments = ref<FavoriteVo[]>([])
 const favoriteRecipes = ref<FavoriteVo[]>([])
 const equipmentReservationPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
+const courseBookingPagination = ref({ total: 0, pageSize: 10, currentPage: 1 })
 
 // 公告相关
 const announcementList = ref<Announcement[]>([])
@@ -619,10 +717,9 @@ const user = computed(() => authStore.user)
 const displayName = computed(() => userDetailInfo.value?.name || authStore.displayName || user.value?.username || '')
 const isStudent = computed(() => { const role = user.value?.role; return role === 'student' || role === 'user' })
 const isCoach = computed(() => user.value?.role === 'coach')
-const toNumberId = (rawId?: string | number): number | null => {
+const toRequestId = (rawId?: string | number): string | null => {
   if (rawId === undefined || rawId === null) return null
-  const numericId = Number(rawId)
-  return Number.isFinite(numericId) ? numericId : null
+  return String(rawId)
 }
 const getUserRoleText = computed(() => {
   const roleMap: Record<string, string> = { admin: '管理员', coach: '教练', student: '学员', user: '学员' }
@@ -652,9 +749,19 @@ const formatDateTime = (dateString?: string | Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+const loadCurrentAppointmentTabData = () => {
+  if (appointmentTab.value === 'coach') {
+    loadCoachAppointments()
+  } else if (appointmentTab.value === 'equipment') {
+    loadEquipmentReservations()
+  } else if (appointmentTab.value === 'group-course') {
+    loadCourseBookings()
+  }
+}
+
 const handleMenuSelect = (index: string) => {
   activeMenu.value = index
-  if (index === 'appointments') loadCoachAppointments()
+  if (index === 'appointments') loadCurrentAppointmentTabData()
   else if (index === 'courses') loadPurchasedCourses()
   else if (index === 'favorites') loadFavorites(FavoriteType.COURSE)
   else if (index === 'coach-appointments') loadCoachAppointmentList()
@@ -663,8 +770,20 @@ const handleMenuSelect = (index: string) => {
 }
 
 // 查看课程详情
-const viewCourseDetail = (courseId: number) => {
+const viewCourseDetail = (courseId: number | string) => {
   router.push(`/courses/${courseId}`)
+}
+
+const goToCoachBooking = (course: PurchasedCourse) => {
+  if (!course.coachId) {
+    ElMessage.warning('该课程暂无关联教练')
+    return
+  }
+  router.push(`/coaches/${course.coachId}`)
+}
+
+const goToCourseSchedules = (course: PurchasedCourse) => {
+  router.push(`/courses/${course.courseId}`)
 }
 
 // 加载已购课程
@@ -823,7 +942,15 @@ const submitReview = async () => {
     loading.value.review = false
   }
 }
-const handleAppointmentTabChange = (tab: string) => { if (tab === 'coach') loadCoachAppointments(); else if (tab === 'equipment') loadEquipmentReservations() }
+const handleAppointmentTabChange = (tab: string) => {
+  if (tab === 'coach') {
+    loadCoachAppointments()
+  } else if (tab === 'equipment') {
+    loadEquipmentReservations()
+  } else if (tab === 'group-course') {
+    loadCourseBookings()
+  }
+}
 
 // 头像上传
 const handleAvatarChange = async (event: Event) => {
@@ -1030,6 +1157,25 @@ const loadEquipmentReservations = async () => {
   finally { loading.value.equipmentReservations = false }
 }
 
+const loadCourseBookings = async () => {
+  const studentId = studentForm.value.id || user.value?.associatedUserId
+  if (!studentId) return
+  loading.value.courseBookings = true
+  try {
+    const res = await listStudentCourseBooking({
+      studentId,
+      pageNum: courseBookingPagination.value.currentPage,
+      pageSize: courseBookingPagination.value.pageSize
+    })
+    courseBookings.value = res.records || []
+    courseBookingPagination.value.total = res.total || 0
+  } catch (error) {
+    console.error('获取团课约课记录失败:', error)
+  } finally {
+    loading.value.courseBookings = false
+  }
+}
+
 const handleCancelCoachAppointment = async (id: number) => {
   try {
     await ElMessageBox.confirm('确定要取消该预约吗？', '提示', { type: 'warning' })
@@ -1048,13 +1194,28 @@ const handleCancelEquipmentReservation = async (id: number) => {
   } catch (error) { if (error !== 'cancel') console.error('取消预约失败:', error) }
 }
 
+const handleCancelCourseBooking = async (id: number | string) => {
+  try {
+    await ElMessageBox.confirm('确定要取消该团课预约吗？', '提示', { type: 'warning' })
+    await cancelCourseBooking(id)
+    ElMessage.success('团课预约已取消')
+    loadCourseBookings()
+    loadPurchasedCourses()
+  } catch (error) {
+    if (error !== 'cancel') console.error('取消团课预约失败:', error)
+  }
+}
+
 const handleCoachAppointmentPageChange = (page: number) => { coachAppointmentPagination.value.currentPage = page; loadCoachAppointments() }
 const handleEquipmentReservationPageChange = (page: number) => { equipmentReservationPagination.value.currentPage = page; loadEquipmentReservations() }
+const handleCourseBookingPageChange = (page: number) => { courseBookingPagination.value.currentPage = page; loadCourseBookings() }
 
 const getCoachAppointmentStatusType = (status: number) => ({ 0: 'warning', 1: 'success', 2: 'danger', 3: 'info' }[status] || 'info')
 const getCoachAppointmentStatusText = (status: number) => ({ 0: '待确认', 1: '已确认', 2: '已拒绝', 3: '已取消' }[status] || '未知')
 const getEquipmentReservationStatusType = (status: number) => ({ 1: 'success', 2: 'info', 3: 'success' }[status] || 'info')
 const getEquipmentReservationStatusText = (status: number) => ({ 1: '预约成功', 2: '已取消', 3: '已完成' }[status] || '未知')
+const getCourseBookingStatusType = (status: number) => ({ 1: 'success', 2: 'info' }[status] || 'info')
+const getCourseBookingStatusText = (status: number) => ({ 1: '已报名', 2: '已取消' }[status] || '未知')
 
 // 公告相关函数
 const loadAnnouncements = async () => {
@@ -1080,7 +1241,7 @@ const handleAnnouncementPageChange = (page: number) => {
 
 // 消息通知相关函数
 const loadNotifications = async () => {
-  const userId = toNumberId(user.value?.id)
+  const userId = toRequestId(user.value?.id)
   if (userId === null) return
   loading.value.notifications = true
   try {
@@ -1095,7 +1256,7 @@ const loadNotifications = async () => {
 }
 
 const loadNotificationUnreadCount = async () => {
-  const userId = toNumberId(user.value?.id)
+  const userId = toRequestId(user.value?.id)
   if (userId === null) return
   try {
     notificationUnreadCount.value = await getUnreadCount(userId)
@@ -1117,7 +1278,7 @@ const handleNotificationClick = async (item: Notification) => {
 }
 
 const handleMarkAllNotificationsRead = async () => {
-  const userId = toNumberId(user.value?.id)
+  const userId = toRequestId(user.value?.id)
   if (userId === null) return
   try {
     await markAllAsRead(userId)
@@ -1277,13 +1438,17 @@ const getAppointmentStatusText = (status: number) => {
 // 处理地址栏参数切换标签页
 const handleQueryTab = async () => {
   const tab = route.query.tab as string
+  const appointmentQueryTab = route.query.appointmentTab as string | undefined
   if (tab) {
     activeMenu.value = tab
+    if (tab === 'appointments' && appointmentQueryTab && ['coach', 'equipment', 'group-course'].includes(appointmentQueryTab)) {
+      appointmentTab.value = appointmentQueryTab
+    }
     // 等待页面更新后再加载数据
     await nextTick()
     // 根据标签页加载对应数据
     if (tab === 'appointments') {
-      loadCoachAppointments()
+      loadCurrentAppointmentTabData()
     } else if (tab === 'coach-appointments') {
       loadCoachAppointmentList()
     } else if (tab === 'notifications') {
@@ -1301,6 +1466,12 @@ const handleQueryTab = async () => {
 // 监听路由参数变化
 watch(() => route.query.tab, () => {
   handleQueryTab()
+})
+
+watch(() => route.query.appointmentTab, () => {
+  if (route.query.tab === 'appointments') {
+    handleQueryTab()
+  }
 })
 
 onMounted(async () => {
@@ -1574,6 +1745,13 @@ onMounted(async () => {
   font-size: 13px;
   color: #666;
   margin-bottom: 5px;
+}
+
+.purchased-course-card .course-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .purchased-course-card .course-price {

@@ -344,6 +344,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
         Long coachId = courseQueryPageRequest.getCoachId();
         String difficulty = courseQueryPageRequest.getDifficulty();
         String type = courseQueryPageRequest.getType();
+        Integer deliveryMode = courseQueryPageRequest.getDeliveryMode();
         // 模糊查询课程名称
         queryWrapper.like(StringUtils.isNotBlank(name), Course::getName, name);
         // 精确查询教练ID
@@ -362,6 +363,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course>
                 Course::getDuration, courseQueryPageRequest.getMaxDuration());
 
         queryWrapper.eq(courseQueryPageRequest.getType() != null, Course::getType, type );
+        queryWrapper.eq(deliveryMode != null, Course::getDeliveryMode, deliveryMode);
         return queryWrapper;
     }
 

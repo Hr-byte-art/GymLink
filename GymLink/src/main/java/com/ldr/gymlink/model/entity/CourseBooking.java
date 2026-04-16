@@ -4,68 +4,36 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.io.Serializable;
-import java.util.Date;
 import lombok.Data;
 
-/**
- * 教练预约表
- * @TableName coach_appointment
- */
-@TableName(value ="coach_appointment")
+import java.io.Serializable;
+import java.util.Date;
+
 @Data
-public class CoachAppointment implements Serializable {
-    /**
-     * 主键ID
-     */
+@TableName(value = "course_booking")
+public class CourseBooking implements Serializable {
+
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    /**
-     * 学员ID
-     */
     @TableField(value = "student_id")
     private Long studentId;
-
-    /**
-     * 预约的教练ID
-     */
-    @TableField(value = "coach_id")
-    private Long coachId;
-
-    @TableField(value = "order_id")
-    private Long orderId;
 
     @TableField(value = "course_id")
     private Long courseId;
 
-    /**
-     * 预约开始时间
-     */
-    @TableField(value = "appoint_time")
-    private Date appointTime;
+    @TableField(value = "coach_id")
+    private Long coachId;
 
-    /**
-     * 预约结束时间
-     */
-    @TableField(value = "end_time")
-    private Date endTime;
+    @TableField(value = "schedule_id")
+    private Long scheduleId;
 
-    /**
-     * 备注信息
-     */
-    @TableField(value = "message")
-    private String message;
+    @TableField(value = "order_id")
+    private Long orderId;
 
-    /**
-     * 状态 0:待确认 1:已确认 2:已拒绝 3:已取消
-     */
     @TableField(value = "status")
     private Integer status;
 
-    /**
-     * 提交时间
-     */
     @TableField(value = "create_time")
     private Date createTime;
 

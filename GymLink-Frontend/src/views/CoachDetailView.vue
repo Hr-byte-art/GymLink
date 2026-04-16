@@ -70,7 +70,9 @@
             </div>
 
             <div class="coach-actions">
-              <el-button type="primary" size="large" class="book-btn" @click="bookCoach">预约教练</el-button>
+              <el-button type="primary" size="large" class="book-btn" @click="bookCoach">
+                {{ bookingButtonText }}
+              </el-button>
               <el-button size="large" class="contact-btn" @click="contactCoach">联系教练</el-button>
               <el-button size="large" class="favorite-btn" @click="handleToggleFavorite">
                 {{ isFavorite ? '❤️ 已收藏' : '🤍 收藏' }}
@@ -231,13 +233,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
 import { useAuthStore } from '@/stores/auth'
 import { bookCoach as bookCoachApi } from '@/api/coach'
 import { getCoachReviewStats, getReviewList, type CourseReview, type CoachReviewStats } from '@/api/review'
 import { getCourseList, type Course } from '@/api/course'
+import { getPurchasedCourses, type PurchasedCourse } from '@/api/student'
 import { toggleFavorite as toggleFavoriteApi, checkFavorite, FavoriteType } from '@/api/favorite'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -262,9 +265,32 @@ const reviewTotal = ref(0)
 // 课程相关状态
 const coachCourses = ref<Course[]>([])
 const coursesLoading = ref(false)
+const purchasedPrivateCourses = ref<PurchasedCourse[]>([])
 
 // 收藏状态
 const isFavorite = ref(false)
+
+const isStudentUser = computed(() => {
+  const role = authStore.user?.role
+  return role === 'student' || role === 'user'
+})
+
+const availablePrivateCourses = computed(() =>
+  coachCourses.value.filter(course => Number(course.deliveryMode) === 1)
+)
+
+const remainingPrivateSessions = computed(() =>
+  purchasedPrivateCourses.value.reduce((sum, item) => sum + (item.remainingSessions || 0), 0)
+)
+
+const canBookCurrentCoach = computed(() => remainingPrivateSessions.value > 0)
+
+const bookingButtonText = computed(() => {
+  if (!authStore.isAuthenticated || !isStudentUser.value) {
+    return '预约教练'
+  }
+  return canBookCurrentCoach.value ? `预约教练（剩余${remainingPrivateSessions.value}次）` : '先购私教课再预约'
+})
 
 // 预约相关状态
 const bookingDialogVisible = ref(false)
@@ -300,15 +326,55 @@ const coachId = computed(() => {
   return route.params.id as string
 })
 
-
+const redirectToPrivateCourse = () => {
+  const targetCourse = availablePrivateCourses.value[0]
+  if (targetCourse?.id) {
+    router.push(`/courses/${targetCourse.id}`)
+    return true
+  }
+  return false
+}
 
 // 返回教练列表
 const goBack = () => {
   router.push('/coaches')
 }
 
+const loadPurchasedPrivateCourses = async () => {
+  if (!authStore.isAuthenticated || !isStudentUser.value || !coachId.value) {
+    purchasedPrivateCourses.value = []
+    return
+  }
+
+  if (!authStore.user?.associatedUserId) {
+    await authStore.initAuth()
+  }
+
+  const studentId = authStore.user?.associatedUserId
+  if (!studentId) {
+    purchasedPrivateCourses.value = []
+    return
+  }
+
+  try {
+    const res = await getPurchasedCourses({
+      studentId,
+      coachId: coachId.value,
+      status: 1,
+      pageNum: 1,
+      pageSize: 20
+    })
+    purchasedPrivateCourses.value = (res.records || []).filter(
+      item => Number(item.deliveryMode) === 1 && (item.remainingSessions || 0) > 0
+    )
+  } catch (error) {
+    console.error('获取教练可预约资格失败:', error)
+    purchasedPrivateCourses.value = []
+  }
+}
+
 // 打开预约对话框
-const openBookingDialog = () => {
+const openBookingDialog = async () => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录后再预约教练')
     router.push({ name: 'auth', query: { redirect: route.fullPath } })
@@ -317,6 +383,20 @@ const openBookingDialog = () => {
 
   if (authStore.user?.role === 'coach') {
     ElMessage.warning('教练不能预约其他教练')
+    return
+  }
+
+  await loadPurchasedPrivateCourses()
+  if (!canBookCurrentCoach.value) {
+    if (availablePrivateCourses.value.length === 0) {
+      await loadCoachCourses()
+    }
+    const redirected = redirectToPrivateCourse()
+    if (redirected) {
+      ElMessage.warning('请先购买该教练的私教课程，并保证还有剩余课次后再预约')
+    } else {
+      ElMessage.warning('该教练当前暂无可购买的私教课程')
+    }
     return
   }
 
@@ -508,6 +588,21 @@ onMounted(() => {
   loadReviews()
   loadCoachCourses()
   checkFavoriteStatus()
+  loadPurchasedPrivateCourses()
+})
+
+watch(() => authStore.user?.associatedUserId, () => {
+  loadPurchasedPrivateCourses()
+})
+
+watch(() => route.params.id, () => {
+  reviewPage.value = 1
+  loadCoachDetail()
+  loadCoachStats()
+  loadReviews()
+  loadCoachCourses()
+  checkFavoriteStatus()
+  loadPurchasedPrivateCourses()
 })
 </script>
 

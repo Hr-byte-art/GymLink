@@ -22,6 +22,10 @@ public class PurchasedCourseQueryRequest extends PageRequest implements Serializ
      */
     private String courseName;
 
+    private Long courseId;
+
+    private Long coachId;
+
     /**
      * 订单状态 1:已支付 2:已退款
      */

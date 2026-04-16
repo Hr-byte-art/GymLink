@@ -30,6 +30,8 @@ public class UpdateCourseRequest implements Serializable {
      */
     private String type;
 
+    private Integer deliveryMode;
+
     /**
      * 课程封面图
      */
@@ -54,6 +56,8 @@ public class UpdateCourseRequest implements Serializable {
      * 难度等级
      */
     private String difficulty;
+
+    private Integer totalSessions;
 
     @Serial
     @TableField(exist = false)

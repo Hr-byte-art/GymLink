@@ -11,6 +11,9 @@
             <result property="courseId" column="course_id" jdbcType="BIGINT"/>
             <result property="coachId" column="coach_id" jdbcType="BIGINT"/>
             <result property="price" column="price" jdbcType="DECIMAL"/>
+            <result property="deliveryMode" column="delivery_mode" jdbcType="TINYINT"/>
+            <result property="totalSessions" column="total_sessions" jdbcType="INTEGER"/>
+            <result property="remainingSessions" column="remaining_sessions" jdbcType="INTEGER"/>
             <result property="status" column="status" jdbcType="TINYINT"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
     </resultMap>
@@ -18,6 +21,7 @@
     <sql id="Base_Column_List">
         id,order_no,student_id,
         course_id,coach_id,price,
+        delivery_mode,total_sessions,remaining_sessions,
         status,create_time
     </sql>
 </mapper>

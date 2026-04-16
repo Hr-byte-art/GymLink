@@ -76,6 +76,12 @@ public class Course implements Serializable {
     @TableField(value = "type")
     private String type;
 
+    @TableField(value = "delivery_mode")
+    private Integer deliveryMode;
+
+    @TableField(value = "total_sessions")
+    private Integer totalSessions;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

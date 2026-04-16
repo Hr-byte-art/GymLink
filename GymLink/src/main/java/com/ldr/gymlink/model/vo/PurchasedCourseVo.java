@@ -41,6 +41,8 @@ public class PurchasedCourseVo implements Serializable {
      */
     private String courseType;
 
+    private Integer deliveryMode;
+
     /**
      * 课程难度
      */
@@ -65,6 +67,10 @@ public class PurchasedCourseVo implements Serializable {
      * 购买价格
      */
     private BigDecimal price;
+
+    private Integer totalSessions;
+
+    private Integer remainingSessions;
 
     /**
      * 购买时间

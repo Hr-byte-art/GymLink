@@ -101,7 +101,9 @@
                     </div>
                   </div>
                   <div class="coach-footer">
-                    <el-button type="primary" class="book-btn" @click.stop="bookCoach(coach)">预约教练</el-button>
+                    <el-button type="primary" class="book-btn" @click.stop="bookCoach(coach)">
+                      {{ getBookButtonText(coach) }}
+                    </el-button>
                   </div>
                 </div>
               </div>
@@ -149,12 +151,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, reactive } from 'vue'
+import { ref, onMounted, watch, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCoachStore } from '@/stores/coach'
 import { useAuthStore } from '@/stores/auth'
 import { bookCoach as bookCoachApi } from '@/api/coach'
 import type { Coach, CoachQueryParams } from '@/api/coach'
+import { getPurchasedCourses } from '@/api/student'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import AppLayout from '@/components/AppLayout.vue'
@@ -164,6 +167,7 @@ import { coachSpecialtyOptions, getCoachSpecialtyName, getGenderName } from '@/c
 const router = useRouter()
 const coachStore = useCoachStore()
 const authStore = useAuthStore()
+const coachBookingPermissionMap = ref<Record<string, boolean>>({})
 
 // 预约相关状态
 const bookingDialogVisible = ref(false)
@@ -175,6 +179,11 @@ const bookingForm = reactive({
   appointTime: null as Date | null,
   duration: 60, // 默认1小时
   message: ''
+})
+
+const isStudentUser = computed(() => {
+  const role = authStore.user?.role
+  return role === 'student' || role === 'user'
 })
 
 // 时长选项（分钟）
@@ -256,8 +265,61 @@ const viewCoachDetail = (id: string | number) => {
   router.push(`/coaches/${id}`)
 }
 
+const fetchCoachBookingPermission = async (coachId: string | number) => {
+  if (!authStore.isAuthenticated || !isStudentUser.value) {
+    return false
+  }
+
+  if (!authStore.user?.associatedUserId) {
+    await authStore.initAuth()
+  }
+
+  const studentId = authStore.user?.associatedUserId
+  if (!studentId) {
+    return false
+  }
+
+  try {
+    const res = await getPurchasedCourses({
+      studentId,
+      coachId,
+      status: 1,
+      pageNum: 1,
+      pageSize: 20
+    })
+    return (res.records || []).some(
+      item => Number(item.deliveryMode) === 1 && (item.remainingSessions || 0) > 0
+    )
+  } catch (error) {
+    console.error('获取教练预约资格失败:', error)
+    return false
+  }
+}
+
+const loadCoachBookingPermission = async () => {
+  if (!authStore.isAuthenticated || !isStudentUser.value || coachStore.coaches.length === 0) {
+    coachBookingPermissionMap.value = {}
+    return
+  }
+
+  const entries = await Promise.all(
+    coachStore.coaches.map(async coach => {
+      const canBook = await fetchCoachBookingPermission(coach.id)
+      return [String(coach.id), canBook] as const
+    })
+  )
+  coachBookingPermissionMap.value = Object.fromEntries(entries)
+}
+
+const getBookButtonText = (coach: Coach) => {
+  if (!authStore.isAuthenticated || !isStudentUser.value) {
+    return '预约教练'
+  }
+  return coachBookingPermissionMap.value[String(coach.id)] ? '预约教练' : '先购课再预约'
+}
+
 // 预约教练
-const bookCoach = (coach: Coach) => {
+const bookCoach = async (coach: Coach) => {
   if (!authStore.isAuthenticated) {
     ElMessage.warning('请先登录后再预约教练')
     router.push({ name: 'auth', query: { redirect: '/coaches' } })
@@ -266,6 +328,17 @@ const bookCoach = (coach: Coach) => {
 
   if (authStore.user?.role === 'coach') {
     ElMessage.warning('教练不能预约其他教练')
+    return
+  }
+
+  const canBook = await fetchCoachBookingPermission(coach.id)
+  coachBookingPermissionMap.value = {
+    ...coachBookingPermissionMap.value,
+    [String(coach.id)]: canBook
+  }
+  if (isStudentUser.value && !canBook) {
+    ElMessage.warning('请先购买该教练的私教课程，并保证还有剩余课次后再预约')
+    router.push(`/coaches/${coach.id}`)
     return
   }
 
@@ -317,7 +390,7 @@ const submitBooking = async () => {
 }
 
 // 加载教练数据
-const loadCoaches = () => {
+const loadCoaches = async () => {
   // 构建查询参数，与后端教练分页查询模型对应
   const params: Record<string, string | number> = {
     pageNum: currentPage.value,
@@ -348,7 +421,8 @@ const loadCoaches = () => {
   }
 
   // 调用接口获取教练数据
-  coachStore.fetchCoaches(params as unknown as CoachQueryParams)
+  await coachStore.fetchCoaches(params as unknown as CoachQueryParams)
+  await loadCoachBookingPermission()
 }
 
 // 加载教练专长
@@ -391,6 +465,10 @@ const resetFilters = () => {
 // 监听页码变化，重新加载数据
 watch(currentPage, () => {
   loadCoaches()
+})
+
+watch(() => authStore.user?.associatedUserId, () => {
+  loadCoachBookingPermission()
 })
 
 // 组件挂载时加载数据

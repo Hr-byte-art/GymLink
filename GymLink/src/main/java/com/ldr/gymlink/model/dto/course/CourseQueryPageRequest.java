@@ -57,6 +57,11 @@ public class CourseQueryPageRequest extends PageRequest implements Serializable 
      */
     private String type;
 
+    /**
+     * 授课形式：1-私教课 2-团体课
+     */
+    private Integer deliveryMode;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

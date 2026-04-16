@@ -7,20 +7,31 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.ldr.gymlink.exception.BusinessException;
 import com.ldr.gymlink.exception.ErrorCode;
 import com.ldr.gymlink.manager.CosManager;
+import com.ldr.gymlink.mapper.CoachMapper;
 import com.ldr.gymlink.mapper.StudentMapper;
 import com.ldr.gymlink.model.dto.student.AddStudentRequest;
+import com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest;
 import com.ldr.gymlink.model.dto.student.StudentQueryPageRequest;
 import com.ldr.gymlink.model.dto.student.UpdateStudentRequest;
-import com.ldr.gymlink.model.entity.*;
+import com.ldr.gymlink.model.entity.Coach;
+import com.ldr.gymlink.model.entity.Course;
+import com.ldr.gymlink.model.entity.CourseOrder;
+import com.ldr.gymlink.model.entity.RechargeRecord;
+import com.ldr.gymlink.model.entity.Student;
+import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.enums.UserRoleEnum;
+import com.ldr.gymlink.model.vo.PurchasedCourseVo;
 import com.ldr.gymlink.model.vo.StudentVo;
-import com.ldr.gymlink.service.*;
+import com.ldr.gymlink.service.CourseOrderService;
+import com.ldr.gymlink.service.CourseService;
+import com.ldr.gymlink.service.RechargeRecordService;
+import com.ldr.gymlink.service.StudentService;
+import com.ldr.gymlink.service.UserService;
 import com.ldr.gymlink.utils.ThrowUtils;
 import com.luciad.imageio.webp.WebPWriteParam;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,16 +49,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
-
-/**
- * @author 木子宸
- * @description 针对表【student(学员/用户信息表)】的数据库操作Service实现
- * @createDate 2025-11-29 20:39:16
- */
 @Service
 @Slf4j
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
+
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
 
     @Resource
     private UserService userService;
@@ -64,18 +75,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Resource
     private CosManager cosManager;
 
-    /**
-     * 最大文件大小（5MB）
-     */
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-    /**
-     * 允许的图片格式
-     */
-    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
-            "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
     @Resource
-    private com.ldr.gymlink.mapper.CoachMapper coachMapper;
+    private CoachMapper coachMapper;
 
     @Resource
     private com.ldr.gymlink.mq.producer.RefundMessageProducer refundMessageProducer;
@@ -83,17 +84,15 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Resource
     private com.ldr.gymlink.mq.producer.CourseOrderMessageProducer courseOrderMessageProducer;
 
-
     @Override
     public StudentVo getStudentByUserId(Long userId) {
-        ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户id不能为空");
+        ThrowUtils.throwIf(userId == null, ErrorCode.PARAMS_ERROR, "用户ID不能为空");
         User user = userService.getById(userId);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
-        String role = user.getRole();
+
         StudentVo studentVo = new StudentVo();
-        if (UserRoleEnum.STUDENT.getValue().equals(role)) {
-            LambdaQueryWrapper<Student> queryWrapper = new LambdaQueryWrapper<Student>().eq(Student::getId, user.getAssociatedUserId());
-            Student student = this.getOne(queryWrapper);
+        if (UserRoleEnum.STUDENT.getValue().equals(user.getRole())) {
+            Student student = this.getById(user.getAssociatedUserId());
             ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员信息不存在");
             BeanUtils.copyProperties(student, studentVo);
         }
@@ -103,13 +102,13 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public StudentVo addStudent(AddStudentRequest addStudentRequest) {
-        String password = addStudentRequest.getPassword();
-        String string = userService.encryptPassword(password);
-        addStudentRequest.setPassword(string);
+        String encryptedPassword = userService.encryptPassword(addStudentRequest.getPassword());
+        addStudentRequest.setPassword(encryptedPassword);
+
         Student student = new Student();
         BeanUtils.copyProperties(addStudentRequest, student);
         student.setCreateTime(new Date());
-        boolean save = this.save(student);
+        boolean saveStudent = this.save(student);
 
         User user = new User();
         user.setUsername(addStudentRequest.getUsername());
@@ -119,11 +118,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setIsDelete(0);
         user.setRole(UserRoleEnum.STUDENT.getValue());
         user.setAssociatedUserId(student.getId());
+        boolean saveUser = userService.save(user);
 
-        boolean save1 = userService.save(user);
-        if (!save || !save1) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "添加失败，请稍后重试");
-        }
+        ThrowUtils.throwIf(!saveStudent || !saveUser, ErrorCode.SYSTEM_ERROR, "新增学员失败");
+
         StudentVo studentVo = new StudentVo();
         BeanUtils.copyProperties(student, studentVo);
         return studentVo;
@@ -131,9 +129,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
 
     @Override
     public Page<StudentVo> listStudentPage(StudentQueryPageRequest studentQueryPageRequest) {
-        ThrowUtils.throwIf(studentQueryPageRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+        ThrowUtils.throwIf(studentQueryPageRequest == null, ErrorCode.PARAMS_ERROR, "请求参数不能为空");
         int pageSize = studentQueryPageRequest.getPageSize();
-        ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 个应用");
+        ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 条数据");
+
         int pageNum = studentQueryPageRequest.getPageNum();
         LambdaQueryWrapper<Student> queryWrapper = userService.getQueryWrapper(studentQueryPageRequest);
         Page<Student> page = this.page(Page.of(pageNum, pageSize), queryWrapper);
@@ -151,33 +150,31 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteStudent(Long id) {
-        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
         Student student = this.getById(id);
         ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
 
-        // 级联删除：删除关联的 User 记录
-        LambdaQueryWrapper<User> userQueryWrapper = new LambdaQueryWrapper<User>().eq(User::getAssociatedUserId, id).eq(User::getRole, UserRoleEnum.STUDENT.getValue());
+        LambdaQueryWrapper<User> userQueryWrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getAssociatedUserId, id)
+                .eq(User::getRole, UserRoleEnum.STUDENT.getValue());
         userService.remove(userQueryWrapper);
-
-        // 删除学员记录
         return this.removeById(id);
     }
 
     @Override
     public boolean updateStudent(Long id, UpdateStudentRequest updateStudentRequest) {
         Student student = this.getById(id);
-        if (student == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
-        }
+        ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
         BeanUtils.copyProperties(updateStudentRequest, student);
         return this.updateById(student);
     }
 
     @Override
     public StudentVo getStudentById(Long id) {
-        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
         Student student = this.getById(id);
         ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
+
         StudentVo studentVo = new StudentVo();
         BeanUtils.copyProperties(student, studentVo);
         return studentVo;
@@ -186,69 +183,62 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean studentTopUp(Long id, BigDecimal money) {
-        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
+        ThrowUtils.throwIf(id == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
         ThrowUtils.throwIf(money == null, ErrorCode.PARAMS_ERROR, "充值金额不能为空");
+
         Student student = this.getById(id);
         ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
+
         student.setBalance(student.getBalance().add(money));
-        boolean b = this.updateById(student);
-        if (!b) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "充值失败，请稍后重试");
-        }
+        ThrowUtils.throwIf(!this.updateById(student), ErrorCode.SYSTEM_ERROR, "充值失败");
+
         RechargeRecord rechargeRecord = new RechargeRecord();
         rechargeRecord.setStudentId(id);
         rechargeRecord.setAmount(money);
         rechargeRecord.setCreateTime(new Date());
-        boolean save = rechargeRecordService.save(rechargeRecord);
-        if (!save) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "充值记录保存失败，请稍后重试");
-        }
+        ThrowUtils.throwIf(!rechargeRecordService.save(rechargeRecord), ErrorCode.SYSTEM_ERROR, "充值记录保存失败");
         return true;
     }
 
     @Override
     public boolean studentsPurchaseCourses(Long studentId, Long courseId) {
-        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员id不能为空");
-        ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程id不能为空");
+        ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
+        ThrowUtils.throwIf(courseId == null, ErrorCode.PARAMS_ERROR, "课程ID不能为空");
+
         Student student = this.getById(studentId);
         ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
         Course course = courseService.getById(courseId);
         ThrowUtils.throwIf(course == null, ErrorCode.NOT_FOUND_ERROR, "课程不存在");
-        
-        // 检查是否已购买该课程（防止重复购买）
-        LambdaQueryWrapper<CourseOrder> existQuery = new LambdaQueryWrapper<>();
-        existQuery.eq(CourseOrder::getStudentId, studentId)
-                  .eq(CourseOrder::getCourseId, courseId)
-                  .eq(CourseOrder::getStatus, 1); // 已支付状态
-        long existCount = courseOrderService.count(existQuery);
-        if (existCount > 0) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您已购买过该课程，无需重复购买");
-        }
-        
-        // 检查余额是否足够
+
+        LambdaQueryWrapper<CourseOrder> existQuery = new LambdaQueryWrapper<CourseOrder>()
+                .eq(CourseOrder::getStudentId, studentId)
+                .eq(CourseOrder::getCourseId, courseId)
+                .eq(CourseOrder::getStatus, 1)
+                .gt(CourseOrder::getRemainingSessions, 0);
+        ThrowUtils.throwIf(courseOrderService.count(existQuery) > 0,
+                ErrorCode.OPERATION_ERROR, "您已购买过该课程，无需重复购买");
+
         BigDecimal balance = student.getBalance();
-        if (balance.compareTo(course.getPrice()) < 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "余额不足");
-        }
+        ThrowUtils.throwIf(balance.compareTo(course.getPrice()) < 0, ErrorCode.PARAMS_ERROR, "余额不足");
+
         student.setBalance(balance.subtract(course.getPrice()));
-        boolean b = this.updateById(student);
-        if (!b) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "购买课程失败，请稍后重试");
-        }
+        ThrowUtils.throwIf(!this.updateById(student), ErrorCode.SYSTEM_ERROR, "购买课程失败");
+
+        Integer totalSessions = course.getTotalSessions() == null || course.getTotalSessions() <= 0
+                ? 1 : course.getTotalSessions();
         CourseOrder courseOrder = new CourseOrder();
         courseOrder.setOrderNo(generateOrderNo(studentId));
         courseOrder.setStudentId(studentId);
         courseOrder.setCourseId(courseId);
         courseOrder.setCoachId(course.getCoachId());
         courseOrder.setPrice(course.getPrice());
+        courseOrder.setDeliveryMode(course.getDeliveryMode());
+        courseOrder.setTotalSessions(totalSessions);
+        courseOrder.setRemainingSessions(totalSessions);
         courseOrder.setStatus(1);
         courseOrder.setCreateTime(new Date());
-        boolean save = courseOrderService.save(courseOrder);
-        if (!save) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "课程订单保存失败，请稍后重试");
-        }
+        ThrowUtils.throwIf(!courseOrderService.save(courseOrder), ErrorCode.SYSTEM_ERROR, "课程订单保存失败");
 
-        // 发送MQ消息通知教练
         try {
             Long coachUserId = getUserIdByCoachId(course.getCoachId());
             com.ldr.gymlink.mq.message.CourseOrderMessage message = com.ldr.gymlink.mq.message.CourseOrderMessage.builder()
@@ -272,94 +262,59 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
 
     @Override
     public String updateStudentAvatar(Long studentId, MultipartFile file) {
-
         validateImageFile(file);
         File compressedImage = null;
         try {
-            String uploadFilePath = "avatar/student/" + StrUtil.format("{}/{}.{}", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")), studentId, "webp");
-
+            String uploadFilePath = "avatar/student/" + StrUtil.format("{}/{}.{}",
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd")),
+                    studentId,
+                    "webp");
             compressedImage = compressImage(file);
-
             String result = cosManager.uploadFile(uploadFilePath, compressedImage);
 
-            // 9. 更新数据库中的头像URL
             Student student = this.getById(studentId);
-            if (student == null) {
-                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
-            }
+            ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
             student.setAvatar(result);
-            boolean update = this.updateById(student);
-            if (!update) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新用户头像失败");
-            }
+            ThrowUtils.throwIf(!this.updateById(student), ErrorCode.SYSTEM_ERROR, "更新学员头像失败");
             return result;
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
-            // 10. 清理临时文件，确保即使上传失败也能删除
-            compressedImage.delete();
+            if (compressedImage != null && compressedImage.exists()) {
+                compressedImage.delete();
+            }
         }
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> getPurchasedCourses(com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest request) {
-        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+    public Page<PurchasedCourseVo> getPurchasedCourses(PurchasedCourseQueryRequest request) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR, "请求参数不能为空");
         ThrowUtils.throwIf(request.getStudentId() == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
 
         int pageNum = request.getPageNum();
         int pageSize = request.getPageSize();
-        ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询20条");
+        ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 条数据");
 
-        // 查询订单
-        LambdaQueryWrapper<CourseOrder> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(CourseOrder::getStudentId, request.getStudentId());
+        LambdaQueryWrapper<CourseOrder> queryWrapper = new LambdaQueryWrapper<CourseOrder>()
+                .eq(CourseOrder::getStudentId, request.getStudentId());
+        if (request.getCourseId() != null) {
+            queryWrapper.eq(CourseOrder::getCourseId, request.getCourseId());
+        }
+        if (request.getCoachId() != null) {
+            queryWrapper.eq(CourseOrder::getCoachId, request.getCoachId());
+        }
         if (request.getStatus() != null) {
             queryWrapper.eq(CourseOrder::getStatus, request.getStatus());
         }
         queryWrapper.orderByDesc(CourseOrder::getCreateTime);
 
         Page<CourseOrder> orderPage = courseOrderService.page(Page.of(pageNum, pageSize), queryWrapper);
-
-        // 转换为VO
-        Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> voPage = new Page<>(pageNum, pageSize);
+        Page<PurchasedCourseVo> voPage = new Page<>(pageNum, pageSize);
         voPage.setTotal(orderPage.getTotal());
-
-        List<com.ldr.gymlink.model.vo.PurchasedCourseVo> voList = orderPage.getRecords().stream().map(order -> {
-            com.ldr.gymlink.model.vo.PurchasedCourseVo vo = new com.ldr.gymlink.model.vo.PurchasedCourseVo();
-            vo.setOrderId(order.getId());
-            vo.setOrderNo(order.getOrderNo());
-            vo.setCourseId(order.getCourseId());
-            vo.setCoachId(order.getCoachId());
-            vo.setPrice(order.getPrice());
-            vo.setPurchaseTime(order.getCreateTime());
-            vo.setStatus(order.getStatus());
-
-            // 获取课程信息
-            Course course = courseService.getById(order.getCourseId());
-            if (course != null) {
-                vo.setCourseName(course.getName());
-                vo.setCourseImage(course.getImage());
-                vo.setCourseType(course.getType());
-                vo.setDifficulty(course.getDifficulty());
-                vo.setDuration(course.getDuration());
-
-                // 课程名称模糊搜索
-                if (StrUtil.isNotBlank(request.getCourseName()) &&
-                    !course.getName().contains(request.getCourseName())) {
-                    return null;
-                }
-            }
-
-            // 获取教练姓名
-            if (order.getCoachId() != null) {
-                // 这里简化处理，实际可以批量查询
-                vo.setCoachName("教练");
-            }
-
-            return vo;
-        }).filter(java.util.Objects::nonNull).toList();
-
-        voPage.setRecords(voList);
+        voPage.setRecords(orderPage.getRecords().stream()
+                .map(order -> buildPurchasedCourseVo(order, request))
+                .filter(Objects::nonNull)
+                .toList());
         return voPage;
     }
 
@@ -367,10 +322,11 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public List<Long> getPurchasedCourseIds(Long studentId) {
         ThrowUtils.throwIf(studentId == null, ErrorCode.PARAMS_ERROR, "学员ID不能为空");
 
-        LambdaQueryWrapper<CourseOrder> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(CourseOrder::getStudentId, studentId)
-                    .eq(CourseOrder::getStatus, 1) // 只查询已支付的
-                    .select(CourseOrder::getCourseId);
+        LambdaQueryWrapper<CourseOrder> queryWrapper = new LambdaQueryWrapper<CourseOrder>()
+                .eq(CourseOrder::getStudentId, studentId)
+                .eq(CourseOrder::getStatus, 1)
+                .gt(CourseOrder::getRemainingSessions, 0)
+                .select(CourseOrder::getCourseId);
 
         return courseOrderService.list(queryWrapper).stream()
                 .map(CourseOrder::getCourseId)
@@ -378,143 +334,21 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 .toList();
     }
 
-    // 计算订单号 bound
-    private String generateOrderNo(Long studentId) {
-        return "ORDER_" + studentId + "_" + System.currentTimeMillis();
-    }
-
-    /**
-     * 校验图片文件
-     */
-    private void validateImageFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
-        }
-
-        // 检查文件大小
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过5MB");
-        }
-
-        // 检查文件类型
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "只支持 JPG、PNG、WEBP、GIF 格式的图片");
-        }
-    }
-
-    /**
-     * 获取文件扩展名
-     */
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return ".jpg";
-        }
-        return filename.substring(filename.lastIndexOf("."));
-    }
-
-    /**
-     * 压缩图片
-     */
-    private File compressImage(MultipartFile multipartFile) throws IOException {
-        float quality = 0.5f;
-        File oldFile = null;
-        File newFile = null;
-
-        try {
-            // 1. 创建临时文件并写入上传的内容
-            oldFile = File.createTempFile("old-", getFileExtension(multipartFile.getOriginalFilename()));
-            multipartFile.transferTo(oldFile);
-
-            // 2. 创建压缩后的文件（WebP 格式）
-            newFile = File.createTempFile("compressed-", ".webp");
-
-            // 3. 转换为 WebP 格式并压缩
-            convertImage2Webp(oldFile, newFile, quality);
-
-            return newFile;
-
-        } catch (Exception e) {
-            // 清理失败的临时文件
-            if (newFile != null && newFile.exists()) {
-                newFile.delete();
-            }
-            throw new IOException("图片压缩失败", e);
-        } finally {
-            // 4. 清理原始临时文件
-            if (oldFile != null && oldFile.exists()) {
-                oldFile.delete();
-            }
-        }
-    }
-
-    /**
-     * 将图片转换为 WebP 格式
-     */
-    private void convertImage2Webp(File oldFile, File newFile, float quality) throws IOException {
-        ImageWriter writer = null;
-        FileImageOutputStream output = null;
-
-        try {
-            // 1. 读取原始图片
-            BufferedImage image = ImageIO.read(oldFile);
-            if (image == null) {
-                throw new IOException("无法读取图片文件，可能格式不支持");
-            }
-
-            // 2. 创建 WebP ImageWriter 实例
-            writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
-
-            // 3. 配置编码参数
-            WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
-            writeParam.setCompressionMode(WebPWriteParam.MODE_EXPLICIT);
-            // "Lossy"-有损,"Lossless"-无损
-            writeParam.setCompressionType(writeParam.getCompressionTypes()[0]);
-            writeParam.setCompressionQuality(quality);
-
-            // 4. 配置 ImageWriter 输出
-            output = new FileImageOutputStream(newFile);
-            writer.setOutput(output);
-
-            // 5. 进行编码，生成 WebP 图片
-            writer.write(null, new IIOImage(image, null, null), writeParam);
-
-            log.info("图片压缩成功，原始大小: {} KB, 压缩后大小: {} KB",
-                    oldFile.length() / 1024, newFile.length() / 1024);
-
-        } catch (IOException e) {
-            log.error("图片转换为 WebP 失败", e);
-            throw e;  // 抛出异常，让调用方知道失败了
-        } finally {
-            // 6. 释放资源
-            if (output != null) {
-                try {
-                    output.close();
-                } catch (IOException e) {
-                    log.error("关闭输出流失败", e);
-                }
-            }
-            if (writer != null) {
-                writer.dispose();
-            }
-        }
-    }
-
     @Override
     public boolean refundCourse(Long orderId) {
         ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
 
-        // 查询订单
         CourseOrder order = courseOrderService.getById(orderId);
         ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
-        ThrowUtils.throwIf(order.getStatus() != 1, ErrorCode.OPERATION_ERROR, "该订单已退款或不可申请退款");
+        ThrowUtils.throwIf(order.getStatus() != 1, ErrorCode.OPERATION_ERROR, "该订单当前不可申请退款");
+        ThrowUtils.throwIf(order.getTotalSessions() != null
+                        && order.getRemainingSessions() != null
+                        && !order.getTotalSessions().equals(order.getRemainingSessions()),
+                ErrorCode.OPERATION_ERROR, "课程已使用，暂不支持整单退款");
 
-        // 更新订单状态为退款申请中
         order.setStatus(3);
-        boolean updateOrder = courseOrderService.updateById(order);
-        ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "申请退款失败");
+        ThrowUtils.throwIf(!courseOrderService.updateById(order), ErrorCode.SYSTEM_ERROR, "申请退款失败");
 
-        // 发送MQ消息通知管理员
         try {
             Student student = this.getById(order.getStudentId());
             Course course = courseService.getById(order.getCourseId());
@@ -539,27 +373,20 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public boolean approveRefund(Long orderId) {
         ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
 
-        // 查询订单
         CourseOrder order = courseOrderService.getById(orderId);
         ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
-        ThrowUtils.throwIf(order.getStatus() != 3, ErrorCode.OPERATION_ERROR, "该订单不是退款申请状态");
+        ThrowUtils.throwIf(order.getStatus() != 3, ErrorCode.OPERATION_ERROR, "该订单当前不可审批退款");
 
-        // 获取学员信息
         Student student = this.getById(order.getStudentId());
         ThrowUtils.throwIf(student == null, ErrorCode.NOT_FOUND_ERROR, "学员不存在");
 
-        // 退款金额返还到学员余额
         BigDecimal refundAmount = order.getPrice();
         student.setBalance(student.getBalance().add(refundAmount));
-        boolean updateStudent = this.updateById(student);
-        ThrowUtils.throwIf(!updateStudent, ErrorCode.SYSTEM_ERROR, "退款失败，更新学员余额失败");
+        ThrowUtils.throwIf(!this.updateById(student), ErrorCode.SYSTEM_ERROR, "退款失败，更新学员余额失败");
 
-        // 更新订单状态为已退款
         order.setStatus(2);
-        boolean updateOrder = courseOrderService.updateById(order);
-        ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "退款失败，更新订单状态失败");
+        ThrowUtils.throwIf(!courseOrderService.updateById(order), ErrorCode.SYSTEM_ERROR, "退款失败，更新订单状态失败");
 
-        // 发送MQ消息通知学员
         try {
             Course course = courseService.getById(order.getCourseId());
             Long studentUserId = getUserIdByStudentId(order.getStudentId());
@@ -584,17 +411,13 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public boolean rejectRefund(Long orderId) {
         ThrowUtils.throwIf(orderId == null, ErrorCode.PARAMS_ERROR, "订单ID不能为空");
 
-        // 查询订单
         CourseOrder order = courseOrderService.getById(orderId);
         ThrowUtils.throwIf(order == null, ErrorCode.NOT_FOUND_ERROR, "订单不存在");
-        ThrowUtils.throwIf(order.getStatus() != 3, ErrorCode.OPERATION_ERROR, "该订单不是退款申请状态");
+        ThrowUtils.throwIf(order.getStatus() != 3, ErrorCode.OPERATION_ERROR, "该订单当前不可拒绝退款");
 
-        // 拒绝退款，恢复为已支付状态
         order.setStatus(1);
-        boolean updateOrder = courseOrderService.updateById(order);
-        ThrowUtils.throwIf(!updateOrder, ErrorCode.SYSTEM_ERROR, "操作失败");
+        ThrowUtils.throwIf(!courseOrderService.updateById(order), ErrorCode.SYSTEM_ERROR, "操作失败");
 
-        // 发送MQ消息通知学员
         try {
             Student student = this.getById(order.getStudentId());
             Course course = courseService.getById(order.getCourseId());
@@ -617,91 +440,183 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     }
 
     @Override
-    public Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> getRefundOrders(com.ldr.gymlink.model.dto.student.PurchasedCourseQueryRequest request) {
+    public Page<PurchasedCourseVo> getRefundOrders(PurchasedCourseQueryRequest request) {
         int pageNum = request.getPageNum();
         int pageSize = request.getPageSize();
 
-        // 查询订单（管理员查看所有订单，不限制studentId）
         LambdaQueryWrapper<CourseOrder> queryWrapper = new LambdaQueryWrapper<>();
+        if (request.getStudentId() != null) {
+            queryWrapper.eq(CourseOrder::getStudentId, request.getStudentId());
+        }
+        if (request.getCourseId() != null) {
+            queryWrapper.eq(CourseOrder::getCourseId, request.getCourseId());
+        }
+        if (request.getCoachId() != null) {
+            queryWrapper.eq(CourseOrder::getCoachId, request.getCoachId());
+        }
         if (request.getStatus() != null) {
             queryWrapper.eq(CourseOrder::getStatus, request.getStatus());
         }
         queryWrapper.orderByDesc(CourseOrder::getCreateTime);
 
         Page<CourseOrder> orderPage = courseOrderService.page(Page.of(pageNum, pageSize), queryWrapper);
-
-        // 转换为VO
-        Page<com.ldr.gymlink.model.vo.PurchasedCourseVo> voPage = new Page<>(pageNum, pageSize);
+        Page<PurchasedCourseVo> voPage = new Page<>(pageNum, pageSize);
         voPage.setTotal(orderPage.getTotal());
+        voPage.setRecords(orderPage.getRecords().stream()
+                .map(order -> buildRefundOrderVo(order, request))
+                .filter(Objects::nonNull)
+                .toList());
+        return voPage;
+    }
 
-        List<com.ldr.gymlink.model.vo.PurchasedCourseVo> voList = orderPage.getRecords().stream().map(order -> {
-            com.ldr.gymlink.model.vo.PurchasedCourseVo vo = new com.ldr.gymlink.model.vo.PurchasedCourseVo();
-            vo.setOrderId(order.getId());
-            vo.setOrderNo(order.getOrderNo());
-            vo.setCourseId(order.getCourseId());
-            vo.setCoachId(order.getCoachId());
-            vo.setPrice(order.getPrice());
-            vo.setPurchaseTime(order.getCreateTime());
-            vo.setStatus(order.getStatus());
+    private PurchasedCourseVo buildPurchasedCourseVo(CourseOrder order, PurchasedCourseQueryRequest request) {
+        PurchasedCourseVo vo = new PurchasedCourseVo();
+        vo.setOrderId(order.getId());
+        vo.setOrderNo(order.getOrderNo());
+        vo.setCourseId(order.getCourseId());
+        vo.setCoachId(order.getCoachId());
+        vo.setPrice(order.getPrice());
+        vo.setDeliveryMode(order.getDeliveryMode());
+        vo.setTotalSessions(order.getTotalSessions());
+        vo.setRemainingSessions(order.getRemainingSessions());
+        vo.setPurchaseTime(order.getCreateTime());
+        vo.setStatus(order.getStatus());
 
-            // 获取课程信息
-            Course course = courseService.getById(order.getCourseId());
-            if (course != null) {
-                vo.setCourseName(course.getName());
-                vo.setCourseImage(course.getImage());
-                vo.setCourseType(course.getType());
-                vo.setDifficulty(course.getDifficulty());
-                vo.setDuration(course.getDuration());
-
-                // 课程名称模糊搜索
-                if (StrUtil.isNotBlank(request.getCourseName()) &&
-                    !course.getName().contains(request.getCourseName())) {
-                    return null;
-                }
+        Course course = courseService.getById(order.getCourseId());
+        if (course != null) {
+            if (StrUtil.isNotBlank(request.getCourseName()) && !course.getName().contains(request.getCourseName())) {
+                return null;
             }
+            vo.setCourseName(course.getName());
+            vo.setCourseImage(course.getImage());
+            vo.setCourseType(course.getType());
+            vo.setDifficulty(course.getDifficulty());
+            vo.setDuration(course.getDuration());
+        }
 
-            // 获取教练姓名
+        if (order.getCoachId() != null) {
             Coach coach = coachMapper.selectById(order.getCoachId());
             if (coach != null) {
                 vo.setCoachName(coach.getName());
             }
-
-            // 获取学员姓名
-            Student student = this.getById(order.getStudentId());
-            if (student != null) {
-                vo.setStudentName(student.getName());
-            }
-
-            return vo;
-        }).filter(java.util.Objects::nonNull).toList();
-
-        voPage.setRecords(voList);
-        return voPage;
+        }
+        return vo;
     }
 
-    /**
-     * 通过学员ID获取用户ID
-     */
+    private PurchasedCourseVo buildRefundOrderVo(CourseOrder order, PurchasedCourseQueryRequest request) {
+        PurchasedCourseVo vo = buildPurchasedCourseVo(order, request);
+        if (vo == null) {
+            return null;
+        }
+        Student student = this.getById(order.getStudentId());
+        if (student != null) {
+            vo.setStudentName(student.getName());
+        }
+        return vo;
+    }
+
+    private String generateOrderNo(Long studentId) {
+        return "ORDER_" + studentId + "_" + System.currentTimeMillis();
+    }
+
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过5MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "仅支持 JPG、PNG、WEBP、GIF 格式的图片");
+        }
+    }
+
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return ".jpg";
+        }
+        return filename.substring(filename.lastIndexOf('.'));
+    }
+
+    private File compressImage(MultipartFile multipartFile) throws IOException {
+        float quality = 0.5f;
+        File oldFile = null;
+        File newFile = null;
+        try {
+            oldFile = File.createTempFile("old-", getFileExtension(multipartFile.getOriginalFilename()));
+            multipartFile.transferTo(oldFile);
+
+            newFile = File.createTempFile("compressed-", ".webp");
+            convertImage2Webp(oldFile, newFile, quality);
+            return newFile;
+        } catch (Exception e) {
+            if (newFile != null && newFile.exists()) {
+                newFile.delete();
+            }
+            throw new IOException("图片压缩失败", e);
+        } finally {
+            if (oldFile != null && oldFile.exists()) {
+                oldFile.delete();
+            }
+        }
+    }
+
+    private void convertImage2Webp(File oldFile, File newFile, float quality) throws IOException {
+        ImageWriter writer = null;
+        FileImageOutputStream output = null;
+        try {
+            BufferedImage image = ImageIO.read(oldFile);
+            if (image == null) {
+                throw new IOException("无法读取图片文件");
+            }
+
+            writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+            WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
+            writeParam.setCompressionMode(WebPWriteParam.MODE_EXPLICIT);
+            writeParam.setCompressionType(writeParam.getCompressionTypes()[0]);
+            writeParam.setCompressionQuality(quality);
+
+            output = new FileImageOutputStream(newFile);
+            writer.setOutput(output);
+            writer.write(null, new IIOImage(image, null, null), writeParam);
+
+            log.info("图片压缩成功，原始大小 {} KB，压缩后大小 {} KB",
+                    oldFile.length() / 1024, newFile.length() / 1024);
+        } catch (IOException e) {
+            log.error("图片转换为 WebP 失败", e);
+            throw e;
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (IOException e) {
+                    log.error("关闭输出流失败", e);
+                }
+            }
+            if (writer != null) {
+                writer.dispose();
+            }
+        }
+    }
+
     private Long getUserIdByStudentId(Long studentId) {
         if (studentId == null) {
             return null;
         }
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getAssociatedUserId, studentId)
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getAssociatedUserId, studentId)
                 .eq(User::getRole, UserRoleEnum.STUDENT.getValue());
         User user = userService.getOne(queryWrapper);
         return user != null ? user.getId() : null;
     }
 
-    /**
-     * 通过教练ID获取用户ID
-     */
     private Long getUserIdByCoachId(Long coachId) {
         if (coachId == null) {
             return null;
         }
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(User::getAssociatedUserId, coachId)
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getAssociatedUserId, coachId)
                 .eq(User::getRole, UserRoleEnum.COACH.getValue());
         User user = userService.getOne(queryWrapper);
         return user != null ? user.getId() : null;

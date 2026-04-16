@@ -39,6 +39,8 @@ public class CourseVo implements Serializable {
      */
     private String type;
 
+    private Integer deliveryMode;
+
     /**
      * 课程封面图
      */
@@ -63,6 +65,8 @@ public class CourseVo implements Serializable {
      * 难度等级
      */
     private String difficulty;
+
+    private Integer totalSessions;
 
     /**
      * 创建时间
