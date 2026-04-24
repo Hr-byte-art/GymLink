@@ -12,14 +12,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
 /**
- * @Author 王哈哈
- * @Date 2025/12/14 22:52:04
- * @Description AI对话控制（集成 Tools 工具调用）
+ * AI 对话控制器
  */
 @RestController
 @RequestMapping("/ai")
@@ -40,14 +42,14 @@ public class AiChatController {
     private GymLinkTools gymLinkTools;
 
     /**
-     * 流式对话接口 (SSE) - 支持 Tools 工具调用
+     * 流式对话接口 (SSE)
      */
-    @Operation(summary = "流式对话（SSE）", description = "流式返回AI响应，支持工具调用")
+    @Operation(summary = "流式对话（SSE）", description = "流式返回 AI 响应，支持工具调用")
     @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chatStream(@RequestParam Long userId, @RequestParam String message) {
         log.info("流式AI对话请求: userId={}, message={}", userId, message);
+        String aiMessage = buildAiMessage(userId, message);
 
-        // 构建支持 Tools 的流式 AI 服务
         GymLinkAiService aiService = AiServices.builder(GymLinkAiService.class)
                 .streamingChatModel(qwenStreamingChatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.builder()
@@ -60,22 +62,16 @@ public class AiChatController {
 
         Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
 
-        aiService.gymLinkAiAssistantStream(userId, message)
+        aiService.gymLinkAiAssistantStream(userId, aiMessage)
                 .onPartialResponse(partialResponse -> {
-                    // 流式输出部分响应
                     log.debug("[Stream] Partial response: {}", truncateResult(partialResponse));
                     sink.tryEmitNext(partialResponse);
                 })
-                .onRetrieved(contents -> {
-                    // RAG 检索回调（如果有）
-                    log.info("[Stream] Retrieved {} contents", contents != null ? contents.size() : 0);
-                })
-                .onToolExecuted(toolExecution -> {
-                    // 工具执行完成后的回调
-                    log.info("[Stream] Tool executed: name={}, result={}",
-                            toolExecution.request().name(),
-                            truncateResult(toolExecution.result()));
-                })
+                .onRetrieved(contents -> log.info("[Stream] Retrieved {} contents",
+                        contents != null ? contents.size() : 0))
+                .onToolExecuted(toolExecution -> log.info("[Stream] Tool executed: name={}, result={}",
+                        toolExecution.request().name(),
+                        truncateResult(toolExecution.result())))
                 .onCompleteResponse(response -> {
                     log.info("[Stream] Complete response: userId={}, content length={}",
                             userId,
@@ -92,23 +88,21 @@ public class AiChatController {
                     sink.tryEmitError(error);
                 })
                 .start();
-        
-        log.info("[Stream] TokenStream started for userId={}", userId);
 
+        log.info("[Stream] TokenStream started for userId={}", userId);
         return sink.asFlux();
     }
 
     /**
-     * 同步对话接口（支持 Tools 工具调用）
+     * 同步对话接口
      */
-    @Operation(summary = "同步对话（支持工具调用）", description = "同步返回AI响应，支持调用系统工具查询课程、教练、器材、食谱等信息")
+    @Operation(summary = "同步对话", description = "同步返回 AI 响应，支持工具调用")
     @PostMapping("/chat")
     public String chat(@RequestParam Long userId, @RequestParam String message) {
         log.info("AI对话请求: userId={}, message={}", userId, message);
+        String aiMessage = buildAiMessage(userId, message);
 
         try {
-            // 使用同步 AI 服务（返回 String，支持 Tools）
-            // 注册所有分类工具
             GymLinkAiService aiService = AiServices.builder(GymLinkAiService.class)
                     .chatModel(qwenChatModel)
                     .chatMemoryProvider(memoryId -> MessageWindowChatMemory.builder()
@@ -119,11 +113,27 @@ public class AiChatController {
                     .tools(gymLinkTools.getAllTools())
                     .build();
 
-            return aiService.gymLinkAiAssistant(userId, message);
+            return aiService.gymLinkAiAssistant(userId, aiMessage);
         } catch (Exception e) {
             log.error("AI对话异常", e);
             return "抱歉，我暂时无法回复，请稍后再试。";
         }
+    }
+
+    /**
+     * 统一注入当前会话 userId，约束模型只能围绕当前用户做画像和推荐
+     */
+    private String buildAiMessage(Long userId, String message) {
+        return """
+                当前登录用户ID：%d
+                使用规则：
+                1. 如果需要调用当前用户画像或个性化推荐相关工具，必须使用这个 userId。
+                2. 只能查询当前用户自己的数据，不能查询、假设或拼凑其他用户的信息。
+                3. 当用户询问推荐课程、训练计划、饮食建议等个性化问题时，应优先结合当前用户画像工具结果来回答。
+
+                用户原始消息：
+                %s
+                """.formatted(userId, message);
     }
 
     /**

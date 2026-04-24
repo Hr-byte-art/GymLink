@@ -10,11 +10,11 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 课程相关AI工具
- * @author 木子宸
+ * 课程相关 AI 工具
  */
 @Component
 @Slf4j
@@ -23,10 +23,10 @@ public class CourseTools {
     @Resource
     private CourseService courseService;
 
-    @Tool("根据课程类型和难度搜索健身课程。类型使用数字编码：1=私教课程,2=团体训练,3=功能性训练,4=力量训练,5=瑜伽,6=普拉提,7=康复训练,8=专项运动,9=孕产修复,10=老年青少年体适能,11=线上课程")
+    @Tool("根据课程类型和难度搜索健身课程。课程类型编码：1=私教课程，2=团体训练课程，3=功能性训练课程，4=力量训练课程，5=瑜伽课程，6=普拉提课程，7=康复/矫正训练课程，8=专项运动表现课程，9=孕产/产后修复课程，10=老年/青少年体适能课程，11=线上课程。")
     public String searchCourses(
-            @P("课程类型编码，如：5表示瑜伽课程，4表示力量训练课程。不填则搜索所有类型") String type,
-            @P("难度等级，可选值：初级、中级、高级。不填则搜索所有难度") String difficulty) {
+            @P("课程类型编码，可为空") String type,
+            @P("难度等级，可选 beginner、intermediate、advanced，也可为空") String difficulty) {
         log.info("AI工具调用: searchCourses, type={}, difficulty={}", type, difficulty);
 
         CourseQueryPageRequest request = new CourseQueryPageRequest();
@@ -35,23 +35,20 @@ public class CourseTools {
         request.setType(type);
         request.setDifficulty(difficulty);
 
-        Page<CourseVo> page = courseService.listCoursePage(request);
-        List<CourseVo> courses = page.getRecords();
-
+        List<CourseVo> courses = courseService.listCoursePage(request).getRecords();
         if (courses.isEmpty()) {
             return "没有找到符合条件的课程。";
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("找到以下课程：\n");
+        StringBuilder sb = new StringBuilder("找到以下课程：\n");
         for (CourseVo course : courses) {
-            sb.append(String.format("- 【%s】%s，难度：%s，价格：%.2f元，时长：%d分钟，教练：%s\n",
+            sb.append(String.format("- [%s] %s，难度：%s，价格：%s，时长：%s 分钟，教练：%s%n",
                     getTypeName(course.getType()),
-                    course.getName(),
-                    course.getDifficulty() != null ? course.getDifficulty() : "未知",
-                    course.getPrice() != null ? course.getPrice() : java.math.BigDecimal.ZERO,
-                    course.getDuration() != null ? course.getDuration() : 0,
-                    course.getCoachName() != null ? course.getCoachName() : "待定"));
+                    defaultText(course.getName(), "未命名课程"),
+                    getDifficultyName(course.getDifficulty()),
+                    formatPrice(course.getPrice()),
+                    course.getDuration() == null ? "未知" : course.getDuration(),
+                    defaultText(course.getCoachName(), "待定")));
         }
         return sb.toString();
     }
@@ -65,26 +62,23 @@ public class CourseTools {
         request.setPageSize(5);
         request.setName(keyword);
 
-        Page<CourseVo> page = courseService.listCoursePage(request);
-        List<CourseVo> courses = page.getRecords();
-
+        List<CourseVo> courses = courseService.listCoursePage(request).getRecords();
         if (courses.isEmpty()) {
-            return "没有找到包含「" + keyword + "」的课程。";
+            return "没有找到包含“" + keyword + "”的课程。";
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("找到以下课程：\n");
+        StringBuilder sb = new StringBuilder("找到以下课程：\n");
         for (CourseVo course : courses) {
-            sb.append(String.format("- 【%s】%s，难度：%s，价格：%.2f元\n",
+            sb.append(String.format("- [%s] %s，难度：%s，价格：%s%n",
                     getTypeName(course.getType()),
-                    course.getName(),
-                    course.getDifficulty() != null ? course.getDifficulty() : "未知",
-                    course.getPrice() != null ? course.getPrice() : java.math.BigDecimal.ZERO));
+                    defaultText(course.getName(), "未命名课程"),
+                    getDifficultyName(course.getDifficulty()),
+                    formatPrice(course.getPrice())));
         }
         return sb.toString();
     }
 
-    @Tool("获取课程的详细信息，包括课程描述、教练信息等")
+    @Tool("获取课程详情，包括课程描述、难度、价格、教练等信息")
     public String getCourseDetail(@P("课程名称") String courseName) {
         log.info("AI工具调用: getCourseDetail, courseName={}", courseName);
 
@@ -93,11 +87,9 @@ public class CourseTools {
         request.setPageSize(10);
         request.setName(courseName);
 
-        Page<CourseVo> page = courseService.listCoursePage(request);
-        List<CourseVo> courses = page.getRecords();
-
+        List<CourseVo> courses = courseService.listCoursePage(request).getRecords();
         if (courses.isEmpty()) {
-            return "没有找到名为「" + courseName + "」的课程。";
+            return "没有找到名为“" + courseName + "”的课程。";
         }
 
         CourseVo course = courses.get(0);
@@ -106,21 +98,21 @@ public class CourseTools {
                 - 名称：%s
                 - 类型：%s
                 - 难度：%s
-                - 价格：%.2f元
-                - 时长：%d分钟
+                - 价格：%s
+                - 时长：%s 分钟
                 - 教练：%s
                 - 描述：%s
                 """,
-                course.getName(),
+                defaultText(course.getName(), "未命名课程"),
                 getTypeName(course.getType()),
-                course.getDifficulty() != null ? course.getDifficulty() : "未知",
-                course.getPrice() != null ? course.getPrice() : java.math.BigDecimal.ZERO,
-                course.getDuration() != null ? course.getDuration() : 0,
-                course.getCoachName() != null ? course.getCoachName() : "待定",
-                course.getDescription() != null ? course.getDescription() : "暂无描述");
+                getDifficultyName(course.getDifficulty()),
+                formatPrice(course.getPrice()),
+                course.getDuration() == null ? "未知" : course.getDuration(),
+                defaultText(course.getCoachName(), "待定"),
+                defaultText(course.getDescription(), "暂无描述"));
     }
 
-    @Tool("获取热门课程推荐，按购买人数排序")
+    @Tool("获取热门课程推荐")
     public String getPopularCourses() {
         log.info("AI工具调用: getPopularCourses");
 
@@ -130,39 +122,59 @@ public class CourseTools {
 
         Page<CourseVo> page = courseService.listCoursePage(request);
         List<CourseVo> courses = page.getRecords();
-
         if (courses.isEmpty()) {
             return "暂无课程数据。";
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("热门课程推荐：\n");
+        StringBuilder sb = new StringBuilder("热门课程推荐：\n");
         for (CourseVo course : courses) {
-            sb.append(String.format("- 【%s】%s，难度：%s，价格：%.2f元，教练：%s\n",
+            sb.append(String.format("- [%s] %s，难度：%s，价格：%s，教练：%s%n",
                     getTypeName(course.getType()),
-                    course.getName(),
-                    course.getDifficulty() != null ? course.getDifficulty() : "未知",
-                    course.getPrice() != null ? course.getPrice() : java.math.BigDecimal.ZERO,
-                    course.getCoachName() != null ? course.getCoachName() : "待定"));
+                    defaultText(course.getName(), "未命名课程"),
+                    getDifficultyName(course.getDifficulty()),
+                    formatPrice(course.getPrice()),
+                    defaultText(course.getCoachName(), "待定")));
         }
         return sb.toString();
     }
 
     private String getTypeName(String type) {
-        if (type == null) return "其他";
+        if (type == null) {
+            return "其他";
+        }
         return switch (type) {
             case "1" -> "私教课程";
-            case "2" -> "团体训练";
-            case "3" -> "功能性训练";
-            case "4" -> "力量训练";
-            case "5" -> "瑜伽";
-            case "6" -> "普拉提";
-            case "7" -> "康复训练";
-            case "8" -> "专项运动";
-            case "9" -> "孕产修复";
-            case "10" -> "老年青少年体适能";
+            case "2" -> "团体训练课程";
+            case "3" -> "功能性训练课程";
+            case "4" -> "力量训练课程";
+            case "5" -> "瑜伽课程";
+            case "6" -> "普拉提课程";
+            case "7" -> "康复/矫正训练课程";
+            case "8" -> "专项运动表现课程";
+            case "9" -> "孕产/产后修复课程";
+            case "10" -> "老年/青少年体适能课程";
             case "11" -> "线上课程";
             default -> type;
         };
+    }
+
+    private String getDifficultyName(String difficulty) {
+        if (difficulty == null || difficulty.isBlank()) {
+            return "未设置";
+        }
+        return switch (difficulty.toLowerCase()) {
+            case "beginner" -> "初级";
+            case "intermediate" -> "中级";
+            case "advanced" -> "高级";
+            default -> difficulty;
+        };
+    }
+
+    private String formatPrice(BigDecimal price) {
+        return price == null ? "未设置" : price.stripTrailingZeros().toPlainString() + " 元";
+    }
+
+    private String defaultText(String value, String defaultValue) {
+        return value == null || value.isBlank() ? defaultValue : value;
     }
 }

@@ -33,6 +33,9 @@ public class GymLinkTools {
     @Resource
     private FitnessAdvisorTools fitnessAdvisorTools;
 
+    @Resource
+    private UserProfileTools userProfileTools;
+
     /**
      * 获取所有工具对象列表，用于注册到AI服务
      */
@@ -42,7 +45,8 @@ public class GymLinkTools {
                 coachTools,
                 equipmentTools,
                 recipeTools,
-                fitnessAdvisorTools
+                fitnessAdvisorTools,
+                userProfileTools
         );
     }
 }
