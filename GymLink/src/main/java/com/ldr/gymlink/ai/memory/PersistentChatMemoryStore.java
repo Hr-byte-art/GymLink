@@ -27,6 +27,7 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
 
     @Resource
     private QwenTokenCountEstimator qwenTokenCountEstimator;
+    
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {
         String messageHistory = chatMemoryService.getMessagesByMemoryId(memoryId);

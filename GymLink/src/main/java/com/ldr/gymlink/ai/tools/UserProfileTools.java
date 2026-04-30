@@ -7,19 +7,15 @@ import com.ldr.gymlink.model.entity.CoachAppointment;
 import com.ldr.gymlink.model.entity.Course;
 import com.ldr.gymlink.model.entity.CourseBooking;
 import com.ldr.gymlink.model.entity.CourseOrder;
-import com.ldr.gymlink.model.entity.EquipmentReservation;
 import com.ldr.gymlink.model.entity.Student;
 import com.ldr.gymlink.model.entity.User;
 import com.ldr.gymlink.model.enums.UserRoleEnum;
-import com.ldr.gymlink.model.vo.CoachVo;
-import com.ldr.gymlink.model.vo.StudentVo;
 import com.ldr.gymlink.service.AdminService;
 import com.ldr.gymlink.service.CoachAppointmentService;
 import com.ldr.gymlink.service.CoachService;
 import com.ldr.gymlink.service.CourseBookingService;
 import com.ldr.gymlink.service.CourseOrderService;
 import com.ldr.gymlink.service.CourseService;
-import com.ldr.gymlink.service.EquipmentReservationService;
 import com.ldr.gymlink.service.StudentService;
 import com.ldr.gymlink.service.UserService;
 import dev.langchain4j.agent.tool.P;
@@ -33,11 +29,9 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,7 +46,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserProfileTools {
 
-    private static final int DEFAULT_TOP_N = 5;
+    private static final int DEFAULT_TOP_N = 3;
     private static final SimpleDateFormat DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.0");
 
@@ -80,21 +74,26 @@ public class UserProfileTools {
     @Resource
     private CoachAppointmentService coachAppointmentService;
 
-    @Resource
-    private EquipmentReservationService equipmentReservationService;
+    public Object createSessionScopedTool(Long currentUserId) {
+        return new SessionScopedUserProfileTool(currentUserId);
+    }
 
-    @Tool("获取当前登录用户自己的画像信息。参数必须传当前会话用户自己的 userId。会根据角色区分返回学生、教练或管理员信息；如果是学生，还会结合身高体重、已购课程、课程报名、教练预约、器材预约等历史数据实时计算课程推荐分数，生成 Top-N 推荐课程和推荐理由。适用于回答“推荐课程”“帮我制定训练计划”“我适合什么课程”等个性化问题前先调用。")
+    @Tool("获取当前登录用户自己的画像信息。工具会基于当前登录会话自动识别用户，不依赖模型传入的 userId；会根据角色区分返回学生、教练或管理员信息；适用于回答“推荐课程”“帮我制定训练计划”“我适合什么课程”等个性化问题前先调用。")
     public String getCurrentUserProfile(
-            @P("当前登录用户的 userId，只能传当前会话用户自己的 id") Long userId) {
-        log.info("AI工具调用: getCurrentUserProfile, userId={}", userId);
+            @P("当前登录用户的 userId，可不传，实际以当前登录会话为准") Long userId) {
+        return resolveUserProfile(userId, userId);
+    }
 
-        if (userId == null) {
-            return "未提供有效的 userId，无法获取当前用户画像。";
+    private String resolveUserProfile(Long boundUserId, Long requestUserId) {
+        log.info("AI工具调用: getCurrentUserProfile, requestUserId={}, boundUserId={}", requestUserId, boundUserId);
+
+        if (boundUserId == null) {
+            return "当前未登录，无法获取用户画像信息。";
         }
 
-        User user = userService.getById(userId);
+        User user = userService.getById(boundUserId);
         if (user == null) {
-            return "未找到该 userId 对应的用户信息。";
+            return "当前登录用户不存在或已失效，无法获取画像信息。";
         }
 
         UserRoleEnum roleEnum = UserRoleEnum.getEnumByValue(user.getRole());
@@ -109,25 +108,31 @@ public class UserProfileTools {
         };
     }
 
-    private String buildStudentProfile(User user) {
-        StudentVo student = studentService.getStudentByUserId(user.getId());
-        if (student == null || student.getId() == null) {
-            return "当前用户是学员角色，但未查询到对应的学员档案。";
+    private class SessionScopedUserProfileTool {
+
+        private final Long currentUserId;
+
+        private SessionScopedUserProfileTool(Long currentUserId) {
+            this.currentUserId = currentUserId;
         }
 
-        List<Course> allCourses = courseService.list();
-        Map<Long, Course> courseMap = allCourses.stream()
-                .filter(course -> course.getId() != null)
-                .collect(Collectors.toMap(Course::getId, Function.identity(), (left, right) -> left));
+        @Tool("获取当前登录用户自己的画像信息。工具会基于当前登录会话自动识别用户，不依赖模型传入的 userId；会根据角色区分返回学生、教练或管理员信息；适用于回答“推荐课程”“帮我制定训练计划”“我适合什么课程”等个性化问题前先调用。")
+        public String getCurrentUserProfile(
+                @P("当前登录用户的 userId，可不传，实际以当前登录会话为准") Long userId) {
+            return resolveUserProfile(currentUserId, userId);
+        }
+    }
 
-        List<CourseOrder> allPaidOrders = courseOrderService.list(
-                new LambdaQueryWrapper<CourseOrder>()
-                        .eq(CourseOrder::getStatus, 1)
-                        .orderByDesc(CourseOrder::getCreateTime));
+    private String buildStudentProfile(User user) {
+        Student student = resolveStudent(user);
+        if (student == null || student.getId() == null) {
+            return "当前用户是学员角色，但未查询到对应的学员档案，请先检查 user.associatedUserId 是否正确。";
+        }
 
         List<CourseOrder> userOrders = courseOrderService.list(
                 new LambdaQueryWrapper<CourseOrder>()
                         .eq(CourseOrder::getStudentId, student.getId())
+                        .eq(CourseOrder::getStatus, 1)
                         .orderByDesc(CourseOrder::getCreateTime));
 
         List<CourseBooking> userBookings = courseBookingService.list(
@@ -135,18 +140,15 @@ public class UserProfileTools {
                         .eq(CourseBooking::getStudentId, student.getId())
                         .orderByDesc(CourseBooking::getCreateTime));
 
-        List<CoachAppointment> userCoachAppointments = coachAppointmentService.list(
-                new LambdaQueryWrapper<CoachAppointment>()
-                        .eq(CoachAppointment::getStudentId, student.getId())
-                        .orderByDesc(CoachAppointment::getCreateTime));
+        List<Course> allCourses = courseService.list(
+                new LambdaQueryWrapper<Course>()
+                        .orderByDesc(Course::getCreateTime));
 
-        List<EquipmentReservation> userEquipmentReservations = equipmentReservationService.list(
-                new LambdaQueryWrapper<EquipmentReservation>()
-                        .eq(EquipmentReservation::getStudentId, student.getId())
-                        .orderByDesc(EquipmentReservation::getCreateTime));
+        Map<Long, Course> courseMap = allCourses.stream()
+                .filter(course -> course.getId() != null)
+                .collect(Collectors.toMap(Course::getId, Function.identity(), (left, right) -> left));
 
         Set<Long> activeCourseIds = userOrders.stream()
-                .filter(order -> Integer.valueOf(1).equals(order.getStatus()))
                 .filter(order -> order.getRemainingSessions() != null && order.getRemainingSessions() > 0)
                 .map(CourseOrder::getCourseId)
                 .filter(Objects::nonNull)
@@ -154,16 +156,14 @@ public class UserProfileTools {
 
         Map<String, Double> typePreferenceMap = new HashMap<>();
         Map<String, Double> difficultyPreferenceMap = new HashMap<>();
-        Map<Long, Double> coachPreferenceMap = new HashMap<>();
 
         for (CourseOrder order : userOrders) {
             Course course = courseMap.get(order.getCourseId());
             if (course == null) {
                 continue;
             }
-            increaseWeight(typePreferenceMap, course.getType(), 1.8D);
-            increaseWeight(difficultyPreferenceMap, course.getDifficulty(), 1.2D);
-            increaseWeight(coachPreferenceMap, course.getCoachId(), 1.0D);
+            increaseWeight(typePreferenceMap, course.getType(), 1.5D);
+            increaseWeight(difficultyPreferenceMap, course.getDifficulty(), 1.0D);
         }
 
         for (CourseBooking booking : userBookings) {
@@ -171,30 +171,20 @@ public class UserProfileTools {
             if (course == null) {
                 continue;
             }
-            increaseWeight(typePreferenceMap, course.getType(), 1.0D);
-            increaseWeight(difficultyPreferenceMap, course.getDifficulty(), 0.8D);
-            increaseWeight(coachPreferenceMap, course.getCoachId(), 0.6D);
+            increaseWeight(typePreferenceMap, course.getType(), 0.8D);
+            increaseWeight(difficultyPreferenceMap, course.getDifficulty(), 0.6D);
         }
-
-        for (CoachAppointment appointment : userCoachAppointments) {
-            increaseWeight(coachPreferenceMap, appointment.getCoachId(), 0.8D);
-        }
-
-        Map<Long, Long> popularityMap = allPaidOrders.stream()
-                .map(CourseOrder::getCourseId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
         Double bmi = calculateBmi(student.getHeight(), student.getWeight());
         String inferredGoal = inferGoalByBmi(bmi);
         Set<String> bmiPreferredTypes = inferPreferredCourseTypesByBmi(bmi);
-        boolean newUser = userOrders.isEmpty() && userBookings.isEmpty() && userCoachAppointments.isEmpty();
+        boolean newUser = userOrders.isEmpty() && userBookings.isEmpty();
 
         List<ScoredCourse> recommendations = allCourses.stream()
                 .filter(course -> course.getId() != null)
                 .filter(course -> !activeCourseIds.contains(course.getId()))
-                .map(course -> scoreCourse(course, student, popularityMap, typePreferenceMap,
-                        difficultyPreferenceMap, coachPreferenceMap, bmiPreferredTypes, newUser))
+                .map(course -> scoreCourse(course, student.getBalance(), typePreferenceMap,
+                        difficultyPreferenceMap, bmiPreferredTypes, newUser))
                 .sorted(Comparator.comparingDouble(ScoredCourse::score).reversed())
                 .limit(DEFAULT_TOP_N)
                 .toList();
@@ -202,7 +192,6 @@ public class UserProfileTools {
         String recentOrders = summarizeRecentOrders(userOrders, courseMap);
         String recentBookings = summarizeRecentBookings(userBookings, courseMap);
         String preferredTypes = summarizeTopPreferences(typePreferenceMap, this::getCourseTypeName);
-        String preferredDifficulties = summarizeTopPreferences(difficultyPreferenceMap, this::getDifficultyName);
 
         StringBuilder sb = new StringBuilder();
         sb.append("当前登录用户画像（仅当前用户本人）\n");
@@ -216,67 +205,57 @@ public class UserProfileTools {
         sb.append("- BMI: ").append(bmi == null ? "暂无可计算数据" : DECIMAL_FORMAT.format(bmi)).append('\n');
         sb.append("- 推断训练目标: ").append(inferredGoal).append('\n');
         sb.append("- 账户余额: ").append(formatCurrency(student.getBalance())).append('\n');
-        sb.append("- 已购课程订单数: ").append(userOrders.size()).append('\n');
-        sb.append("- 课程报名次数: ").append(userBookings.size()).append('\n');
-        sb.append("- 教练预约次数: ").append(userCoachAppointments.size()).append('\n');
-        sb.append("- 器材预约次数: ").append(userEquipmentReservations.size()).append('\n');
+        sb.append("- 已购课程数: ").append(userOrders.size()).append('\n');
+        sb.append("- 已报名次数: ").append(userBookings.size()).append('\n');
         sb.append("- 偏好课程类型: ").append(preferredTypes).append('\n');
-        sb.append("- 偏好课程难度: ").append(preferredDifficulties).append('\n');
         sb.append("- 最近购课记录: ").append(recentOrders).append('\n');
         sb.append("- 最近报名记录: ").append(recentBookings).append('\n');
         sb.append('\n');
-        sb.append("个性化课程推荐 Top-").append(recommendations.size()).append("（后端实时评分）\n");
+        sb.append("推荐课程 Top-").append(recommendations.size()).append('\n');
 
         if (recommendations.isEmpty()) {
-            sb.append("- 暂无可推荐课程，可结合用户目标改用通用健身建议。\n");
+            sb.append("- 暂无可推荐课程，可结合当前目标给出通用训练建议。\n");
         } else {
             for (int i = 0; i < recommendations.size(); i++) {
                 ScoredCourse recommendation = recommendations.get(i);
                 Course course = recommendation.course();
-                sb.append(i + 1).append(". ");
-                sb.append(defaultText(course.getName(), "未命名课程"));
-                sb.append(" | 推荐分=").append(DECIMAL_FORMAT.format(recommendation.score()));
-                sb.append(" | 类型=").append(getCourseTypeName(course.getType()));
-                sb.append(" | 难度=").append(getDifficultyName(course.getDifficulty()));
-                sb.append(" | 价格=").append(formatCurrency(course.getPrice()));
-                sb.append(" | 时长=").append(course.getDuration() == null ? "未知" : course.getDuration() + " 分钟");
-                if (course.getCoachId() != null) {
-                    Coach coach = coachService.getById(course.getCoachId());
-                    if (coach != null) {
-                        sb.append(" | 教练=").append(defaultText(coach.getName(), "未知"));
-                    }
-                }
-                sb.append('\n');
+                sb.append(i + 1).append(". ")
+                        .append(defaultText(course.getName(), "未命名课程"))
+                        .append(" | 类型=").append(getCourseTypeName(course.getType()))
+                        .append(" | 难度=").append(getDifficultyName(course.getDifficulty()))
+                        .append(" | 价格=").append(formatCurrency(course.getPrice()))
+                        .append(" | 推荐分=").append(DECIMAL_FORMAT.format(recommendation.score()))
+                        .append('\n');
                 sb.append("   推荐理由: ").append(String.join("；", recommendation.reasons())).append('\n');
             }
         }
 
         sb.append('\n');
         sb.append("给 AI 的使用建议\n");
-        sb.append("- 以上内容只代表当前 userId 对应用户自己的画像，不能扩展到其他用户。\n");
-        sb.append("- 如果用户询问推荐课程、训练计划、减脂/增肌建议，应优先结合 BMI、历史偏好、最近购买和报名记录来回答。\n");
-        sb.append("- 如果用户没有明确目标，可先根据“推断训练目标”和 Top-N 推荐课程给出分层建议。\n");
+        sb.append("- 以上内容只代表当前用户本人。\n");
+        sb.append("- 回答课程推荐或训练计划时，优先结合 BMI、最近购课和报名偏好。\n");
         return sb.toString();
     }
 
     private String buildCoachProfile(User user) {
-        CoachVo coach = coachService.getCoachByUserId(user.getId());
+        Coach coach = resolveCoach(user);
         if (coach == null || coach.getId() == null) {
-            return "当前用户是教练角色，但未查询到对应的教练档案。";
+            return "当前用户是教练角色，但未查询到对应的教练档案，请先检查 user.associatedUserId 是否正确。";
         }
 
-        List<Course> coachCourses = courseService.list(
+        long courseCount = courseService.count(
                 new LambdaQueryWrapper<Course>()
-                        .eq(Course::getCoachId, coach.getId())
-                        .orderByDesc(Course::getCreateTime));
+                        .eq(Course::getCoachId, coach.getId()));
 
-        List<CoachAppointment> appointments = coachAppointmentService.list(
+        long pendingCount = coachAppointmentService.count(
                 new LambdaQueryWrapper<CoachAppointment>()
                         .eq(CoachAppointment::getCoachId, coach.getId())
-                        .orderByDesc(CoachAppointment::getCreateTime));
+                        .eq(CoachAppointment::getStatus, 0));
 
-        long pendingCount = appointments.stream().filter(item -> Integer.valueOf(0).equals(item.getStatus())).count();
-        long confirmedCount = appointments.stream().filter(item -> Integer.valueOf(1).equals(item.getStatus())).count();
+        long confirmedCount = coachAppointmentService.count(
+                new LambdaQueryWrapper<CoachAppointment>()
+                        .eq(CoachAppointment::getCoachId, coach.getId())
+                        .eq(CoachAppointment::getStatus, 1));
 
         StringBuilder sb = new StringBuilder();
         sb.append("当前登录用户画像（仅当前用户本人）\n");
@@ -290,18 +269,13 @@ public class UserProfileTools {
         sb.append("- 专长方向: ").append(getCoachSpecialtyName(coach.getSpecialty())).append('\n');
         sb.append("- 简介: ").append(defaultText(coach.getIntro(), "暂无")).append('\n');
         sb.append("- 私教价格: ").append(formatCurrency(coach.getPrice())).append('\n');
-        sb.append("- 发布课程数: ").append(coachCourses.size()).append('\n');
-        sb.append("- 教练预约总数: ").append(appointments.size()).append('\n');
+        sb.append("- 发布课程数: ").append(courseCount).append('\n');
         sb.append("- 待确认预约数: ").append(pendingCount).append('\n');
         sb.append("- 已确认预约数: ").append(confirmedCount).append('\n');
-        sb.append("- 最近课程: ").append(coachCourses.stream()
-                .limit(3)
-                .map(course -> defaultText(course.getName(), "未命名课程"))
-                .collect(Collectors.joining("、", "", coachCourses.isEmpty() ? "暂无" : ""))).append('\n');
         sb.append('\n');
         sb.append("给 AI 的使用建议\n");
         sb.append("- 这是教练用户自己的画像，可用于回答其课程运营、个人品牌介绍、训练风格说明等问题。\n");
-        sb.append("- 教练角色不生成学员购课推荐，除非用户明确以学员视角咨询通用课程建议。\n");
+        sb.append("- 教练角色默认不生成学员侧购课推荐。\n");
         return sb.toString();
     }
 
@@ -323,45 +297,66 @@ public class UserProfileTools {
         return sb.toString();
     }
 
+    private Student resolveStudent(User user) {
+        if (user == null) {
+            return null;
+        }
+        if (user.getAssociatedUserId() != null) {
+            Student student = studentService.getById(user.getAssociatedUserId());
+            if (student != null) {
+                return student;
+            }
+        }
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            return null;
+        }
+        return studentService.getOne(new LambdaQueryWrapper<Student>()
+                .eq(Student::getUsername, user.getUsername())
+                .last("limit 1"));
+    }
+
+    private Coach resolveCoach(User user) {
+        if (user == null) {
+            return null;
+        }
+        if (user.getAssociatedUserId() != null) {
+            Coach coach = coachService.getById(user.getAssociatedUserId());
+            if (coach != null) {
+                return coach;
+            }
+        }
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            return null;
+        }
+        return coachService.getOne(new LambdaQueryWrapper<Coach>()
+                .eq(Coach::getUsername, user.getUsername())
+                .last("limit 1"));
+    }
+
     private ScoredCourse scoreCourse(Course course,
-                                     StudentVo student,
-                                     Map<Long, Long> popularityMap,
+                                     BigDecimal balance,
                                      Map<String, Double> typePreferenceMap,
                                      Map<String, Double> difficultyPreferenceMap,
-                                     Map<Long, Double> coachPreferenceMap,
                                      Set<String> bmiPreferredTypes,
                                      boolean newUser) {
         double score = 20D;
         List<String> reasons = new ArrayList<>();
 
-        Long popularity = popularityMap.getOrDefault(course.getId(), 0L);
-        if (popularity > 0) {
-            double popularityScore = Math.min(popularity * 2D, 16D);
-            score += popularityScore;
-            reasons.add("平台内热度较高");
-        }
-
         Double typeWeight = typePreferenceMap.get(course.getType());
         if (typeWeight != null && typeWeight > 0) {
-            score += Math.min(typeWeight * 12D, 28D);
-            reasons.add("与用户历史购课/报名偏好高度匹配");
+            score += Math.min(typeWeight * 12D, 24D);
+            reasons.add("与最近的购课/报名偏好匹配");
         }
 
         Double difficultyWeight = difficultyPreferenceMap.get(course.getDifficulty());
         if (difficultyWeight != null && difficultyWeight > 0) {
             score += Math.min(difficultyWeight * 6D, 10D);
-            reasons.add("难度与用户历史选择接近");
-        }
-
-        Double coachWeight = coachPreferenceMap.get(course.getCoachId());
-        if (coachWeight != null && coachWeight > 0) {
-            score += Math.min(coachWeight * 4D, 8D);
-            reasons.add("与用户过往偏好的教练路线接近");
+            reasons.add("难度与近期选择接近");
         }
 
         if (bmiPreferredTypes.contains(course.getType())) {
             score += 12D;
-            reasons.add("符合用户当前体型阶段的训练方向");
+            reasons.add("符合当前体型阶段的训练方向");
         }
 
         if (newUser && isBeginnerFriendly(course)) {
@@ -369,10 +364,10 @@ public class UserProfileTools {
             reasons.add("对新用户更友好，入门成本较低");
         }
 
-        if (student.getBalance() != null && course.getPrice() != null) {
-            if (student.getBalance().compareTo(course.getPrice()) >= 0) {
+        if (balance != null && course.getPrice() != null) {
+            if (balance.compareTo(course.getPrice()) >= 0) {
                 score += 5D;
-                reasons.add("当前账户余额可覆盖课程价格");
+                reasons.add("当前余额可覆盖课程价格");
             } else {
                 score -= 3D;
                 reasons.add("课程价格略高于当前余额");
@@ -385,7 +380,7 @@ public class UserProfileTools {
         }
 
         if (reasons.isEmpty()) {
-            reasons.add("综合课程基础属性与平台热度推荐");
+            reasons.add("与当前身体情况和课程基础属性较匹配");
         }
 
         return new ScoredCourse(course, score, reasons);
@@ -488,7 +483,7 @@ public class UserProfileTools {
         if (key == null) {
             return;
         }
-        targetMap.merge(key, weight, Double::sum);
+        targetMap.merge(key, weight, (existing, increment) -> existing + increment);
     }
 
     private String getCourseTypeName(String type) {

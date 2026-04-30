@@ -3,6 +3,8 @@ package com.ldr.gymlink.ai.tools;
 import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import opennlp.tools.stemmer.snowball.porterStemmer;
+
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -35,18 +37,17 @@ public class GymLinkTools {
 
     @Resource
     private UserProfileTools userProfileTools;
-
     /**
      * 获取所有工具对象列表，用于注册到AI服务
      */
-    public List<Object> getAllTools() {
+    public List<Object> getAllTools(Long currentUserId) {
         return Arrays.asList(
                 courseTools,
                 coachTools,
                 equipmentTools,
                 recipeTools,
                 fitnessAdvisorTools,
-                userProfileTools
+                userProfileTools.createSessionScopedTool(currentUserId)
         );
     }
 }

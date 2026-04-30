@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, Calendar } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
@@ -56,10 +56,12 @@ import { ElNotification } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const POLL_INTERVAL_MS = 30000
 
 const loading = ref(false)
 const unreadCount = ref(0)
 const notifications = ref<Notification[]>([])
+const isPolling = ref(false)
 let pollTimer: number | null = null
 
 const getAuthUserId = (): string | null => {
@@ -85,10 +87,11 @@ const formatTime = (time: string) => {
 
 const loadUnreadCount = async (isInit = false) => {
   const userId = getAuthUserId()
-  if (!authStore.isAuthenticated || userId === null) return
+  if (!authStore.isAuthenticated || userId === null || isPolling.value) return
+
+  isPolling.value = true
   try {
     const newCount = await getUnreadCount(userId)
-    // 如果不是首次加载且发生了未读数量上升，弹出通知
     if (!isInit && newCount > unreadCount.value) {
       ElNotification({
         title: '新消息通知',
@@ -100,6 +103,8 @@ const loadUnreadCount = async (isInit = false) => {
     unreadCount.value = newCount
   } catch (e) {
     console.error('获取未读数量失败:', e)
+  } finally {
+    isPolling.value = false
   }
 }
 
@@ -148,27 +153,58 @@ const goToNotificationCenter = () => {
   router.push({ path: '/profile', query: { tab: 'notifications' } })
 }
 
-const startPolling = () => {
-  // 首次请求不需要弹窗
-  loadUnreadCount(true)
-  // 将轮询时间调短为 10 秒，避免等待过久导致用户觉得没有通知
-  pollTimer = window.setInterval(() => loadUnreadCount(false), 10000)
-}
-
 const stopPolling = () => {
-  if (pollTimer) {
+  if (pollTimer !== null) {
     clearInterval(pollTimer)
     pollTimer = null
   }
 }
 
-onMounted(() => {
-  if (authStore.isAuthenticated) {
-    startPolling()
+const startPolling = () => {
+  if (!authStore.isAuthenticated || document.visibilityState !== 'visible' || pollTimer !== null) {
+    return
   }
+
+  loadUnreadCount(true)
+  pollTimer = window.setInterval(() => {
+    void loadUnreadCount(false)
+  }, POLL_INTERVAL_MS)
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    void loadUnreadCount(true)
+    startPolling()
+    return
+  }
+
+  stopPolling()
+}
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      if (document.visibilityState === 'visible') {
+        void loadUnreadCount(true)
+      }
+      startPolling()
+      return
+    }
+
+    stopPolling()
+    unreadCount.value = 0
+    notifications.value = []
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopPolling()
 })
 </script>

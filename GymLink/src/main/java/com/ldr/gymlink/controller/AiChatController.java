@@ -2,6 +2,8 @@ package com.ldr.gymlink.controller;
 
 import com.ldr.gymlink.ai.aiService.GymLinkAiService;
 import com.ldr.gymlink.ai.tools.GymLinkTools;
+import com.ldr.gymlink.model.vo.UserVo;
+import com.ldr.gymlink.service.UserService;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -41,15 +43,23 @@ public class AiChatController {
     @Resource
     private GymLinkTools gymLinkTools;
 
+    @Resource
+    private UserService userService;
+
     /**
      * 流式对话接口 (SSE)
      */
-    @Operation(summary = "流式对话（SSE）", description = "流式返回 AI 响应，支持工具调用")
+    @Operation(summary = "流式对话(SSE)", description = "流式返回 AI 响应，支持工具调用")
     @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> chatStream(@RequestParam Long userId, @RequestParam String message) {
-        log.info("流式AI对话请求: userId={}, message={}", userId, message);
-        String aiMessage = buildAiMessage(userId, message);
+    public Flux<String> chatStream(@RequestParam String message) {
+        Long currentUserId = resolveCurrentUserId();
+        if (currentUserId == null) {
+            return Flux.just("请先登录后再使用 AI 对话功能。");
+        }
 
+        log.info("流式AI对话请求: currentUserId={}, message={}", currentUserId, message);
+        String aiMessage = buildAiMessage(currentUserId, message);
+        log.info("用户的输入信息:{}", aiMessage);
         GymLinkAiService aiService = AiServices.builder(GymLinkAiService.class)
                 .streamingChatModel(qwenStreamingChatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.builder()
@@ -57,12 +67,12 @@ public class AiChatController {
                         .chatMemoryStore(persistentChatMemoryStore)
                         .maxMessages(10)
                         .build())
-                .tools(gymLinkTools.getAllTools())
+                .tools(gymLinkTools.getAllTools(currentUserId))
                 .build();
 
         Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
 
-        aiService.gymLinkAiAssistantStream(userId, aiMessage)
+        aiService.gymLinkAiAssistantStream(currentUserId, aiMessage)
                 .onPartialResponse(partialResponse -> {
                     log.debug("[Stream] Partial response: {}", truncateResult(partialResponse));
                     sink.tryEmitNext(partialResponse);
@@ -73,15 +83,15 @@ public class AiChatController {
                         toolExecution.request().name(),
                         truncateResult(toolExecution.result())))
                 .onCompleteResponse(response -> {
-                    log.info("[Stream] Complete response: userId={}, content length={}",
-                            userId,
+                    log.info("[Stream] Complete response: currentUserId={}, content length={}",
+                            currentUserId,
                             response.aiMessage() != null && response.aiMessage().text() != null
                                     ? response.aiMessage().text().length() : 0);
                     sink.tryEmitComplete();
                 })
                 .onError(error -> {
-                    log.error("[Stream] Error occurred: userId={}, errorType={}, message={}",
-                            userId,
+                    log.error("[Stream] Error occurred: currentUserId={}, errorType={}, message={}",
+                            currentUserId,
                             error.getClass().getSimpleName(),
                             error.getMessage(),
                             error);
@@ -89,7 +99,7 @@ public class AiChatController {
                 })
                 .start();
 
-        log.info("[Stream] TokenStream started for userId={}", userId);
+        log.info("[Stream] TokenStream started for currentUserId={}", currentUserId);
         return sink.asFlux();
     }
 
@@ -98,9 +108,14 @@ public class AiChatController {
      */
     @Operation(summary = "同步对话", description = "同步返回 AI 响应，支持工具调用")
     @PostMapping("/chat")
-    public String chat(@RequestParam Long userId, @RequestParam String message) {
-        log.info("AI对话请求: userId={}, message={}", userId, message);
-        String aiMessage = buildAiMessage(userId, message);
+    public String chat(@RequestParam String message) {
+        Long currentUserId = resolveCurrentUserId();
+        if (currentUserId == null) {
+            return "请先登录后再使用 AI 对话功能。";
+        }
+
+        log.info("AI对话请求: currentUserId={}, message={}", currentUserId, message);
+        String aiMessage = buildAiMessage(currentUserId, message);
 
         try {
             GymLinkAiService aiService = AiServices.builder(GymLinkAiService.class)
@@ -110,14 +125,19 @@ public class AiChatController {
                             .chatMemoryStore(persistentChatMemoryStore)
                             .maxMessages(10)
                             .build())
-                    .tools(gymLinkTools.getAllTools())
+                    .tools(gymLinkTools.getAllTools(currentUserId))
                     .build();
 
-            return aiService.gymLinkAiAssistant(userId, aiMessage);
+            return aiService.gymLinkAiAssistant(currentUserId, aiMessage);
         } catch (Exception e) {
             log.error("AI对话异常", e);
             return "抱歉，我暂时无法回复，请稍后再试。";
         }
+    }
+
+    private Long resolveCurrentUserId() {
+        UserVo loginUser = userService.getLoginUser();
+        return loginUser == null ? null : loginUser.getId();
     }
 
     /**

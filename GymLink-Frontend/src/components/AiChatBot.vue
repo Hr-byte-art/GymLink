@@ -98,11 +98,6 @@ const userAvatar = computed(() => {
   return authStore.user?.avatar || '/avatar-placeholder.svg'
 })
 
-// 用户 ID
-const userId = computed(() => {
-  return authStore.user?.id || 'guest'
-})
-
 // 切换聊天窗口
 const toggleChat = () => {
   isOpen.value = !isOpen.value
@@ -122,6 +117,17 @@ let closeStream: (() => void) | null = null
 const sendMessage = async () => {
   const message = inputMessage.value.trim()
   if (!message || isLoading.value) return
+
+  if (!authStore.isAuthenticated) {
+    messages.value.push({
+      role: 'assistant',
+      content: '请先登录后再使用 AI 对话功能。'
+    })
+    inputMessage.value = ''
+    await nextTick()
+    scrollToBottom()
+    return
+  }
 
   // 添加用户消息
   messages.value.push({
@@ -144,7 +150,6 @@ const sendMessage = async () => {
 
   // 调用流式 AI 接口
   closeStream = chatStream(
-    userId.value,
     message,
     // 消息回调：收到流式片段
     (text: string) => {
